@@ -1,14 +1,16 @@
-# BountyLog — Slice 1: Core Tournament Tracking (Design)
+# Crew Stat — Slice 1: Core Tournament Tracking (Design)
+
+> Product renamed from "BountyLog" to **Crew Stat** on 2026-07-20. The GitHub repo and Vercel project remain `tcgtracker`.
 
 **Date:** 2026-07-20
 **Status:** Approved design, ready for implementation planning
-**Scope:** First vertical slice of BountyLog, an OPTCG (One Piece TCG) competitive tournament tracker. Web-first, mobile-friendly.
+**Scope:** First vertical slice of Crew Stat, an OPTCG (One Piece TCG) competitive tournament tracker. Web-first, mobile-friendly.
 
 ---
 
 ## 1. Context & Slice Roadmap
 
-BountyLog's full vision spans 27 use cases across 8 categories (tracking, statistics, achievements, customization, cloud sync, export, offline, accessibility). That is far too large for a single design or build. We deliver it as vertical, independently useful slices, each with its own spec → plan → build cycle:
+Crew Stat's full vision spans 27 use cases across 8 categories (tracking, statistics, achievements, customization, cloud sync, export, offline, accessibility). That is far too large for a single design or build. We deliver it as vertical, independently useful slices, each with its own spec → plan → build cycle:
 
 | Slice | Use Cases | Delivers |
 |-------|-----------|----------|

@@ -1,4 +1,4 @@
-# BountyLog Slice 1: Core Tournament Tracking — Implementation Plan
+# Crew Stat Slice 1: Core Tournament Tracking — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1376,7 +1376,7 @@ import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BountyLog',
+  title: 'Crew Stat',
   description: 'OPTCG tournament tracker',
 };
 
@@ -2339,7 +2339,7 @@ export function TournamentList() {
   return (
     <main className="mx-auto max-w-xl p-4 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">BountyLog</h1>
+        <h1 className="text-2xl font-bold">Crew Stat</h1>
       </div>
 
       <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
