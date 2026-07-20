@@ -24,4 +24,18 @@ describe('seedReferenceData', () => {
     const globalSets = await db.select().from(sets).where(isNull(sets.ownerId));
     expect(globalSets.length).toBe(SEED_SETS.length);
   });
+
+  it('is idempotent: re-running inserts nothing and leaves global counts unchanged', async () => {
+    await seedReferenceData(db);
+
+    const second = await seedReferenceData(db);
+    expect(second.leaders).toBe(0);
+    expect(second.sets).toBe(0);
+
+    const globalLeaders = await db.select().from(leaders).where(isNull(leaders.ownerId));
+    expect(globalLeaders.length).toBe(SEED_LEADERS.length);
+
+    const globalSets = await db.select().from(sets).where(isNull(sets.ownerId));
+    expect(globalSets.length).toBe(SEED_SETS.length);
+  });
 });
