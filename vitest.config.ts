@@ -1,3 +1,6 @@
+import { config } from 'dotenv';
+config({ path: '.env.local' });
+
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'node:path';
 

@@ -1,12 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { getTestDb, resetDb } from '../../tests/setup/db';
+import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { leaders } from './schema';
 
 const db = getTestDb();
 
 describe('schema', () => {
   beforeEach(async () => { await resetDb(); });
+  afterAll(async () => { await closeTestDb(); });
 
   it('inserts and reads a global leader with null owner', async () => {
     const [row] = await db.insert(leaders)
