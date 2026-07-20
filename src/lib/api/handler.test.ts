@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ZodError } from 'zod';
 import { errorToResponse, UnauthorizedError } from './handler';
 import { NotFoundError, ConflictError, ValidationError } from '../errors';
@@ -9,6 +9,10 @@ async function status(err: unknown) {
 }
 
 describe('errorToResponse', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('maps NotFoundError to 404', async () => {
     expect((await status(new NotFoundError())).code).toBe(404);
   });
@@ -24,6 +28,8 @@ describe('errorToResponse', () => {
     expect((await status(new UnauthorizedError())).code).toBe(401);
   });
   it('maps unknown to 500', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     expect((await status(new Error('boom'))).code).toBe(500);
+    expect(spy).toHaveBeenCalled();
   });
 });
