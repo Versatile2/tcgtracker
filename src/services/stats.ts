@@ -52,7 +52,7 @@ async function aggregateBySet(db: DB, ownerId: string) {
 export async function getPerSetStats(db: DB, ownerId: string): Promise<PerSetStat[]> {
   const rows = await aggregateBySet(db, ownerId);
   return rows
-    .map(({ games, ...rest }) => rest)
+    .map(({ setId, name, tournaments, wins, losses, draws, winRate }) => ({ setId, name, tournaments, wins, losses, draws, winRate }))
     .sort((a, b) => b.winRate - a.winRate || a.name.localeCompare(b.name));
 }
 
@@ -95,7 +95,7 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
     .innerJoin(leaders, eq(rounds.myLeaderId, leaders.id))
     .where(eq(tournaments.ownerId, ownerId))
     .groupBy(rounds.myLeaderId, leaders.name)
-    .orderBy(desc(sql`count(distinct ${rounds.tournamentId})`))
+    .orderBy(desc(sql`count(distinct ${rounds.tournamentId})`), leaders.name)
     .limit(1);
   const mostPlayedLeader = mp ? { leaderId: mp.leaderId, name: mp.name, tournaments: num(mp.tournaments) } : null;
 
@@ -107,4 +107,83 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
     bestSet,
     mostPlayedLeader,
   };
+}
+
+export type ResultCounts = { wins: number; losses: number; draws: number; games: number; winRate: number };
+export type MatchupStats = {
+  opponents: (ResultCounts & { leaderId: string; name: string; verdict: 'favored' | 'even' | 'unfavored' })[];
+  turnOrder: { first: ResultCounts; second: ResultCounts };
+  colorBreakdown: (ResultCounts & { color: string })[];
+};
+
+function counts(wins: number, losses: number, draws: number): ResultCounts {
+  const games = wins + losses + draws;
+  return { wins, losses, draws, games, winRate: rate(wins, games) };
+}
+function verdictOf(winRate: number): 'favored' | 'even' | 'unfavored' {
+  if (winRate >= 0.55) return 'favored';
+  if (winRate <= 0.45) return 'unfavored';
+  return 'even';
+}
+
+export async function getMatchupStats(db: DB, ownerId: string, leaderId: string): Promise<MatchupStats> {
+  // Opponents
+  const oppRows = await db
+    .select({
+      leaderId: rounds.opponentLeaderId,
+      name: leaders.name,
+      wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
+      losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,
+      draws: sql<number>`count(*) filter (where ${rounds.result} = 'draw')`,
+    })
+    .from(rounds)
+    .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
+    .innerJoin(leaders, eq(rounds.opponentLeaderId, leaders.id))
+    .where(and(eq(tournaments.ownerId, ownerId), eq(rounds.myLeaderId, leaderId)))
+    .groupBy(rounds.opponentLeaderId, leaders.name);
+  const opponents = oppRows
+    .map((r) => {
+      const c = counts(num(r.wins), num(r.losses), num(r.draws));
+      return { leaderId: r.leaderId, name: r.name, ...c, verdict: verdictOf(c.winRate) };
+    })
+    .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+
+  // Turn order (exclude null play_order)
+  const toRows = await db
+    .select({
+      playOrder: rounds.playOrder,
+      wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
+      losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,
+      draws: sql<number>`count(*) filter (where ${rounds.result} = 'draw')`,
+    })
+    .from(rounds)
+    .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
+    .where(and(eq(tournaments.ownerId, ownerId), eq(rounds.myLeaderId, leaderId), sql`${rounds.playOrder} is not null`))
+    .groupBy(rounds.playOrder);
+  const toFor = (po: 'first' | 'second') => {
+    const r = toRows.find((x) => x.playOrder === po);
+    return r ? counts(num(r.wins), num(r.losses), num(r.draws)) : counts(0, 0, 0);
+  };
+  const turnOrder = { first: toFor('first'), second: toFor('second') };
+
+  // Color breakdown (unnest opponent colors; empty array => 'colorless')
+  const colorResult = await db.execute(sql`
+    SELECT color,
+      count(*) filter (where r.result = 'win')  as wins,
+      count(*) filter (where r.result = 'loss') as losses,
+      count(*) filter (where r.result = 'draw') as draws
+    FROM rounds r
+    JOIN tournaments t ON r.tournament_id = t.id
+    JOIN leaders opp ON r.opponent_leader_id = opp.id
+    LEFT JOIN LATERAL unnest(
+      CASE WHEN cardinality(opp.colors) = 0 THEN ARRAY['colorless'] ELSE opp.colors END
+    ) AS color ON true
+    WHERE t.owner_id = ${ownerId} AND r.my_leader_id = ${leaderId}
+    GROUP BY color
+  `);
+  const colorBreakdown = (colorResult.rows as { color: string; wins: unknown; losses: unknown; draws: unknown }[])
+    .map((r) => ({ color: r.color, ...counts(num(r.wins), num(r.losses), num(r.draws)) }))
+    .sort((a, b) => b.games - a.games || a.color.localeCompare(b.color));
+
+  return { opponents, turnOrder, colorBreakdown };
 }
