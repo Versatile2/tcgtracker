@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
+import { OfflineBadge } from '@/components/offline-badge';
 import './globals.css';
 
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Providers>{children}</Providers>
           <Toaster />
           <ServiceWorkerRegister />
+          <OfflineBadge />
         </body>
       </html>
     </ClerkProvider>

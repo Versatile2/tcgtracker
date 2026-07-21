@@ -9,6 +9,7 @@ import { ReferenceCombobox } from './reference-combobox';
 import { useSets, useAddCustomSet, useCreateTournament } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { TournamentType } from '@/lib/dto';
+import { useOnlineStatus } from '@/lib/use-online-status';
 
 const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
 
@@ -17,6 +18,7 @@ export function NewTournamentForm() {
   const { data: sets } = useSets();
   const addSet = useAddCustomSet();
   const create = useCreateTournament();
+  const online = useOnlineStatus();
 
   const [type, setType] = useState<TournamentType>('local');
   const [setId, setSetId] = useState<string | null>(null);
@@ -24,6 +26,7 @@ export function NewTournamentForm() {
   const [playedOn, setPlayedOn] = useState(() => new Date().toISOString().slice(0, 10));
 
   async function submit() {
+    if (!online) { toast.error("You're offline — reconnect to save"); return; }
     try {
       const t = await create.mutateAsync({
         type, setId: setId ?? undefined, name: name.trim() || undefined, playedOn,

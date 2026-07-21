@@ -17,6 +17,7 @@ import {
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { RoundDTO } from '@/lib/dto';
+import { useOnlineStatus } from '@/lib/use-online-status';
 
 export function TournamentDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -28,6 +29,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const finish = useFinishTournament(id);
   const reopen = useReopenTournament(id);
   const removeTournament = useDeleteTournament();
+  const online = useOnlineStatus();
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RoundDTO | undefined>();
@@ -40,6 +42,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const record = computeRecord(t.rounds);
 
   async function handleDeleteRound(r: RoundDTO) {
+    if (!online) { toast.error("You're offline — reconnect to save"); return; }
     await deleteRound.mutateAsync(r.id);
     toast('Round deleted', {
       action: {
@@ -83,11 +86,19 @@ export function TournamentDetail({ id }: { id: string }) {
             <DialogContent>
               <DialogHeader><DialogTitle>Finish tournament?</DialogTitle></DialogHeader>
               <p className="text-sm text-muted-foreground">This locks the tournament. You can reopen it later to make changes.</p>
-              <DialogFooter><Button onClick={() => finish.mutate()}>Finish & Lock</Button></DialogFooter>
+              <DialogFooter>
+                <Button onClick={() => {
+                  if (!online) { toast.error("You're offline — reconnect to save"); return; }
+                  finish.mutate();
+                }}>Finish & Lock</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         ) : (
-          <Button variant="outline" className="h-12 flex-1" onClick={() => reopen.mutate()}>Reopen</Button>
+          <Button variant="outline" className="h-12 flex-1" onClick={() => {
+            if (!online) { toast.error("You're offline — reconnect to save"); return; }
+            reopen.mutate();
+          }}>Reopen</Button>
         )}
         <Dialog>
           <DialogTrigger render={<Button variant="destructive" className="h-12">Delete</Button>} />
@@ -95,7 +106,11 @@ export function TournamentDetail({ id }: { id: string }) {
             <DialogHeader><DialogTitle>Delete tournament?</DialogTitle></DialogHeader>
             <p className="text-sm text-muted-foreground">This permanently removes the tournament and all its rounds.</p>
             <DialogFooter>
-              <Button variant="destructive" onClick={async () => { await removeTournament.mutateAsync(t.id); router.push('/'); }}>Delete</Button>
+              <Button variant="destructive" onClick={async () => {
+                if (!online) { toast.error("You're offline — reconnect to save"); return; }
+                await removeTournament.mutateAsync(t.id);
+                router.push('/');
+              }}>Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -109,6 +124,7 @@ export function TournamentDetail({ id }: { id: string }) {
 
       <RoundFormSheet open={sheetOpen} onOpenChange={setSheetOpen} initial={editing}
         onSubmit={async (data) => {
+          if (!online) { toast.error("You're offline — reconnect to save"); return; }
           try {
             if (editing) await updateRound.mutateAsync({ id: editing.id, body: data });
             else await addRound.mutateAsync(data);
