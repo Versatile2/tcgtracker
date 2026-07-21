@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +22,7 @@ export function TournamentList() {
         <div className="flex items-center gap-3">
           <Link href="/achievements" className="text-sm font-medium text-muted-foreground">Achievements</Link>
           <Link href="/stats" className="text-sm font-medium text-muted-foreground">Stats →</Link>
+          <Link href="/settings" aria-label="Settings" className="text-muted-foreground"><Settings className="h-5 w-5" /></Link>
         </div>
       </div>
 
