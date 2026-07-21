@@ -19,6 +19,7 @@ export function TournamentList() {
     <main className="mx-auto max-w-xl p-4 pb-24">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Crew Stat</h1>
+        <Link href="/stats" className="text-sm font-medium text-muted-foreground">Stats →</Link>
       </div>
 
       <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
