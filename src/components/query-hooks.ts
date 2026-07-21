@@ -9,6 +9,8 @@ const keys = {
   tournament: (id: string) => ['tournament', id] as const,
   leaders: ['leaders'] as const,
   sets: ['sets'] as const,
+  stats: ['stats'] as const,
+  matchups: (leaderId: string) => ['matchups', leaderId] as const,
 };
 
 export const useTournaments = () => useQuery({ queryKey: keys.tournaments, queryFn: apiClient.listTournaments });
@@ -80,3 +82,11 @@ export function useAddCustomSet() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: apiClient.addSet, onSuccess: () => qc.invalidateQueries({ queryKey: keys.sets }) });
 }
+
+export const useStats = () => useQuery({ queryKey: keys.stats, queryFn: apiClient.getStats });
+export const useMatchups = (leaderId: string | null) =>
+  useQuery({
+    queryKey: keys.matchups(leaderId ?? ''),
+    queryFn: () => apiClient.getMatchups(leaderId as string),
+    enabled: !!leaderId,
+  });

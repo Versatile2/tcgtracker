@@ -1,5 +1,6 @@
 import type {
   LeaderDTO, SetDTO, RoundDTO, TournamentSummaryDTO, TournamentDetailDTO,
+  StatsDTO, MatchupStatsDTO,
 } from './dto';
 import type { CreateTournamentInput, UpdateTournamentInput } from './validation/tournament';
 import type { CreateRoundInput, UpdateRoundInput } from './validation/round';
@@ -39,4 +40,7 @@ export const apiClient = {
   addRound: (tid: string, b: CreateRoundInput) => request<RoundDTO>(`/api/tournaments/${tid}/rounds`, { method: 'POST', body: JSON.stringify(b) }),
   updateRound: (id: string, b: UpdateRoundInput) => request<RoundDTO>(`/api/rounds/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
   deleteRound: (id: string) => request<{ ok: true }>(`/api/rounds/${id}`, { method: 'DELETE' }),
+
+  getStats: () => request<StatsDTO>('/api/stats'),
+  getMatchups: (leaderId: string) => request<MatchupStatsDTO>(`/api/stats/matchups?leaderId=${encodeURIComponent(leaderId)}`),
 };
