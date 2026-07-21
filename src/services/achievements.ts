@@ -36,7 +36,9 @@ export const ACHIEVEMENTS: Def[] = [
   { key: 'veteran', name: 'Veteran', description: 'Log 25 tournaments.', evaluate: (c) => count(c.totalTournaments, 25) },
   { key: 'century', name: 'Century', description: 'Play 100 rounds.', evaluate: (c) => count(c.totalRounds, 100) },
   { key: 'perfect_run', name: 'Perfect Run', description: 'Finish a tournament with an all-win record (3+ rounds).', evaluate: (c) => bool(c.hasPerfectRun) },
-  { key: 'consistent', name: 'Consistent Winner', description: 'Reach a 70% win rate over at least 20 games.', evaluate: (c) => ({ unlocked: c.totalRounds >= 20 && c.winRate >= 0.7, progress: { current: Math.min(c.totalRounds, 20), target: 20 } }) },
+  { key: 'consistent', name: 'Consistent Winner', description: 'Reach a 70% win rate over at least 20 games.', evaluate: (c) => c.totalRounds < 20
+    ? { unlocked: false, progress: { current: c.totalRounds, target: 20 } }
+    : { unlocked: c.winRate >= 0.7, progress: null } },
   { key: 'deck_master', name: 'Deck Master', description: 'Play 10 tournaments with a single leader.', evaluate: (c) => count(c.maxLeaderTournaments, 10) },
   { key: 'set_dominator', name: 'Set Dominator', description: 'Reach a 75% win rate in one set (10+ games).', evaluate: (c) => bool(c.hasSetDominator) },
   { key: 'underdog', name: 'Underdog', description: 'Win 10 rounds going second.', evaluate: (c) => count(c.secondWins, 10) },

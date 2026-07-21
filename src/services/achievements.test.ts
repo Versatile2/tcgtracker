@@ -71,6 +71,20 @@ describe('computeCtx', () => {
     expect(computeCtx(rows, ts).maxWinStreak).toBe(2);
   });
 
+  it('breaks the win streak on a tournament with no rounds played', () => {
+    // t1 win(1-0), t2 has NO rounds at all, t3 win(1-0), t4 win(1-0)
+    const rows = [
+      round({ tournamentId: 't1', result: 'win' }),
+      round({ tournamentId: 't3', result: 'win' }),
+      round({ tournamentId: 't4', result: 'win' }),
+    ];
+    const ts = [
+      tourney({ id: 't1', playedOn: '2026-07-01' }), tourney({ id: 't2', playedOn: '2026-07-02' }),
+      tourney({ id: 't3', playedOn: '2026-07-03' }), tourney({ id: 't4', playedOn: '2026-07-04' }),
+    ];
+    expect(computeCtx(rows, ts).maxWinStreak).toBe(2);
+  });
+
   it('detects set dominator (75%+ over 10+ games)', () => {
     const rows = Array.from({ length: 10 }, (_, i) => round({ setId: 's1', result: i < 8 ? 'win' : 'loss' }));
     expect(computeCtx(rows, [tourney({})]).hasSetDominator).toBe(true);
@@ -79,6 +93,28 @@ describe('computeCtx', () => {
   it('is all-zero on empty', () => {
     const c = computeCtx([], []);
     expect(c).toMatchObject({ totalTournaments: 0, totalRounds: 0, maxLeaderTournaments: 0, colorsBeaten: 0, maxWinStreak: 0, distinctSets: 0, hasPerfectRun: false, hasSetDominator: false });
+  });
+});
+
+describe('consistent achievement progress', () => {
+  const consistent = ACHIEVEMENTS.find((a) => a.key === 'consistent')!;
+
+  it('shows games-toward-eligibility progress below 20 rounds', () => {
+    const r = consistent.evaluate({ totalRounds: 12, winRate: 1 } as Parameters<typeof consistent.evaluate>[0]);
+    expect(r.unlocked).toBe(false);
+    expect(r.progress).toEqual({ current: 12, target: 20 });
+  });
+
+  it('has no misleading progress bar once eligible but under the win-rate bar', () => {
+    const r = consistent.evaluate({ totalRounds: 20, winRate: 0.5 } as Parameters<typeof consistent.evaluate>[0]);
+    expect(r.unlocked).toBe(false);
+    expect(r.progress).toBeNull();
+  });
+
+  it('unlocks with null progress once both eligibility and win-rate are met', () => {
+    const r = consistent.evaluate({ totalRounds: 25, winRate: 0.72 } as Parameters<typeof consistent.evaluate>[0]);
+    expect(r.unlocked).toBe(true);
+    expect(r.progress).toBeNull();
   });
 });
 
