@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from './providers';
@@ -18,6 +18,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Crew Stat',
   description: 'OPTCG tournament tracker',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Crew Stat', statusBarStyle: 'default' },
+  icons: { icon: '/favicon.ico', apple: '/apple-icon.png' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#4f46e5',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
