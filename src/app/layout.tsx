@@ -34,6 +34,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
         <body className="antialiased">
+          {/* FOUC guard: reads the accent before hydration. The 'indigo'
+              literal here must stay in sync with DEFAULT_ACCENT in
+              src/lib/accents.ts — this inline script can't import it. */}
           <script
             dangerouslySetInnerHTML={{
               __html: `try{var a=localStorage.getItem('crewstat-accent')||'indigo';document.documentElement.dataset.accent=a;}catch(e){document.documentElement.dataset.accent='indigo';}`,

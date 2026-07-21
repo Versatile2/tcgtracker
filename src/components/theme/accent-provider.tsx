@@ -7,12 +7,17 @@ type AccentContextValue = { accent: AccentKey; setAccent: (a: AccentKey) => void
 const AccentContext = createContext<AccentContextValue | null>(null);
 
 export function AccentProvider({ children }: { children: React.ReactNode }) {
-  const [accent, setAccentState] = useState<AccentKey>(DEFAULT_ACCENT);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored && isValidAccent(stored)) setAccentState(stored);
-  }, []);
+  // Lazily initialize from the `data-accent` attribute the FOUC inline
+  // script (see layout.tsx) already set from localStorage before React
+  // hydrates. This avoids a mount-time flash where the DEFAULT_ACCENT
+  // would briefly clobber the user's stored preference.
+  const [accent, setAccentState] = useState<AccentKey>(() => {
+    if (typeof document !== 'undefined') {
+      const a = document.documentElement.dataset.accent;
+      if (a && isValidAccent(a)) return a;
+    }
+    return DEFAULT_ACCENT;
+  });
 
   useEffect(() => {
     document.documentElement.dataset.accent = accent;
