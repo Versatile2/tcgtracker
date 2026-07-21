@@ -3,6 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/sonner';
+import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import './globals.css';
 
 const geistSans = Geist({
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body className="antialiased">
           <Providers>{children}</Providers>
           <Toaster />
+          <ServiceWorkerRegister />
         </body>
       </html>
     </ClerkProvider>
