@@ -128,3 +128,11 @@
     @apply font-sans;
   }
 }
+
+/* Accent themes — override shadcn --primary/--ring; applied in both light and dark */
+[data-accent="indigo"] { --primary: #4f46e5; --primary-foreground: #ffffff; --ring: #4f46e5; }
+[data-accent="green"]  { --primary: #16a34a; --primary-foreground: #ffffff; --ring: #16a34a; }
+[data-accent="red"]    { --primary: #dc2626; --primary-foreground: #ffffff; --ring: #dc2626; }
+[data-accent="purple"] { --primary: #7c3aed; --primary-foreground: #ffffff; --ring: #7c3aed; }
+[data-accent="blue"]   { --primary: #2563eb; --primary-foreground: #ffffff; --ring: #2563eb; }
+[data-accent="slate"]  { --primary: #475569; --primary-foreground: #ffffff; --ring: #475569; }

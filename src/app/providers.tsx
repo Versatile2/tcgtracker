@@ -4,6 +4,7 @@ import { ThemeProvider } from 'next-themes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { AccentProvider } from '@/components/theme/accent-provider';
 
 const WEEK = 1000 * 60 * 60 * 24 * 7;
 
@@ -23,7 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      {query}
+      <AccentProvider>{query}</AccentProvider>
     </ThemeProvider>
   );
 }

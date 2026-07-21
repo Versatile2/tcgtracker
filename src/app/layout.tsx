@@ -34,8 +34,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable}`}>
         <body className="antialiased">
-          <Providers>{children}</Providers>
-          <Toaster />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `try{var a=localStorage.getItem('crewstat-accent')||'indigo';document.documentElement.dataset.accent=a;}catch(e){document.documentElement.dataset.accent='indigo';}`,
+            }}
+          />
+          <Providers>
+            {children}
+            <Toaster />
+          </Providers>
           <ServiceWorkerRegister />
           <OfflineBadge />
         </body>
