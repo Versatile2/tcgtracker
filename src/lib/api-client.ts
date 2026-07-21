@@ -1,6 +1,6 @@
 import type {
   LeaderDTO, SetDTO, RoundDTO, TournamentSummaryDTO, TournamentDetailDTO,
-  StatsDTO, MatchupStatsDTO,
+  StatsDTO, MatchupStatsDTO, AchievementsResponseDTO,
 } from './dto';
 import type { CreateTournamentInput, UpdateTournamentInput } from './validation/tournament';
 import type { CreateRoundInput, UpdateRoundInput } from './validation/round';
@@ -43,4 +43,5 @@ export const apiClient = {
 
   getStats: () => request<StatsDTO>('/api/stats'),
   getMatchups: (leaderId: string) => request<MatchupStatsDTO>(`/api/stats/matchups?leaderId=${encodeURIComponent(leaderId)}`),
+  getAchievements: () => request<AchievementsResponseDTO>('/api/achievements'),
 };

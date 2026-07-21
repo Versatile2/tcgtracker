@@ -33,3 +33,6 @@ export type MatchupStatsDTO = {
   turnOrder: { first: MatchupResultCountsDTO; second: MatchupResultCountsDTO };
   colorBreakdown: (MatchupResultCountsDTO & { color: string })[];
 };
+export type AchievementProgressDTO = { current: number; target: number };
+export type AchievementDTO = { key: string; name: string; description: string; unlocked: boolean; progress: AchievementProgressDTO | null };
+export type AchievementsResponseDTO = { achievements: AchievementDTO[]; unlockedCount: number; total: number };

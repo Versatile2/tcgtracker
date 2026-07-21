@@ -11,6 +11,7 @@ const keys = {
   sets: ['sets'] as const,
   stats: ['stats'] as const,
   matchups: (leaderId: string) => ['matchups', leaderId] as const,
+  achievements: ['achievements'] as const,
 };
 
 export const useTournaments = () => useQuery({ queryKey: keys.tournaments, queryFn: apiClient.listTournaments });
@@ -90,3 +91,4 @@ export const useMatchups = (leaderId: string | null) =>
     queryFn: () => apiClient.getMatchups(leaderId as string),
     enabled: !!leaderId,
   });
+export const useAchievements = () => useQuery({ queryKey: keys.achievements, queryFn: apiClient.getAchievements });
