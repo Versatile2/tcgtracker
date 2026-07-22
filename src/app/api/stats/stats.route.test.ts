@@ -18,16 +18,16 @@ async function leaderId(name: string) {
 describe('stats routes', () => {
   beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
 
-  it('GET /api/stats returns overall, perSet, playedLeaders', async () => {
-    const [t] = await db.insert(tournaments).values({ ownerId: 'user_route_stats', type: 'local', setId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
-    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, myLeaderId: await leaderId('Nami'), opponentLeaderId: await leaderId('Sanji'), result: 'win', playOrder: 'first', notes: null });
+  it('GET /api/stats returns overall, perMeta, playedLeaders', async () => {
+    const [t] = await db.insert(tournaments).values({ ownerId: 'user_route_stats', type: 'local', myLeaderId: await leaderId('Nami'), metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, opponentLeaderId: await leaderId('Sanji'), result: 'win', playOrder: 'first', notes: null });
 
     const { GET } = await import('./route');
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.overall.wins).toBe(1);
-    expect(Array.isArray(body.perSet)).toBe(true);
+    expect(Array.isArray(body.perMeta)).toBe(true);
     expect(body.playedLeaders.some((l: { name: string }) => l.name === 'Nami')).toBe(true);
   });
 
@@ -39,8 +39,8 @@ describe('stats routes', () => {
 
   it('GET matchups returns the matchup structure', async () => {
     const zoro = await leaderId('Roronoa Zoro');
-    const [t] = await db.insert(tournaments).values({ ownerId: 'user_route_stats', type: 'local', setId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
-    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, myLeaderId: zoro, opponentLeaderId: await leaderId('Nami'), result: 'win', playOrder: 'first', notes: null });
+    const [t] = await db.insert(tournaments).values({ ownerId: 'user_route_stats', type: 'local', myLeaderId: zoro, metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, opponentLeaderId: await leaderId('Nami'), result: 'win', playOrder: 'first', notes: null });
 
     const { GET } = await import('./matchups/route');
     const res = await GET(new Request(`http://test/api/stats/matchups?leaderId=${zoro}`));

@@ -13,13 +13,13 @@ async function leaderId(name: string) {
   const [l] = await db.select().from(leaders).where(eq(leaders.name, name)).limit(1);
   return l.id;
 }
-async function addRounds(rows: [string, string, 'win' | 'loss' | 'draw', 'first' | 'second' | null][]) {
-  const [t] = await db.insert(tournaments).values({ ownerId: USER, type: 'local', setId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
+async function addRounds(myLeader: string, rows: [string, 'win' | 'loss' | 'draw', 'first' | 'second' | null][]) {
+  const [t] = await db.insert(tournaments).values({ ownerId: USER, type: 'local', myLeaderId: await leaderId(myLeader), metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
   let n = 1;
-  for (const [mine, opp, result, po] of rows) {
+  for (const [opp, result, po] of rows) {
     await db.insert(rounds).values({
       tournamentId: t.id, roundNumber: n++,
-      myLeaderId: await leaderId(mine), opponentLeaderId: await leaderId(opp),
+      opponentLeaderId: await leaderId(opp),
       result, playOrder: po, notes: null,
     });
   }
@@ -30,11 +30,11 @@ describe('stats service — matchups', () => {
 
   it('aggregates per-opponent records with verdict', async () => {
     // Zoro vs Doflamingo(purple): 2-0 favored; vs Nami(blue): 0-2 unfavored
-    await addRounds([
-      ['Roronoa Zoro', 'Donquixote Doflamingo', 'win', 'first'],
-      ['Roronoa Zoro', 'Donquixote Doflamingo', 'win', 'second'],
-      ['Roronoa Zoro', 'Nami', 'loss', 'first'],
-      ['Roronoa Zoro', 'Nami', 'loss', 'second'],
+    await addRounds('Roronoa Zoro', [
+      ['Donquixote Doflamingo', 'win', 'first'],
+      ['Donquixote Doflamingo', 'win', 'second'],
+      ['Nami', 'loss', 'first'],
+      ['Nami', 'loss', 'second'],
     ]);
     const m = await getMatchupStats(db, USER, await leaderId('Roronoa Zoro'));
     const dofla = m.opponents.find((o) => o.name === 'Donquixote Doflamingo')!;
@@ -45,10 +45,10 @@ describe('stats service — matchups', () => {
   });
 
   it('splits by turn order and excludes null play-order', async () => {
-    await addRounds([
-      ['Roronoa Zoro', 'Nami', 'win', 'first'],
-      ['Roronoa Zoro', 'Nami', 'loss', 'second'],
-      ['Roronoa Zoro', 'Nami', 'win', null], // excluded from turn-order split
+    await addRounds('Roronoa Zoro', [
+      ['Nami', 'win', 'first'],
+      ['Nami', 'loss', 'second'],
+      ['Nami', 'win', null], // excluded from turn-order split
     ]);
     const m = await getMatchupStats(db, USER, await leaderId('Roronoa Zoro'));
     expect(m.turnOrder.first).toMatchObject({ wins: 1, losses: 0, games: 1 });
@@ -57,7 +57,7 @@ describe('stats service — matchups', () => {
 
   it('breaks down by opponent color (multi-color counts to each; empty => colorless)', async () => {
     // Trafalgar Law is seeded ['red','green']; win vs Law contributes to both red and green
-    await addRounds([['Roronoa Zoro', 'Trafalgar Law', 'win', 'first']]);
+    await addRounds('Roronoa Zoro', [['Trafalgar Law', 'win', 'first']]);
     const m = await getMatchupStats(db, USER, await leaderId('Roronoa Zoro'));
     const red = m.colorBreakdown.find((c) => c.color === 'red')!;
     const green = m.colorBreakdown.find((c) => c.color === 'green')!;
