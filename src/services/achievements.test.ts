@@ -12,8 +12,8 @@ afterAll(closeTestDb);
 // --- pure computeCtx tests (synthetic rows) ---
 type R = Parameters<typeof computeCtx>[0][number];
 type T = Parameters<typeof computeCtx>[1][number];
-const round = (o: Partial<R>): R => ({ tournamentId: 't1', setId: 's1', myLeaderId: 'L1', result: 'win', playOrder: null, opponentColors: [], ...o });
-const tourney = (o: Partial<T>): T => ({ id: 't1', setId: 's1', playedOn: '2026-07-20', createdAt: new Date(), ...o });
+const round = (o: Partial<R>): R => ({ tournamentId: 't1', metaId: 's1', myLeaderId: 'L1', result: 'win', playOrder: null, opponentColors: [], ...o });
+const tourney = (o: Partial<T>): T => ({ id: 't1', metaId: 's1', playedOn: '2026-07-20', createdAt: new Date(), ...o });
 
 describe('computeCtx', () => {
   it('counts totals and win rate', () => {
@@ -34,18 +34,18 @@ describe('computeCtx', () => {
     expect(computeCtx(notPerfect, [tourney({})]).hasPerfectRun).toBe(false);
   });
 
-  it('counts second-wins, colors beaten, and distinct sets', () => {
+  it('counts second-wins, colors beaten, and distinct metas', () => {
     const c = computeCtx(
       [
-        round({ result: 'win', playOrder: 'second', opponentColors: ['red', 'green'], setId: 's1' }),
-        round({ result: 'win', playOrder: 'second', opponentColors: ['blue'], setId: 's2' }),
-        round({ result: 'loss', playOrder: 'second', opponentColors: ['purple'], setId: 's2' }),
+        round({ result: 'win', playOrder: 'second', opponentColors: ['red', 'green'], metaId: 's1' }),
+        round({ result: 'win', playOrder: 'second', opponentColors: ['blue'], metaId: 's2' }),
+        round({ result: 'loss', playOrder: 'second', opponentColors: ['purple'], metaId: 's2' }),
       ],
       [tourney({})]
     );
     expect(c.secondWins).toBe(2);
     expect(c.colorsBeaten).toBe(3); // red, green, blue (loss vs purple doesn't count)
-    expect(c.distinctSets).toBe(2);
+    expect(c.distinctMetas).toBe(2);
   });
 
   it('computes max leader-tournament count', () => {
@@ -85,14 +85,14 @@ describe('computeCtx', () => {
     expect(computeCtx(rows, ts).maxWinStreak).toBe(2);
   });
 
-  it('detects set dominator (75%+ over 10+ games)', () => {
-    const rows = Array.from({ length: 10 }, (_, i) => round({ setId: 's1', result: i < 8 ? 'win' : 'loss' }));
-    expect(computeCtx(rows, [tourney({})]).hasSetDominator).toBe(true);
+  it('detects meta dominator (75%+ over 10+ games)', () => {
+    const rows = Array.from({ length: 10 }, (_, i) => round({ metaId: 's1', result: i < 8 ? 'win' : 'loss' }));
+    expect(computeCtx(rows, [tourney({})]).hasMetaDominator).toBe(true);
   });
 
   it('is all-zero on empty', () => {
     const c = computeCtx([], []);
-    expect(c).toMatchObject({ totalTournaments: 0, totalRounds: 0, maxLeaderTournaments: 0, colorsBeaten: 0, maxWinStreak: 0, distinctSets: 0, hasPerfectRun: false, hasSetDominator: false });
+    expect(c).toMatchObject({ totalTournaments: 0, totalRounds: 0, maxLeaderTournaments: 0, colorsBeaten: 0, maxWinStreak: 0, distinctMetas: 0, hasPerfectRun: false, hasMetaDominator: false });
   });
 });
 
@@ -128,8 +128,8 @@ describe('getAchievements', () => {
   beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
 
   it('unlocks first_blood after one tournament and is owner-scoped', async () => {
-    const [t] = await db.insert(tournaments).values({ ownerId: USER, type: 'local', setId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
-    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, myLeaderId: await leaderId('Nami'), opponentLeaderId: await leaderId('Sanji'), result: 'win', playOrder: 'first', notes: null });
+    const [t] = await db.insert(tournaments).values({ ownerId: USER, type: 'local', myLeaderId: await leaderId('Nami'), metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, opponentLeaderId: await leaderId('Sanji'), result: 'win', playOrder: 'first', notes: null });
 
     const mine = await getAchievements(db, USER);
     expect(mine.find((a) => a.key === 'first_blood')!.unlocked).toBe(true);

@@ -15,8 +15,8 @@ type Result = 'win' | 'loss' | 'draw';
 export type Ctx = {
   totalTournaments: number; totalRounds: number;
   wins: number; losses: number; draws: number; winRate: number;
-  hasPerfectRun: boolean; maxLeaderTournaments: number; hasSetDominator: boolean;
-  secondWins: number; colorsBeaten: number; maxWinStreak: number; distinctSets: number;
+  hasPerfectRun: boolean; maxLeaderTournaments: number; hasMetaDominator: boolean;
+  secondWins: number; colorsBeaten: number; maxWinStreak: number; distinctMetas: number;
 };
 
 const COLORS = ['red', 'green', 'blue', 'purple', 'black', 'yellow'];
@@ -40,23 +40,23 @@ export const ACHIEVEMENTS: Def[] = [
     ? { unlocked: false, progress: { current: c.totalRounds, target: 20 } }
     : { unlocked: c.winRate >= 0.7, progress: null } },
   { key: 'deck_master', name: 'Deck Master', description: 'Play 10 tournaments with a single leader.', evaluate: (c) => count(c.maxLeaderTournaments, 10) },
-  { key: 'set_dominator', name: 'Set Dominator', description: 'Reach a 75% win rate in one set (10+ games).', evaluate: (c) => bool(c.hasSetDominator) },
+  { key: 'set_dominator', name: 'Meta Dominator', description: 'Reach a 75% win rate in one meta (10+ games).', evaluate: (c) => bool(c.hasMetaDominator) },
   { key: 'underdog', name: 'Underdog', description: 'Win 10 rounds going second.', evaluate: (c) => count(c.secondWins, 10) },
   { key: 'rainbow', name: 'Rainbow Crusher', description: 'Beat opponents of all 6 colors.', evaluate: (c) => count(c.colorsBeaten, 6) },
   { key: 'on_fire', name: 'On Fire', description: 'Win 3 tournaments in a row.', evaluate: (c) => count(c.maxWinStreak, 3) },
-  { key: 'well_traveled', name: 'Well Traveled', description: 'Play in 5 different sets.', evaluate: (c) => count(c.distinctSets, 5) },
+  { key: 'well_traveled', name: 'Well Traveled', description: 'Play in 5 different metas.', evaluate: (c) => count(c.distinctMetas, 5) },
 ];
 
-type RoundRow = { tournamentId: string; setId: string | null; myLeaderId: string; result: Result; playOrder: 'first' | 'second' | null; opponentColors: string[] };
-type TourneyRow = { id: string; setId: string | null; playedOn: string; createdAt: Date };
+type RoundRow = { tournamentId: string; metaId: string | null; myLeaderId: string; result: Result; playOrder: 'first' | 'second' | null; opponentColors: string[] };
+type TourneyRow = { id: string; metaId: string | null; playedOn: string; createdAt: Date };
 
 export function computeCtx(roundRows: RoundRow[], tourneyRows: TourneyRow[]): Ctx {
   let wins = 0, losses = 0, draws = 0, secondWins = 0;
   const perTournament = new Map<string, { wins: number; losses: number; draws: number; count: number }>();
   const perLeaderTournaments = new Map<string, Set<string>>();
-  const perSet = new Map<string, { wins: number; games: number }>();
+  const perMeta = new Map<string, { wins: number; games: number }>();
   const colorsBeaten = new Set<string>();
-  const distinctSets = new Set<string>();
+  const distinctMetas = new Set<string>();
 
   for (const r of roundRows) {
     if (r.result === 'win') wins++; else if (r.result === 'loss') losses++; else draws++;
@@ -71,12 +71,12 @@ export function computeCtx(roundRows: RoundRow[], tourneyRows: TourneyRow[]): Ct
     ls.add(r.tournamentId);
     perLeaderTournaments.set(r.myLeaderId, ls);
 
-    if (r.setId) {
-      distinctSets.add(r.setId);
-      const ps = perSet.get(r.setId) ?? { wins: 0, games: 0 };
-      ps.games++;
-      if (r.result === 'win') ps.wins++;
-      perSet.set(r.setId, ps);
+    if (r.metaId) {
+      distinctMetas.add(r.metaId);
+      const pm = perMeta.get(r.metaId) ?? { wins: 0, games: 0 };
+      pm.games++;
+      if (r.result === 'win') pm.wins++;
+      perMeta.set(r.metaId, pm);
     }
 
     if (r.result === 'win') for (const c of r.opponentColors) if (COLORS.includes(c)) colorsBeaten.add(c);
@@ -86,7 +86,7 @@ export function computeCtx(roundRows: RoundRow[], tourneyRows: TourneyRow[]): Ct
   const winRate = totalRounds > 0 ? wins / totalRounds : 0;
   const hasPerfectRun = [...perTournament.values()].some((t) => t.count >= 3 && t.losses === 0 && t.draws === 0);
   const maxLeaderTournaments = Math.max(0, ...[...perLeaderTournaments.values()].map((s) => s.size));
-  const hasSetDominator = [...perSet.values()].some((s) => s.games >= 10 && s.wins / s.games >= 0.75);
+  const hasMetaDominator = [...perMeta.values()].some((s) => s.games >= 10 && s.wins / s.games >= 0.75);
 
   const ordered = [...tourneyRows].sort((a, b) =>
     a.playedOn < b.playedOn ? -1 : a.playedOn > b.playedOn ? 1 : a.createdAt.getTime() - b.createdAt.getTime()
@@ -100,8 +100,8 @@ export function computeCtx(roundRows: RoundRow[], tourneyRows: TourneyRow[]): Ct
   return {
     totalTournaments: tourneyRows.length, totalRounds,
     wins, losses, draws, winRate,
-    hasPerfectRun, maxLeaderTournaments, hasSetDominator,
-    secondWins, colorsBeaten: colorsBeaten.size, maxWinStreak, distinctSets: distinctSets.size,
+    hasPerfectRun, maxLeaderTournaments, hasMetaDominator,
+    secondWins, colorsBeaten: colorsBeaten.size, maxWinStreak, distinctMetas: distinctMetas.size,
   };
 }
 
@@ -109,8 +109,8 @@ export async function getAchievements(db: DB, ownerId: string): Promise<Achievem
   const roundRows = await db
     .select({
       tournamentId: rounds.tournamentId,
-      setId: tournaments.setId,
-      myLeaderId: rounds.myLeaderId,
+      metaId: tournaments.metaId,
+      myLeaderId: tournaments.myLeaderId,
       result: rounds.result,
       playOrder: rounds.playOrder,
       opponentColors: leaders.colors,
@@ -121,7 +121,7 @@ export async function getAchievements(db: DB, ownerId: string): Promise<Achievem
     .where(eq(tournaments.ownerId, ownerId));
 
   const tourneyRows = await db
-    .select({ id: tournaments.id, setId: tournaments.setId, playedOn: tournaments.playedOn, createdAt: tournaments.createdAt })
+    .select({ id: tournaments.id, metaId: tournaments.metaId, playedOn: tournaments.playedOn, createdAt: tournaments.createdAt })
     .from(tournaments)
     .where(eq(tournaments.ownerId, ownerId));
 

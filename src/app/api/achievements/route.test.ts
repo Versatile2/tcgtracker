@@ -19,8 +19,8 @@ describe('GET /api/achievements', () => {
   beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
 
   it('returns achievements with unlockedCount and total', async () => {
-    const [t] = await db.insert(tournaments).values({ ownerId: 'user_ach_route', type: 'local', setId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
-    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, myLeaderId: await leaderId('Nami'), opponentLeaderId: await leaderId('Sanji'), result: 'win', playOrder: 'first', notes: null });
+    const [t] = await db.insert(tournaments).values({ ownerId: 'user_ach_route', type: 'local', myLeaderId: await leaderId('Nami'), metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, opponentLeaderId: await leaderId('Sanji'), result: 'win', playOrder: 'first', notes: null });
 
     const { GET } = await import('./route');
     const res = await GET();
