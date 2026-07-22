@@ -29,6 +29,10 @@ describe('stats routes', () => {
     expect(body.overall.wins).toBe(1);
     expect(Array.isArray(body.perMeta)).toBe(true);
     expect(body.playedLeaders.some((l: { name: string }) => l.name === 'Nami')).toBe(true);
+    expect(Array.isArray(body.opponents)).toBe(true);
+    expect(body.opponents[0]).toMatchObject({ name: 'Sanji', wins: 1, losses: 0, draws: 0, games: 1 });
+    expect(Array.isArray(body.opponents[0].byMeta)).toBe(true);
+    expect(body.opponents[0].byMeta).toHaveLength(0);
   });
 
   it('GET matchups requires a valid leaderId (400)', async () => {

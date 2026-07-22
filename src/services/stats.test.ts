@@ -3,7 +3,7 @@ import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
 import { leaders, metas, tournaments, rounds } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { getOverallStats, getPerMetaStats, getPlayedLeaders } from './stats';
+import { getOverallStats, getPerMetaStats, getPlayedLeaders, getOpponentStats } from './stats';
 import { afterAll } from 'vitest';
 
 const db = getTestDb();
@@ -31,6 +31,15 @@ async function makeTournament(metaName: string | null, myLeader: string, rows: [
     });
   }
   return t;
+}
+// Add a single round to an existing tournament, optionally tagged with an opponent meta.
+async function addRoundTo(tournamentId: string, roundNumber: number, opp: string, result: 'win' | 'loss' | 'draw', oppMeta?: string) {
+  await db.insert(rounds).values({
+    tournamentId, roundNumber,
+    opponentLeaderId: await leaderId(opp),
+    opponentMetaId: oppMeta ? await metaId(oppMeta) : null,
+    result, playOrder: null, notes: null,
+  });
 }
 
 describe('stats service — overall/per-meta/played-leaders', () => {
@@ -90,5 +99,28 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     const other = await getOverallStats(db, 'someone_else');
     expect(other.totalTournaments).toBe(0);
     expect(other.wins).toBe(0);
+  });
+
+  it('breaks opponents down by leader and by opponent meta', async () => {
+    const t = await makeTournament('OP02 Paramount War', 'Roronoa Zoro', []);
+    await addRoundTo(t.id, 1, 'Nami', 'win', 'OP02 Paramount War');
+    await addRoundTo(t.id, 2, 'Nami', 'loss', 'OP02 Paramount War');
+    await addRoundTo(t.id, 3, 'Nami', 'win'); // no meta
+    await addRoundTo(t.id, 4, 'Sanji', 'win'); // no meta, different opponent leader
+
+    const opp = await getOpponentStats(db, USER);
+    const nami = opp.find((o) => o.name === 'Nami')!;
+    expect(nami.games).toBe(3); // all rounds counted overall
+    expect(nami.wins).toBe(2);
+    expect(nami.losses).toBe(1);
+    expect(nami.byMeta).toHaveLength(1); // only the 2 meta-tagged rounds
+    expect(nami.byMeta[0].name).toBe('OP02 Paramount War');
+    expect(nami.byMeta[0].games).toBe(2);
+    expect(nami.byMeta[0].wins).toBe(1);
+    expect(nami.byMeta[0].losses).toBe(1);
+
+    const sanji = opp.find((o) => o.name === 'Sanji')!;
+    expect(sanji.games).toBe(1);
+    expect(sanji.byMeta).toHaveLength(0); // no meta ever set
   });
 });

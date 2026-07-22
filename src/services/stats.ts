@@ -108,6 +108,70 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
   };
 }
 
+export type OpponentMetaStat = {
+  metaId: string; name: string;
+  wins: number; losses: number; draws: number; games: number; winRate: number;
+};
+export type OpponentLeaderStat = {
+  leaderId: string; name: string;
+  wins: number; losses: number; draws: number; games: number; winRate: number;
+  byMeta: OpponentMetaStat[];
+};
+
+export async function getOpponentStats(db: DB, ownerId: string): Promise<OpponentLeaderStat[]> {
+  // Overall per opponent leader (all rounds)
+  const leaderRows = await db
+    .select({
+      leaderId: rounds.opponentLeaderId,
+      name: leaders.name,
+      wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
+      losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,
+      draws: sql<number>`count(*) filter (where ${rounds.result} = 'draw')`,
+    })
+    .from(rounds)
+    .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
+    .innerJoin(leaders, eq(rounds.opponentLeaderId, leaders.id))
+    .where(eq(tournaments.ownerId, ownerId))
+    .groupBy(rounds.opponentLeaderId, leaders.name);
+
+  // Per opponent leader x meta (only rounds with an opponent meta set)
+  const metaRows = await db
+    .select({
+      leaderId: rounds.opponentLeaderId,
+      metaId: rounds.opponentMetaId,
+      metaName: metas.name,
+      wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
+      losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,
+      draws: sql<number>`count(*) filter (where ${rounds.result} = 'draw')`,
+    })
+    .from(rounds)
+    .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
+    .innerJoin(metas, eq(rounds.opponentMetaId, metas.id))
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.opponentMetaId} is not null`))
+    .groupBy(rounds.opponentLeaderId, rounds.opponentMetaId, metas.name);
+
+  const byLeaderMeta = new Map<string, OpponentMetaStat[]>();
+  for (const r of metaRows) {
+    if (!r.metaId) continue;
+    const wins = num(r.wins), losses = num(r.losses), draws = num(r.draws);
+    const list = byLeaderMeta.get(r.leaderId) ?? [];
+    list.push({
+      metaId: r.metaId, name: r.metaName ?? '—',
+      wins, losses, draws, games: wins + losses + draws, winRate: rate(wins, wins + losses + draws),
+    });
+    byLeaderMeta.set(r.leaderId, list);
+  }
+
+  return leaderRows
+    .map((r) => {
+      const wins = num(r.wins), losses = num(r.losses), draws = num(r.draws);
+      const games = wins + losses + draws;
+      const byMeta = (byLeaderMeta.get(r.leaderId) ?? []).sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+      return { leaderId: r.leaderId, name: r.name, wins, losses, draws, games, winRate: rate(wins, games), byMeta };
+    })
+    .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+}
+
 export type ResultCounts = { wins: number; losses: number; draws: number; games: number; winRate: number };
 export type MatchupStats = {
   opponents: (ResultCounts & { leaderId: string; name: string; verdict: 'favored' | 'even' | 'unfavored' })[];
