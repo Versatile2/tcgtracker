@@ -12,7 +12,7 @@ import { RoundFormSheet } from './round-form-sheet';
 import { RoundItem } from './round-item';
 import { ReferenceCombobox } from './reference-combobox';
 import {
-  useTournament, useLeaders, useUpdateTournament, useAddRound, useUpdateRound, useDeleteRound,
+  useTournament, useLeaders, useMetas, useUpdateTournament, useAddRound, useUpdateRound, useDeleteRound,
   useFinishTournament, useReopenTournament, useDeleteTournament,
 } from '@/components/query-hooks';
 import { formatRecord, computeRecord } from '@/lib/record';
@@ -27,6 +27,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const router = useRouter();
   const { data: t, isLoading, isError } = useTournament(id);
   const { data: leaders } = useLeaders();
+  const { data: metas } = useMetas();
   const updateTournament = useUpdateTournament(id);
   const addRound = useAddRound(id);
   const updateRound = useUpdateRound(id);
@@ -45,6 +46,7 @@ export function TournamentDetail({ id }: { id: string }) {
 
   const editable = t.status === 'draft';
   const leaderName = (lid: string) => leaders?.find((l) => l.id === lid)?.name ?? '—';
+  const metaName = (mid: string) => metas?.find((m) => m.id === mid)?.name ?? '';
   const record = computeRecord(t.rounds);
 
   async function handleDeleteRound(r: RoundDTO) {
@@ -54,7 +56,7 @@ export function TournamentDetail({ id }: { id: string }) {
       action: {
         label: 'Undo',
         onClick: () => addRound.mutate({
-          opponentLeaderId: r.opponentLeaderId,
+          opponentLeaderId: r.opponentLeaderId, opponentMetaId: r.opponentMetaId,
           result: r.result, playOrder: r.playOrder, notes: r.notes,
         }),
       },
@@ -94,7 +96,7 @@ export function TournamentDetail({ id }: { id: string }) {
       <div className="mt-5 space-y-2">
         {t.rounds.length === 0 && <p className="text-sm text-muted-foreground">No rounds yet.</p>}
         {t.rounds.map((r) => (
-          <RoundItem key={r.id} round={r} leaderName={leaderName} editable={editable}
+          <RoundItem key={r.id} round={r} leaderName={leaderName} metaName={metaName} editable={editable}
             onEdit={() => { setEditing(r); setSheetOpen(true); }}
             onDelete={() => handleDeleteRound(r)} />
         ))}

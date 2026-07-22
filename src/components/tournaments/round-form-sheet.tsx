@@ -4,7 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ReferenceCombobox } from './reference-combobox';
-import { useLeaders, useAddCustomLeader } from '@/components/query-hooks';
+import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta } from '@/components/query-hooks';
 import type { RoundDTO } from '@/lib/dto';
 import type { CreateRoundInput } from '@/lib/validation/round';
 
@@ -39,8 +39,11 @@ function RoundFormBody({
 }) {
   const { data: leaders } = useLeaders();
   const addLeader = useAddCustomLeader();
+  const { data: metas } = useMetas();
+  const addMeta = useAddCustomMeta();
 
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
+  const [oppMetaId, setOppMetaId] = useState<string | null>(initial?.opponentMetaId ?? null);
   const [result, setResult] = useState<Result | null>(initial?.result ?? null);
   const [playOrder, setPlayOrder] = useState<PlayOrder | null>(initial?.playOrder ?? null);
   const [notes, setNotes] = useState(initial?.notes ?? '');
@@ -52,7 +55,7 @@ function RoundFormBody({
     if (!valid) return;
     setSaving(true);
     try {
-      await onSubmit({ opponentLeaderId: oppLeaderId, result, playOrder, notes: notes.trim() || null });
+      await onSubmit({ opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, result, playOrder, notes: notes.trim() || null });
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -71,6 +74,13 @@ function RoundFormBody({
         <div className="space-y-2">
           <label className="text-sm font-medium">Opponent deck</label>
           <ReferenceCombobox options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} placeholder="Opponent's leader" />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Opponent meta (optional)</label>
+          <ReferenceCombobox
+            options={metas ?? []} value={oppMetaId} onChange={setOppMetaId}
+            onAddCustom={async (n) => { const m = await addMeta.mutateAsync({ name: n }); return { id: m.id, name: m.name }; }}
+            placeholder="e.g. OP16" />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">Result</label>

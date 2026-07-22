@@ -9,10 +9,11 @@ const resultStyle: Record<RoundDTO['result'], string> = {
 };
 
 export function RoundItem({
-  round, leaderName, onEdit, onDelete, editable,
+  round, leaderName, metaName, onEdit, onDelete, editable,
 }: {
   round: RoundDTO;
   leaderName: (id: string) => string;
+  metaName: (id: string) => string;
   onEdit: () => void;
   onDelete: () => void;
   editable: boolean;
@@ -24,6 +25,7 @@ export function RoundItem({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">
           vs <span className="text-foreground">{leaderName(round.opponentLeaderId)}</span>
+          {round.opponentMetaId && <span className="text-muted-foreground"> · {metaName(round.opponentMetaId)}</span>}
         </p>
         {round.playOrder && <p className="text-xs text-muted-foreground">Went {round.playOrder === 'first' ? '1st' : '2nd'}</p>}
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
