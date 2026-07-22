@@ -18,7 +18,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export function StatsShareCard({ overall }: { overall: OverallStatsDTO }) {
   return (
     <div className="w-[380px] space-y-4 rounded-xl border bg-card p-5 text-card-foreground">
-      <p className="text-lg font-bold">My Crew Stat</p>
+      <p className="text-lg font-bold">My Grand Line TCG</p>
       <div className="grid grid-cols-2 gap-3">
         <Stat label="Tournaments" value={String(overall.totalTournaments)} />
         <Stat label="Record" value={formatRecord(overall)} />

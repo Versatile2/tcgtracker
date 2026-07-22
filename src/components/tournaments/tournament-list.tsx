@@ -18,7 +18,7 @@ export function TournamentList() {
   return (
     <main className="mx-auto max-w-xl p-4 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Crew Stat</h1>
+        <h1 className="text-2xl font-bold">Grand Line TCG</h1>
         <div className="flex items-center gap-3">
           <Link href="/achievements" className="text-sm font-medium text-muted-foreground">Achievements</Link>
           <Link href="/stats" className="text-sm font-medium text-muted-foreground">Stats →</Link>

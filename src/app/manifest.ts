@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Crew Stat',
-    short_name: 'Crew Stat',
-    description: 'OPTCG tournament tracker',
+    name: 'Grand Line TCG',
+    short_name: 'Grand Line',
+    description: 'Track your OPTCG Games',
     start_url: '/',
     display: 'standalone',
     background_color: '#0a0a0a',

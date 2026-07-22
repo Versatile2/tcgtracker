@@ -18,10 +18,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Crew Stat',
-  description: 'OPTCG tournament tracker',
+  title: 'Grand Line TCG',
+  description: 'Track your OPTCG Games',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, title: 'Crew Stat', statusBarStyle: 'default' },
+  appleWebApp: { capable: true, title: 'Grand Line TCG', statusBarStyle: 'default' },
   icons: { icon: '/favicon.ico', apple: '/apple-icon.png' },
 };
 
