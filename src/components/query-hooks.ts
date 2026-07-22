@@ -8,7 +8,7 @@ const keys = {
   tournaments: ['tournaments'] as const,
   tournament: (id: string) => ['tournament', id] as const,
   leaders: ['leaders'] as const,
-  sets: ['sets'] as const,
+  metas: ['metas'] as const,
   stats: ['stats'] as const,
   matchups: (leaderId: string) => ['matchups', leaderId] as const,
   achievements: ['achievements'] as const,
@@ -17,7 +17,7 @@ const keys = {
 export const useTournaments = () => useQuery({ queryKey: keys.tournaments, queryFn: apiClient.listTournaments });
 export const useTournament = (id: string) => useQuery({ queryKey: keys.tournament(id), queryFn: () => apiClient.getTournament(id) });
 export const useLeaders = () => useQuery({ queryKey: keys.leaders, queryFn: apiClient.listLeaders });
-export const useSets = () => useQuery({ queryKey: keys.sets, queryFn: apiClient.listSets });
+export const useMetas = () => useQuery({ queryKey: keys.metas, queryFn: apiClient.listMetas });
 
 export function useCreateTournament() {
   const qc = useQueryClient();
@@ -79,9 +79,9 @@ export function useAddCustomLeader() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: apiClient.addLeader, onSuccess: () => qc.invalidateQueries({ queryKey: keys.leaders }) });
 }
-export function useAddCustomSet() {
+export function useAddCustomMeta() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: apiClient.addSet, onSuccess: () => qc.invalidateQueries({ queryKey: keys.sets }) });
+  return useMutation({ mutationFn: apiClient.addMeta, onSuccess: () => qc.invalidateQueries({ queryKey: keys.metas }) });
 }
 
 export const useStats = () => useQuery({ queryKey: keys.stats, queryFn: apiClient.getStats });

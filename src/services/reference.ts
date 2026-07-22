@@ -1,14 +1,14 @@
 import { and, or, eq, isNull, sql, asc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
-import { leaders, sets } from '../db/schema';
-import type { CustomLeaderInput, CustomSetInput } from '../lib/validation/reference';
+import { leaders, metas } from '../db/schema';
+import type { CustomLeaderInput, CustomMetaInput } from '../lib/validation/reference';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Leader = typeof leaders.$inferSelect;
-export type Set = typeof sets.$inferSelect;
+export type Meta = typeof metas.$inferSelect;
 
-const visibleTo = (table: typeof leaders | typeof sets, ownerId: string) =>
+const visibleTo = (table: typeof leaders | typeof metas, ownerId: string) =>
   or(isNull(table.ownerId), eq(table.ownerId, ownerId));
 
 export async function listLeaders(db: DB, ownerId: string): Promise<Leader[]> {
@@ -26,16 +26,16 @@ export async function addCustomLeader(db: DB, ownerId: string, input: CustomLead
   return row;
 }
 
-export async function listSets(db: DB, ownerId: string): Promise<Set[]> {
-  return db.select().from(sets).where(visibleTo(sets, ownerId)).orderBy(asc(sets.name));
+export async function listMetas(db: DB, ownerId: string): Promise<Meta[]> {
+  return db.select().from(metas).where(visibleTo(metas, ownerId)).orderBy(asc(metas.name));
 }
 
-export async function addCustomSet(db: DB, ownerId: string, input: CustomSetInput): Promise<Set> {
-  const existing = await db.select().from(sets)
-    .where(and(visibleTo(sets, ownerId), sql`lower(${sets.name}) = lower(${input.name})`))
+export async function addCustomMeta(db: DB, ownerId: string, input: CustomMetaInput): Promise<Meta> {
+  const existing = await db.select().from(metas)
+    .where(and(visibleTo(metas, ownerId), sql`lower(${metas.name}) = lower(${input.name})`))
     .limit(1);
   if (existing[0]) return existing[0];
-  const [row] = await db.insert(sets)
+  const [row] = await db.insert(metas)
     .values({ name: input.name, isCustom: true, ownerId })
     .returning();
   return row;

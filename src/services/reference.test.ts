@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
-import { listLeaders, addCustomLeader, listSets, addCustomSet } from './reference';
+import { listLeaders, addCustomLeader, listMetas, addCustomMeta } from './reference';
 
 const db = getTestDb();
 const USER = 'user_123';
@@ -31,11 +31,12 @@ describe('reference service', () => {
     expect(list.filter((l) => l.name.toLowerCase() === 'roronoa zoro').length).toBe(1);
   });
 
-  it('adds and dedupes custom sets', async () => {
-    const a = await addCustomSet(db, USER, { name: 'Local Promo Pack' });
-    const b = await addCustomSet(db, USER, { name: 'local promo pack' });
+  it('adds and dedupes custom metas', async () => {
+    const a = await addCustomMeta(db, USER, { name: 'Local Promo Pack' });
+    const b = await addCustomMeta(db, USER, { name: 'local promo pack' });
     expect(b.id).toBe(a.id);
-    const sets = await listSets(db, USER);
-    expect(sets.filter((s) => s.name.toLowerCase() === 'local promo pack').length).toBe(1);
+    const metas = await listMetas(db, USER);
+    expect(metas.filter((m) => m.name.toLowerCase() === 'local promo pack').length).toBe(1);
+    expect(metas.some((m) => m.name === 'OP16')).toBe(true);
   });
 });

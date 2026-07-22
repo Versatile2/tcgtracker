@@ -1,10 +1,10 @@
 import type {
-  LeaderDTO, SetDTO, RoundDTO, TournamentSummaryDTO, TournamentDetailDTO,
+  LeaderDTO, MetaDTO, RoundDTO, TournamentSummaryDTO, TournamentDetailDTO,
   StatsDTO, MatchupStatsDTO, AchievementsResponseDTO,
 } from './dto';
 import type { CreateTournamentInput, UpdateTournamentInput } from './validation/tournament';
 import type { CreateRoundInput, UpdateRoundInput } from './validation/round';
-import type { CustomLeaderInput, CustomSetInput } from './validation/reference';
+import type { CustomLeaderInput, CustomMetaInput } from './validation/reference';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; }
@@ -26,8 +26,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export const apiClient = {
   listLeaders: () => request<LeaderDTO[]>('/api/leaders'),
   addLeader: (b: CustomLeaderInput) => request<LeaderDTO>('/api/leaders', { method: 'POST', body: JSON.stringify(b) }),
-  listSets: () => request<SetDTO[]>('/api/sets'),
-  addSet: (b: CustomSetInput) => request<SetDTO>('/api/sets', { method: 'POST', body: JSON.stringify(b) }),
+  listMetas: () => request<MetaDTO[]>('/api/metas'),
+  addMeta: (b: CustomMetaInput) => request<MetaDTO>('/api/metas', { method: 'POST', body: JSON.stringify(b) }),
 
   listTournaments: () => request<TournamentSummaryDTO[]>('/api/tournaments'),
   getTournament: (id: string) => request<TournamentDetailDTO>(`/api/tournaments/${id}`),
