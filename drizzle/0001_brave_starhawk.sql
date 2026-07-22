@@ -1,0 +1,2 @@
+ALTER TABLE "rounds" ADD COLUMN "opponent_meta_id" uuid;--> statement-breakpoint
+ALTER TABLE "rounds" ADD CONSTRAINT "rounds_opponent_meta_id_metas_id_fk" FOREIGN KEY ("opponent_meta_id") REFERENCES "public"."metas"("id") ON DELETE no action ON UPDATE no action;

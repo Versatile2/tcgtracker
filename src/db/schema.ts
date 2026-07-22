@@ -44,6 +44,7 @@ export const rounds = pgTable('rounds', {
   tournamentId: uuid('tournament_id').notNull().references(() => tournaments.id, { onDelete: 'cascade' }),
   roundNumber: integer('round_number').notNull(),
   opponentLeaderId: uuid('opponent_leader_id').notNull().references(() => leaders.id),
+  opponentMetaId: uuid('opponent_meta_id').references(() => metas.id),
   result: roundResult('result').notNull(),
   playOrder: playOrder('play_order'),
   notes: text('notes'),
