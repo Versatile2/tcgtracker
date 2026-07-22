@@ -4,7 +4,6 @@ export const resultEnum = z.enum(['win', 'loss', 'draw']);
 export const playOrderEnum = z.enum(['first', 'second']);
 
 export const createRoundSchema = z.object({
-  myLeaderId: z.string().uuid(),
   opponentLeaderId: z.string().uuid(),
   result: resultEnum,
   playOrder: playOrderEnum.nullable().optional(),
@@ -12,7 +11,6 @@ export const createRoundSchema = z.object({
 });
 
 export const updateRoundSchema = z.object({
-  myLeaderId: z.string().uuid().optional(),
   opponentLeaderId: z.string().uuid().optional(),
   result: resultEnum.optional(),
   playOrder: playOrderEnum.nullable().optional(),

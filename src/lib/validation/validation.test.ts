@@ -3,10 +3,13 @@ import { createTournamentSchema } from './tournament';
 import { createRoundSchema } from './round';
 import { customLeaderSchema } from './reference';
 
+const VALID_UUID = '00000000-0000-0000-0000-000000000000';
+
 describe('validation', () => {
   it('accepts a valid tournament', () => {
     const parsed = createTournamentSchema.parse({
       type: 'local',
+      myLeaderId: VALID_UUID,
       playedOn: '2026-07-20',
     });
     expect(parsed.type).toBe('local');
@@ -16,6 +19,7 @@ describe('validation', () => {
     expect(() =>
       createTournamentSchema.parse({
         type: 'local',
+        myLeaderId: VALID_UUID,
         playedOn: '20-07-2026',
       })
     ).toThrow();
@@ -25,15 +29,33 @@ describe('validation', () => {
     expect(() =>
       createTournamentSchema.parse({
         type: 'worlds',
+        myLeaderId: VALID_UUID,
         playedOn: '2026-07-20',
       })
     ).toThrow();
   });
 
+  it('rejects a tournament missing myLeaderId', () => {
+    expect(() =>
+      createTournamentSchema.parse({
+        type: 'local',
+        playedOn: '2026-07-20',
+      })
+    ).toThrow();
+  });
+
+  it('accepts a tournament without a metaId', () => {
+    const parsed = createTournamentSchema.parse({
+      type: 'local',
+      myLeaderId: VALID_UUID,
+      playedOn: '2026-07-20',
+    });
+    expect(parsed.metaId).toBeUndefined();
+  });
+
   it('requires uuids on a round', () => {
     expect(() =>
       createRoundSchema.parse({
-        myLeaderId: 'x',
         opponentLeaderId: 'y',
         result: 'win',
       })

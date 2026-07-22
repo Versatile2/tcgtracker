@@ -15,14 +15,16 @@ const dateString = z
 
 export const createTournamentSchema = z.object({
   type: tournamentTypeEnum,
-  setId: z.string().uuid().optional(),
+  myLeaderId: z.string().uuid(),
+  metaId: z.string().uuid().optional(),
   name: z.string().trim().max(120).optional(),
   playedOn: dateString,
 });
 
 export const updateTournamentSchema = z.object({
   type: tournamentTypeEnum.optional(),
-  setId: z.string().uuid().nullable().optional(),
+  myLeaderId: z.string().uuid().optional(),
+  metaId: z.string().uuid().nullable().optional(),
   name: z.string().trim().max(120).nullable().optional(),
   playedOn: dateString.optional(),
 });
