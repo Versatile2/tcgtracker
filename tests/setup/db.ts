@@ -21,6 +21,6 @@ export function getTestDb() {
 
 export async function resetDb() {
   await testDb.execute(
-    sql`TRUNCATE TABLE rounds, tournaments, sets, leaders RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE rounds, tournaments, metas, leaders RESTART IDENTITY CASCADE`,
   );
 }

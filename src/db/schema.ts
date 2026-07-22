@@ -16,7 +16,7 @@ export const leaders = pgTable('leaders', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const sets = pgTable('sets', {
+export const metas = pgTable('metas', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   code: text('code'),
@@ -30,7 +30,8 @@ export const tournaments = pgTable('tournaments', {
   id: uuid('id').primaryKey().defaultRandom(),
   ownerId: text('owner_id').notNull(),
   type: tournamentType('type').notNull(),
-  setId: uuid('set_id').references(() => sets.id),
+  myLeaderId: uuid('my_leader_id').notNull().references(() => leaders.id),
+  metaId: uuid('meta_id').references(() => metas.id),
   name: text('name'),
   playedOn: date('played_on').notNull(),
   status: tournamentStatus('status').notNull().default('draft'),
@@ -42,7 +43,6 @@ export const rounds = pgTable('rounds', {
   id: uuid('id').primaryKey().defaultRandom(),
   tournamentId: uuid('tournament_id').notNull().references(() => tournaments.id, { onDelete: 'cascade' }),
   roundNumber: integer('round_number').notNull(),
-  myLeaderId: uuid('my_leader_id').notNull().references(() => leaders.id),
   opponentLeaderId: uuid('opponent_leader_id').notNull().references(() => leaders.id),
   result: roundResult('result').notNull(),
   playOrder: playOrder('play_order'),

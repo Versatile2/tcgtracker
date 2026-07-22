@@ -1,7 +1,7 @@
 import { and, isNull, sql } from 'drizzle-orm';
 import { db as defaultDb } from './client';
-import { leaders, sets } from './schema';
-import { SEED_LEADERS, SEED_SETS } from './seed-data';
+import { leaders, metas } from './schema';
+import { SEED_LEADERS, SEED_METAS } from './seed-data';
 
 type DB = typeof defaultDb;
 
@@ -17,18 +17,18 @@ export async function seedReferenceData(db: DB) {
       .returning();
     leaderCount += res.length;
   }
-  let setCount = 0;
-  for (const s of SEED_SETS) {
-    const existing = await db.select().from(sets)
-      .where(and(isNull(sets.ownerId), sql`lower(${sets.name}) = lower(${s.name})`))
+  let metaCount = 0;
+  for (const m of SEED_METAS) {
+    const existing = await db.select().from(metas)
+      .where(and(isNull(metas.ownerId), sql`lower(${metas.name}) = lower(${m.name})`))
       .limit(1);
     if (existing[0]) continue;
-    const res = await db.insert(sets)
-      .values({ name: s.name, code: s.code, isCustom: false, ownerId: null })
+    const res = await db.insert(metas)
+      .values({ name: m.name, code: m.code, isCustom: false, ownerId: null })
       .returning();
-    setCount += res.length;
+    metaCount += res.length;
   }
-  return { leaders: leaderCount, sets: setCount };
+  return { leaders: leaderCount, metas: metaCount };
 }
 
 // Allow `npm run db:seed`

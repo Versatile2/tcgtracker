@@ -26,13 +26,21 @@ export const SEED_LEADERS: { name: string; colors: string[] }[] = [
   { name: 'Jewelry Bonney', colors: ['green'] },
 ];
 
-export const SEED_SETS: { name: string; code: string }[] = [
-  { name: 'Romance Dawn', code: 'OP01' },
-  { name: 'Paramount War', code: 'OP02' },
-  { name: 'Pillars of Strength', code: 'OP03' },
-  { name: 'Kingdoms of Intrigue', code: 'OP04' },
-  { name: 'Awakening of the New Era', code: 'OP05' },
-  { name: 'Wings of the Captain', code: 'OP06' },
-  { name: '500 Years in the Future', code: 'OP07' },
-  { name: 'Two Legends', code: 'OP08' },
+export const SEED_METAS: { name: string; code: string }[] = [
+  { name: 'OP01 Romance Dawn', code: 'OP01' },
+  { name: 'OP02 Paramount War', code: 'OP02' },
+  { name: 'OP03 Pillars of Strength', code: 'OP03' },
+  { name: 'OP04 Kingdoms of Intrigue', code: 'OP04' },
+  { name: 'OP05 Awakening of the New Era', code: 'OP05' },
+  { name: 'OP06 Wings of the Captain', code: 'OP06' },
+  { name: 'OP07 500 Years in the Future', code: 'OP07' },
+  { name: 'OP08 Two Legends', code: 'OP08' },
+  { name: 'OP09', code: 'OP09' },
+  { name: 'OP10', code: 'OP10' },
+  { name: 'OP11', code: 'OP11' },
+  { name: 'OP12', code: 'OP12' },
+  { name: 'OP13', code: 'OP13' },
+  { name: 'OP14', code: 'OP14' },
+  { name: 'OP15', code: 'OP15' },
+  { name: 'OP16', code: 'OP16' },
 ];

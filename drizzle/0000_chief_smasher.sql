@@ -11,20 +11,7 @@ CREATE TABLE "leaders" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "rounds" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"tournament_id" uuid NOT NULL,
-	"round_number" integer NOT NULL,
-	"my_leader_id" uuid NOT NULL,
-	"opponent_leader_id" uuid NOT NULL,
-	"result" "round_result" NOT NULL,
-	"play_order" "play_order",
-	"notes" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-CREATE TABLE "sets" (
+CREATE TABLE "metas" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"code" text,
@@ -34,11 +21,24 @@ CREATE TABLE "sets" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "rounds" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"tournament_id" uuid NOT NULL,
+	"round_number" integer NOT NULL,
+	"opponent_leader_id" uuid NOT NULL,
+	"result" "round_result" NOT NULL,
+	"play_order" "play_order",
+	"notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "tournaments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"owner_id" text NOT NULL,
 	"type" "tournament_type" NOT NULL,
-	"set_id" uuid,
+	"my_leader_id" uuid NOT NULL,
+	"meta_id" uuid,
 	"name" text,
 	"played_on" date NOT NULL,
 	"status" "tournament_status" DEFAULT 'draft' NOT NULL,
@@ -47,6 +47,6 @@ CREATE TABLE "tournaments" (
 );
 --> statement-breakpoint
 ALTER TABLE "rounds" ADD CONSTRAINT "rounds_tournament_id_tournaments_id_fk" FOREIGN KEY ("tournament_id") REFERENCES "public"."tournaments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "rounds" ADD CONSTRAINT "rounds_my_leader_id_leaders_id_fk" FOREIGN KEY ("my_leader_id") REFERENCES "public"."leaders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "rounds" ADD CONSTRAINT "rounds_opponent_leader_id_leaders_id_fk" FOREIGN KEY ("opponent_leader_id") REFERENCES "public"."leaders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "tournaments" ADD CONSTRAINT "tournaments_set_id_sets_id_fk" FOREIGN KEY ("set_id") REFERENCES "public"."sets"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "tournaments" ADD CONSTRAINT "tournaments_my_leader_id_leaders_id_fk" FOREIGN KEY ("my_leader_id") REFERENCES "public"."leaders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "tournaments" ADD CONSTRAINT "tournaments_meta_id_metas_id_fk" FOREIGN KEY ("meta_id") REFERENCES "public"."metas"("id") ON DELETE no action ON UPDATE no action;

@@ -1,5 +1,5 @@
 {
-  "id": "7861a823-bc00-4cce-b840-b5083fc39250",
+  "id": "ad685d3b-b1fa-4a0b-b323-7862c028bf83",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -57,6 +57,64 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.metas": {
+      "name": "metas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "released_at": {
+          "name": "released_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_custom": {
+          "name": "is_custom",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.rounds": {
       "name": "rounds",
       "schema": "",
@@ -77,12 +135,6 @@
         "round_number": {
           "name": "round_number",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "my_leader_id": {
-          "name": "my_leader_id",
-          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -142,19 +194,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "rounds_my_leader_id_leaders_id_fk": {
-          "name": "rounds_my_leader_id_leaders_id_fk",
-          "tableFrom": "rounds",
-          "tableTo": "leaders",
-          "columnsFrom": [
-            "my_leader_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "rounds_opponent_leader_id_leaders_id_fk": {
           "name": "rounds_opponent_leader_id_leaders_id_fk",
           "tableFrom": "rounds",
@@ -169,64 +208,6 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.sets": {
-      "name": "sets",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "code": {
-          "name": "code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "released_at": {
-          "name": "released_at",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_custom": {
-          "name": "is_custom",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -257,8 +238,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "set_id": {
-          "name": "set_id",
+        "my_leader_id": {
+          "name": "my_leader_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meta_id": {
+          "name": "meta_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -300,12 +287,25 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "tournaments_set_id_sets_id_fk": {
-          "name": "tournaments_set_id_sets_id_fk",
+        "tournaments_my_leader_id_leaders_id_fk": {
+          "name": "tournaments_my_leader_id_leaders_id_fk",
           "tableFrom": "tournaments",
-          "tableTo": "sets",
+          "tableTo": "leaders",
           "columnsFrom": [
-            "set_id"
+            "my_leader_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "tournaments_meta_id_metas_id_fk": {
+          "name": "tournaments_meta_id_metas_id_fk",
+          "tableFrom": "tournaments",
+          "tableTo": "metas",
+          "columnsFrom": [
+            "meta_id"
           ],
           "columnsTo": [
             "id"
