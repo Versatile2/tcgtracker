@@ -37,8 +37,8 @@ export function StatsView() {
       {data && data.overall.totalTournaments > 0 && (
         <>
           <OverallStats o={data.overall} />
-          <PerMetaStats rows={data.perMeta} />
-          <MatchupStats leaders={data.playedLeaders} />
+          <PerMetaStats rows={data.perMeta ?? []} />
+          <MatchupStats leaders={data.playedLeaders ?? []} />
         </>
       )}
 
