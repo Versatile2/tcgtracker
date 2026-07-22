@@ -18,6 +18,9 @@ import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { RoundDTO } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
+import { ShareDialog } from '@/components/share/share-dialog';
+import { TournamentShareCard } from '@/components/share/tournament-share-card';
+import { shareFilename } from '@/lib/share-image';
 
 export function TournamentDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -33,6 +36,7 @@ export function TournamentDetail({ id }: { id: string }) {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RoundDTO | undefined>();
+  const [shareOpen, setShareOpen] = useState(false);
 
   if (isLoading) return <main className="mx-auto max-w-xl p-4"><Skeleton className="h-24 w-full" /></main>;
   if (isError || !t) return <main className="mx-auto max-w-xl p-4"><p className="text-destructive">Couldn&apos;t load this tournament.</p></main>;
@@ -67,7 +71,10 @@ export function TournamentDetail({ id }: { id: string }) {
           <h1 className="mt-1 text-xl font-bold">{t.name ?? tournamentTypeLabel(t.type)}</h1>
           <p className="text-sm text-muted-foreground">{t.playedOn}</p>
         </div>
-        <div className="text-3xl font-bold tabular-nums">{formatRecord(record)}</div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="text-3xl font-bold tabular-nums">{formatRecord(record)}</div>
+          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>Share</Button>
+        </div>
       </div>
 
       <div className="mt-5 space-y-2">
@@ -133,6 +140,15 @@ export function TournamentDetail({ id }: { id: string }) {
             throw e;
           }
         }} />
+
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        title="Share tournament"
+        filename={shareFilename('tournament', t.name ?? tournamentTypeLabel(t.type))}
+      >
+        <TournamentShareCard tournament={t} leaderName={leaderName} />
+      </ShareDialog>
     </main>
   );
 }
