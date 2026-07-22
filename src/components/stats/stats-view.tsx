@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useStats } from '@/components/query-hooks';
 import { OverallStats } from './overall-stats';
 import { PerMetaStats } from './per-meta-stats';
+import { OpponentStats } from './opponent-stats';
 import { MatchupStats } from './matchup-stats';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { StatsShareCard } from '@/components/share/stats-share-card';
@@ -38,6 +39,7 @@ export function StatsView() {
         <>
           <OverallStats o={data.overall} />
           <PerMetaStats rows={data.perMeta ?? []} />
+          <OpponentStats rows={data.opponents ?? []} />
           <MatchupStats leaders={data.playedLeaders ?? []} />
         </>
       )}
