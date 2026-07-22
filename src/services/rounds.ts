@@ -36,6 +36,7 @@ export async function addRound(db: DB, ownerId: string, tournamentId: string, in
     tournamentId,
     roundNumber: Number(max) + 1,
     opponentLeaderId: input.opponentLeaderId,
+    opponentMetaId: input.opponentMetaId ?? null,
     result: input.result,
     playOrder: input.playOrder ?? null,
     notes: input.notes ?? null,
@@ -47,6 +48,7 @@ export async function updateRound(db: DB, ownerId: string, roundId: string, inpu
   await requireOwnedRound(db, ownerId, roundId);
   const patch: Partial<typeof rounds.$inferInsert> = { updatedAt: new Date() };
   if (input.opponentLeaderId !== undefined) patch.opponentLeaderId = input.opponentLeaderId;
+  if (input.opponentMetaId !== undefined) patch.opponentMetaId = input.opponentMetaId;
   if (input.result !== undefined) patch.result = input.result;
   if (input.playOrder !== undefined) patch.playOrder = input.playOrder;
   if (input.notes !== undefined) patch.notes = input.notes;

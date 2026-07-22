@@ -3,7 +3,7 @@ import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
 import { createTournament, finishTournament, getTournament } from './tournaments';
 import { addRound, updateRound, deleteRound } from './rounds';
-import { listLeaders } from './reference';
+import { listLeaders, listMetas } from './reference';
 import { ConflictError, NotFoundError } from '../lib/errors';
 
 const db = getTestDb();
@@ -58,5 +58,14 @@ describe('round service', () => {
     await expect(
       addRound(db, 'intruder', t.id, { opponentLeaderId: opp, result: 'win' }),
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('persists and updates opponentMetaId', async () => {
+    const { t, opp } = await setup();
+    const metas = await listMetas(db, USER);
+    const r = await addRound(db, USER, t.id, { opponentLeaderId: opp, result: 'win', opponentMetaId: metas[0].id });
+    expect(r.opponentMetaId).toBe(metas[0].id);
+    const updated = await updateRound(db, USER, r.id, { opponentMetaId: null });
+    expect(updated.opponentMetaId).toBeNull();
   });
 });
