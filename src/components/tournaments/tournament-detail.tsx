@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { RoundFormSheet } from './round-form-sheet';
 import { RoundItem } from './round-item';
+import { ReferenceCombobox } from './reference-combobox';
 import {
-  useTournament, useLeaders, useAddRound, useUpdateRound, useDeleteRound,
+  useTournament, useLeaders, useUpdateTournament, useAddRound, useUpdateRound, useDeleteRound,
   useFinishTournament, useReopenTournament, useDeleteTournament,
 } from '@/components/query-hooks';
 import { formatRecord, computeRecord } from '@/lib/record';
@@ -26,6 +27,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const router = useRouter();
   const { data: t, isLoading, isError } = useTournament(id);
   const { data: leaders } = useLeaders();
+  const updateTournament = useUpdateTournament(id);
   const addRound = useAddRound(id);
   const updateRound = useUpdateRound(id);
   const deleteRound = useDeleteRound(id);
@@ -52,7 +54,7 @@ export function TournamentDetail({ id }: { id: string }) {
       action: {
         label: 'Undo',
         onClick: () => addRound.mutate({
-          myLeaderId: r.myLeaderId, opponentLeaderId: r.opponentLeaderId,
+          opponentLeaderId: r.opponentLeaderId,
           result: r.result, playOrder: r.playOrder, notes: r.notes,
         }),
       },
@@ -70,6 +72,18 @@ export function TournamentDetail({ id }: { id: string }) {
           </div>
           <h1 className="mt-1 text-xl font-bold">{t.name ?? tournamentTypeLabel(t.type)}</h1>
           <p className="text-sm text-muted-foreground">{t.playedOn}</p>
+          <div className="mt-2 max-w-[16rem]">
+            {editable ? (
+              <ReferenceCombobox
+                options={leaders ?? []}
+                value={t.myLeaderId}
+                onChange={(lid) => { if (lid && lid !== t.myLeaderId) updateTournament.mutate({ myLeaderId: lid }); }}
+                onAddCustom={async () => ({ id: t.myLeaderId, name: leaderName(t.myLeaderId) })}
+                placeholder="Leader" />
+            ) : (
+              <p className="text-sm">Leader: <span className="font-medium">{leaderName(t.myLeaderId)}</span></p>
+            )}
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="text-3xl font-bold tabular-nums">{formatRecord(record)}</div>

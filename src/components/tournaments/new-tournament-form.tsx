@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReferenceCombobox } from './reference-combobox';
-import { useSets, useAddCustomSet, useCreateTournament } from '@/components/query-hooks';
+import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useCreateTournament } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { TournamentType } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
@@ -15,21 +15,25 @@ const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_gr
 
 export function NewTournamentForm() {
   const router = useRouter();
-  const { data: sets } = useSets();
-  const addSet = useAddCustomSet();
+  const { data: leaders } = useLeaders();
+  const addLeader = useAddCustomLeader();
+  const { data: metas } = useMetas();
+  const addMeta = useAddCustomMeta();
   const create = useCreateTournament();
   const online = useOnlineStatus();
 
   const [type, setType] = useState<TournamentType>('local');
-  const [setId, setSetId] = useState<string | null>(null);
+  const [myLeaderId, setMyLeaderId] = useState<string | null>(null);
+  const [metaId, setMetaId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [playedOn, setPlayedOn] = useState(() => new Date().toISOString().slice(0, 10));
 
   async function submit() {
     if (!online) { toast.error("You're offline — reconnect to save"); return; }
+    if (!myLeaderId) { toast.error('Choose your leader first'); return; }
     try {
       const t = await create.mutateAsync({
-        type, setId: setId ?? undefined, name: name.trim() || undefined, playedOn,
+        type, myLeaderId, metaId: metaId ?? undefined, name: name.trim() || undefined, playedOn,
       });
       router.push(`/tournaments/${t.id}`);
     } catch {
@@ -52,11 +56,19 @@ export function NewTournamentForm() {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Set</label>
+        <label className="text-sm font-medium">Leader</label>
         <ReferenceCombobox
-          options={sets ?? []} value={setId} onChange={setSetId}
-          onAddCustom={async (n) => { const s = await addSet.mutateAsync({ name: n }); return { id: s.id, name: s.name }; }}
-          placeholder="Choose a set" />
+          options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
+          onAddCustom={async (n) => { const l = await addLeader.mutateAsync({ name: n, colors: [] }); return { id: l.id, name: l.name }; }}
+          placeholder="Choose your leader" />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Meta (optional)</label>
+        <ReferenceCombobox
+          options={metas ?? []} value={metaId} onChange={setMetaId}
+          onAddCustom={async (n) => { const m = await addMeta.mutateAsync({ name: n }); return { id: m.id, name: m.name }; }}
+          placeholder="e.g. OP16" />
       </div>
 
       <div className="space-y-2">
@@ -69,7 +81,7 @@ export function NewTournamentForm() {
         <Input type="date" value={playedOn} onChange={(e) => setPlayedOn(e.target.value)} className="h-12 text-base" />
       </div>
 
-      <Button onClick={submit} disabled={create.isPending} className="h-14 w-full text-base">
+      <Button onClick={submit} disabled={create.isPending || !myLeaderId} className="h-14 w-full text-base">
         {create.isPending ? 'Creating…' : 'Create & Start Logging'}
       </Button>
     </main>

@@ -28,6 +28,7 @@ export function TournamentShareCard({
         <p className="text-lg font-bold leading-tight">{tournament.name ?? tournamentTypeLabel(tournament.type)}</p>
         <p className="shrink-0 text-3xl font-bold tabular-nums">{formatRecord(record)}</p>
       </div>
+      <p className="text-sm text-muted-foreground">Leader: <span className="text-foreground">{leaderName(tournament.myLeaderId)}</span></p>
       <div className="space-y-1">
         {tournament.rounds.map((r) => (
           <div key={r.id} className="flex items-center gap-2 text-sm">

@@ -40,20 +40,19 @@ function RoundFormBody({
   const { data: leaders } = useLeaders();
   const addLeader = useAddCustomLeader();
 
-  const [myLeaderId, setMyLeaderId] = useState<string | null>(initial?.myLeaderId ?? null);
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
   const [result, setResult] = useState<Result | null>(initial?.result ?? null);
   const [playOrder, setPlayOrder] = useState<PlayOrder | null>(initial?.playOrder ?? null);
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
 
-  const valid = myLeaderId && oppLeaderId && result;
+  const valid = oppLeaderId && result;
 
   async function save() {
     if (!valid) return;
     setSaving(true);
     try {
-      await onSubmit({ myLeaderId, opponentLeaderId: oppLeaderId, result, playOrder, notes: notes.trim() || null });
+      await onSubmit({ opponentLeaderId: oppLeaderId, result, playOrder, notes: notes.trim() || null });
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -69,10 +68,6 @@ function RoundFormBody({
     <>
       <SheetHeader><SheetTitle>{initial ? 'Edit Round' : 'Add Round'}</SheetTitle></SheetHeader>
       <div className="space-y-4 px-4 pb-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">My leader</label>
-          <ReferenceCombobox options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId} onAddCustom={addLeaderCustom} placeholder="Your leader" />
-        </div>
         <div className="space-y-2">
           <label className="text-sm font-medium">Opponent deck</label>
           <ReferenceCombobox options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} placeholder="Opponent's leader" />

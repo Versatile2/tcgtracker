@@ -23,7 +23,7 @@ export function RoundItem({
       <Badge className={resultStyle[round.result]}>{round.result[0].toUpperCase()}</Badge>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">
-          <span className="text-muted-foreground">{leaderName(round.myLeaderId)}</span> vs {leaderName(round.opponentLeaderId)}
+          vs <span className="text-foreground">{leaderName(round.opponentLeaderId)}</span>
         </p>
         {round.playOrder && <p className="text-xs text-muted-foreground">Went {round.playOrder === 'first' ? '1st' : '2nd'}</p>}
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
