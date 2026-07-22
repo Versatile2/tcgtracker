@@ -26,8 +26,8 @@ export function StatsShareCard({ overall }: { overall: OverallStatsDTO }) {
         <Stat label="Draw rate" value={pct(overall.drawRate)} />
       </div>
       <div className="space-y-1 text-sm text-muted-foreground">
-        {overall.bestSet && (
-          <p>Best set: <span className="text-foreground">{overall.bestSet.name}</span> ({pct(overall.bestSet.winRate)})</p>
+        {overall.bestMeta && (
+          <p>Best meta: <span className="text-foreground">{overall.bestMeta.name}</span> ({pct(overall.bestMeta.winRate)})</p>
         )}
         {overall.mostPlayedLeader && (
           <p>Top leader: <span className="text-foreground">{overall.mostPlayedLeader.name}</span></p>

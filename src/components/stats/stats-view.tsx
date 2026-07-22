@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useStats } from '@/components/query-hooks';
 import { OverallStats } from './overall-stats';
-import { PerSetStats } from './per-set-stats';
+import { PerMetaStats } from './per-meta-stats';
 import { MatchupStats } from './matchup-stats';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { StatsShareCard } from '@/components/share/stats-share-card';
@@ -37,7 +37,7 @@ export function StatsView() {
       {data && data.overall.totalTournaments > 0 && (
         <>
           <OverallStats o={data.overall} />
-          <PerSetStats rows={data.perSet} />
+          <PerMetaStats rows={data.perMeta} />
           <MatchupStats leaders={data.playedLeaders} />
         </>
       )}

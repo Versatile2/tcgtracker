@@ -1,15 +1,15 @@
 import { pct } from './stat-card';
 import { formatRecord } from '@/lib/record';
-import type { PerSetStatDTO } from '@/lib/dto';
+import type { PerMetaStatDTO } from '@/lib/dto';
 
-export function PerSetStats({ rows }: { rows: PerSetStatDTO[] }) {
+export function PerMetaStats({ rows }: { rows: PerMetaStatDTO[] }) {
   if (rows.length === 0) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">By set</h2>
+      <h2 className="text-lg font-semibold">By meta</h2>
       <div className="space-y-2">
         {rows.map((r) => (
-          <div key={r.setId ?? 'none'} className="rounded-lg border p-3">
+          <div key={r.metaId ?? 'none'} className="rounded-lg border p-3">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{r.name}</span>
               <span className="text-muted-foreground tabular-nums">
