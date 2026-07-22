@@ -38,5 +38,5 @@ export function shareFilename(kind: string, label: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
     .replace(/-+$/g, '');
-  return `crewstat-${kind}-${slug || 'card'}.png`;
+  return `grand-line-tcg-${kind}-${slug || 'card'}.png`;
 }
