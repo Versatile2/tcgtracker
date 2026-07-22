@@ -23,7 +23,9 @@ async function requireOwned(db: DB, ownerId: string, id: string): Promise<Tourna
 export async function createTournament(db: DB, ownerId: string, input: CreateTournamentInput): Promise<Tournament> {
   const [row] = await db.insert(tournaments)
     .values({
-      ownerId, type: input.type, setId: input.setId ?? null,
+      ownerId, type: input.type,
+      myLeaderId: input.myLeaderId,
+      metaId: input.metaId ?? null,
       name: input.name ?? null, playedOn: input.playedOn, status: 'draft',
     })
     .returning();
@@ -56,7 +58,8 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
   await requireOwned(db, ownerId, id);
   const patch: Partial<typeof tournaments.$inferInsert> = { updatedAt: new Date() };
   if (input.type !== undefined) patch.type = input.type;
-  if (input.setId !== undefined) patch.setId = input.setId;
+  if (input.myLeaderId !== undefined) patch.myLeaderId = input.myLeaderId;
+  if (input.metaId !== undefined) patch.metaId = input.metaId;
   if (input.name !== undefined) patch.name = input.name;
   if (input.playedOn !== undefined) patch.playedOn = input.playedOn;
   const [row] = await db.update(tournaments).set(patch).where(owned(id, ownerId)).returning();

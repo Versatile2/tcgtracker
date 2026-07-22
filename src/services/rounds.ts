@@ -35,7 +35,6 @@ export async function addRound(db: DB, ownerId: string, tournamentId: string, in
   const [row] = await db.insert(rounds).values({
     tournamentId,
     roundNumber: Number(max) + 1,
-    myLeaderId: input.myLeaderId,
     opponentLeaderId: input.opponentLeaderId,
     result: input.result,
     playOrder: input.playOrder ?? null,
@@ -47,7 +46,6 @@ export async function addRound(db: DB, ownerId: string, tournamentId: string, in
 export async function updateRound(db: DB, ownerId: string, roundId: string, input: UpdateRoundInput): Promise<Round> {
   await requireOwnedRound(db, ownerId, roundId);
   const patch: Partial<typeof rounds.$inferInsert> = { updatedAt: new Date() };
-  if (input.myLeaderId !== undefined) patch.myLeaderId = input.myLeaderId;
   if (input.opponentLeaderId !== undefined) patch.opponentLeaderId = input.opponentLeaderId;
   if (input.result !== undefined) patch.result = input.result;
   if (input.playOrder !== undefined) patch.playOrder = input.playOrder;
