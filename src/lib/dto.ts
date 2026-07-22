@@ -2,7 +2,7 @@ export type LeaderDTO = { id: string; name: string; colors: string[]; isCustom: 
 export type MetaDTO = { id: string; name: string; code: string | null; isCustom: boolean; ownerId: string | null };
 export type RoundDTO = {
   id: string; tournamentId: string; roundNumber: number;
-  opponentLeaderId: string;
+  opponentLeaderId: string; opponentMetaId: string | null;
   result: 'win' | 'loss' | 'draw'; playOrder: 'first' | 'second' | null; notes: string | null;
 };
 export type RecordDTO = { wins: number; losses: number; draws: number };
@@ -25,7 +25,19 @@ export type PerMetaStatDTO = {
   tournaments: number; wins: number; losses: number; draws: number; winRate: number;
 };
 export type PlayedLeaderDTO = { id: string; name: string };
-export type StatsDTO = { overall: OverallStatsDTO; perMeta: PerMetaStatDTO[]; playedLeaders: PlayedLeaderDTO[] };
+export type OpponentMetaStatDTO = {
+  metaId: string; name: string;
+  wins: number; losses: number; draws: number; games: number; winRate: number;
+};
+export type OpponentLeaderStatDTO = {
+  leaderId: string; name: string;
+  wins: number; losses: number; draws: number; games: number; winRate: number;
+  byMeta: OpponentMetaStatDTO[];
+};
+export type StatsDTO = {
+  overall: OverallStatsDTO; perMeta: PerMetaStatDTO[]; playedLeaders: PlayedLeaderDTO[];
+  opponents: OpponentLeaderStatDTO[];
+};
 export type MatchupResultCountsDTO = { wins: number; losses: number; draws: number; games: number; winRate: number };
 export type MatchupOpponentDTO = MatchupResultCountsDTO & { leaderId: string; name: string; verdict: 'favored' | 'even' | 'unfavored' };
 export type MatchupStatsDTO = {

@@ -62,6 +62,13 @@ describe('validation', () => {
     ).toThrow();
   });
 
+  it('accepts an optional opponentMetaId on a round', () => {
+    const base = { opponentLeaderId: '00000000-0000-0000-0000-000000000000', result: 'win' as const };
+    expect(createRoundSchema.parse(base).opponentMetaId).toBeUndefined();
+    const withMeta = createRoundSchema.parse({ ...base, opponentMetaId: '00000000-0000-0000-0000-000000000000' });
+    expect(withMeta.opponentMetaId).toBe('00000000-0000-0000-0000-000000000000');
+  });
+
   it('defaults custom leader colors to empty array', () => {
     expect(customLeaderSchema.parse({ name: 'Test' }).colors).toEqual([]);
   });
