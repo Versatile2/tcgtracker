@@ -85,4 +85,13 @@ describe('validation', () => {
   it('defaults custom leader colors to empty array', () => {
     expect(customLeaderSchema.parse({ name: 'Test' }).colors).toEqual([]);
   });
+
+  it('accepts a setCode on a custom leader', () => {
+    expect(customLeaderSchema.parse({ name: 'Test', setCode: 'OP16' }).setCode).toBe('OP16');
+  });
+
+  it('accepts wonDieRoll on a swiss round', () => {
+    const p = createRoundSchema.parse({ kind: 'swiss', opponentLeaderId: '00000000-0000-0000-0000-000000000000', result: 'win', wonDieRoll: true });
+    expect(p.kind === 'swiss' && p.wonDieRoll).toBe(true);
+  });
 });

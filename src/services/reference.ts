@@ -21,7 +21,7 @@ export async function addCustomLeader(db: DB, ownerId: string, input: CustomLead
     .limit(1);
   if (existing[0]) return existing[0];
   const [row] = await db.insert(leaders)
-    .values({ name: input.name, colors: input.colors, isCustom: true, ownerId })
+    .values({ name: input.name, colors: input.colors, setCode: input.setCode ?? null, isCustom: true, ownerId })
     .returning();
   return row;
 }

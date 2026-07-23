@@ -34,6 +34,7 @@ const swissRound = z.object({
   opponentMetaId: z.string().uuid().nullable().optional(),
   result: resultEnum,
   playOrder: playOrderEnum.nullable().optional(),
+  wonDieRoll: z.boolean().nullable().optional(),
   notes,
 });
 

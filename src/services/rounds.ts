@@ -19,6 +19,7 @@ function valuesForKind(input: CreateRoundInput) {
         opponentMetaId: input.opponentMetaId ?? null,
         result: input.result,
         playOrder: input.playOrder ?? null,
+        wonDieRoll: input.wonDieRoll ?? null,
         games: null,
         notes: input.notes ?? null,
       };

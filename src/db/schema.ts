@@ -13,6 +13,7 @@ export const leaders = pgTable('leaders', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   colors: text('colors').array().notNull().default([]),
+  setCode: text('set_code'),
   isCustom: boolean('is_custom').notNull().default(false),
   ownerId: text('owner_id'), // null = global seed
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -51,6 +52,8 @@ export const rounds = pgTable('rounds', {
   opponentMetaId: uuid('opponent_meta_id').references(() => metas.id),
   result: roundResult('result').notNull(),
   playOrder: playOrder('play_order'),
+  // Whether the player won the pre-game die roll (Swiss); null when unknown.
+  wonDieRoll: boolean('won_die_roll'),
   // Per-game log for top_cut (best-of-3); null otherwise.
   games: jsonb('games').$type<GameLog[]>(),
   notes: text('notes'),

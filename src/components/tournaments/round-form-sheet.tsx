@@ -1,45 +1,49 @@
 'use client';
 import { useState } from 'react';
-import { Dices, Trophy, SkipForward, UserX, ChevronLeft } from 'lucide-react';
+import { Dices, Trophy, SkipForward, UserX, ChevronLeft, Trash2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { LeaderAvatar } from '@/components/leaders/leader-avatar';
+import { LeaderCarousel } from '@/components/leaders/leader-carousel';
 import { ReferenceCombobox } from './reference-combobox';
 import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta } from '@/components/query-hooks';
 import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
+import { cn } from '@/lib/utils';
 import type { CreateRoundInput } from '@/lib/validation/round';
 import type { RoundDTO, RoundKind, GameLog } from '@/lib/dto';
 
-type Result = 'win' | 'loss' | 'draw';
+type WinLoss = 'win' | 'loss';
 type PlayOrder = 'first' | 'second';
 
 export function RoundFormSheet({
-  open, onOpenChange, initial, onSubmit,
+  open, onOpenChange, initial, onSubmit, onDelete,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
+  onDelete?: () => Promise<void> | void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
+        <div className="mx-auto mt-1 mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
         {/* Keyed by open+initial so all step/form state re-initializes each time the sheet opens. */}
-        <RoundSheetBody key={open ? (initial?.id ?? 'new') : 'closed'} onOpenChange={onOpenChange} initial={initial} onSubmit={onSubmit} />
+        <RoundSheetBody key={open ? (initial?.id ?? 'new') : 'closed'} onOpenChange={onOpenChange} initial={initial} onSubmit={onSubmit} onDelete={onDelete} />
       </SheetContent>
     </Sheet>
   );
 }
 
 function RoundSheetBody({
-  onOpenChange, initial, onSubmit,
+  onOpenChange, initial, onSubmit, onDelete,
 }: {
   onOpenChange: (o: boolean) => void;
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
+  onDelete?: () => Promise<void> | void;
 }) {
   const [step, setStep] = useState<'type' | 'form'>(initial ? 'form' : 'type');
   const [kind, setKind] = useState<RoundKind>(initial?.kind ?? 'swiss');
@@ -47,7 +51,6 @@ function RoundSheetBody({
 
   async function pickKind(k: RoundKind) {
     if (k === 'swiss' || k === 'top_cut') { setKind(k); setStep('form'); return; }
-    // bye / no_show: no opponent, create immediately.
     setBusy(true);
     try {
       await onSubmit({ kind: k, notes: null });
@@ -67,6 +70,7 @@ function RoundSheetBody({
       onBack={initial ? undefined : () => setStep('type')}
       onOpenChange={onOpenChange}
       onSubmit={onSubmit}
+      onDelete={onDelete}
     />
   );
 }
@@ -134,13 +138,14 @@ function TypeCard({ icon: Icon, kind, onPick, disabled }: { icon: LucideIcon; ki
 /* ── Step 2: opponent + result (Swiss) or best-of-3 (Top Cut) ──── */
 
 function RoundFormBody({
-  kind, onBack, onOpenChange, initial, onSubmit,
+  kind, onBack, onOpenChange, initial, onSubmit, onDelete,
 }: {
   kind: 'swiss' | 'top_cut';
   onBack?: () => void;
   onOpenChange: (o: boolean) => void;
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
+  onDelete?: () => Promise<void> | void;
 }) {
   const { data: leaders } = useLeaders();
   const addLeader = useAddCustomLeader();
@@ -149,8 +154,11 @@ function RoundFormBody({
 
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
   const [oppMetaId, setOppMetaId] = useState<string | null>(initial?.opponentMetaId ?? null);
-  const [result, setResult] = useState<Result | null>(kind === 'swiss' ? (initial?.result ?? null) : null);
+  const [result, setResult] = useState<WinLoss | null>(
+    kind === 'swiss' && (initial?.result === 'win' || initial?.result === 'loss') ? initial.result : null,
+  );
   const [playOrder, setPlayOrder] = useState<PlayOrder | null>(kind === 'swiss' ? (initial?.playOrder ?? null) : null);
+  const [wonDieRoll, setWonDieRoll] = useState<boolean | null>(kind === 'swiss' ? (initial?.wonDieRoll ?? null) : null);
   const [games, setGames] = useState<GameLog[]>(kind === 'top_cut' ? (initial?.games ?? []) : []);
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
@@ -159,21 +167,18 @@ function RoundFormBody({
     ? Boolean(oppLeaderId && result)
     : Boolean(oppLeaderId && isCompletedBo3(games));
 
-  const leaderIcon = (lid: string) => {
-    const l = leaders?.find((x) => x.id === lid);
-    return l ? <LeaderAvatar name={l.name} colors={l.colors} size="sm" /> : null;
-  };
   const addLeaderCustom = async (n: string) => {
     const l = await addLeader.mutateAsync({ name: n, colors: [] });
     return { id: l.id, name: l.name };
   };
+  const cycle = <T,>(cur: T | null, a: T, b: T): T | null => (cur === null ? a : cur === a ? b : null);
 
   async function save() {
     if (!valid || !oppLeaderId) return;
     setSaving(true);
     try {
       const payload: CreateRoundInput = kind === 'swiss'
-        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, result: result!, playOrder, notes: notes.trim() || null }
+        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
         : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, games, notes: notes.trim() || null };
       await onSubmit(payload);
       onOpenChange(false);
@@ -182,24 +187,38 @@ function RoundFormBody({
     }
   }
 
+  async function handleDelete() {
+    if (!onDelete) return;
+    setSaving(true);
+    try { await onDelete(); onOpenChange(false); } finally { setSaving(false); }
+  }
+
   return (
     <>
       <SheetHeader>
-        <div className="flex items-center gap-2">
-          {onBack && (
-            <button type="button" onClick={onBack} aria-label="Change round type" className="-ml-1 rounded-md p-1 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <ChevronLeft className="size-5" />
+        <div className="flex items-center justify-between gap-2">
+          <SheetTitle className="text-2xl font-bold">{initial ? 'Edit Round' : `Add ${roundKindLabel(kind)} Round`}</SheetTitle>
+          {initial && onDelete && (
+            <button type="button" onClick={handleDelete} disabled={saving} aria-label="Delete round"
+              className="-mr-1 rounded-md p-2 text-muted-foreground outline-none transition-colors hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">
+              <Trash2 className="size-5" />
             </button>
           )}
-          <SheetTitle>{initial ? 'Edit Round' : `${roundKindLabel(kind)} Round`}</SheetTitle>
         </div>
+        {onBack && (
+          <button type="button" onClick={onBack}
+            className="-ml-1 flex w-fit items-center gap-1 rounded-md py-0.5 pl-1 pr-2 text-sm text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <ChevronLeft className="size-4" />{roundKindLabel(kind)}
+          </button>
+        )}
       </SheetHeader>
-      <div className="space-y-4 px-4 pb-4">
+
+      <div className="space-y-5 px-4 pb-4">
         <div className="space-y-2">
-          <label htmlFor="rf-oppleader" className="text-sm font-medium">Opponent deck</label>
-          <ReferenceCombobox id="rf-oppleader" getIcon={leaderIcon}
-            options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} placeholder="Opponent's leader" />
+          <span className="text-sm font-medium">Opponent’s Deck</span>
+          <LeaderCarousel options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} />
         </div>
+
         <div className="space-y-2">
           <label htmlFor="rf-oppmeta" className="text-sm font-medium">Opponent meta (optional)</label>
           <ReferenceCombobox id="rf-oppmeta"
@@ -210,19 +229,32 @@ function RoundFormBody({
 
         {kind === 'swiss' ? (
           <>
-            <div className="space-y-2">
-              <span id="rf-result-label" className="block text-sm font-medium">Result</span>
-              <div role="group" aria-labelledby="rf-result-label" className="grid grid-cols-3 gap-2">
-                {(['win', 'loss', 'draw'] as Result[]).map((r) => (
-                  <Button key={r} type="button" aria-pressed={result === r} variant={result === r ? 'default' : 'outline'} className="h-12 capitalize" onClick={() => setResult(r)}>{r}</Button>
-                ))}
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setWonDieRoll(cycle(wonDieRoll, true, false))}
+                className="flex h-12 items-center justify-between rounded-xl border border-border/60 px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <span className="flex items-center gap-2 text-sm font-medium"><Dices className="size-4" /> Dice Roll</span>
+                <span className={cn('text-sm font-semibold', wonDieRoll === true ? 'text-emerald-500' : wonDieRoll === false ? 'text-red-500' : 'text-muted-foreground')}>
+                  {wonDieRoll === true ? 'Won' : wonDieRoll === false ? 'Lost' : '—'}
+                </span>
+              </button>
+              <button type="button" onClick={() => setPlayOrder(cycle(playOrder, 'first', 'second'))}
+                className="flex h-12 items-center justify-between rounded-xl border border-border/60 px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <span className="text-sm font-medium">Start</span>
+                <span className={cn('text-sm font-semibold', playOrder ? 'text-foreground' : 'text-muted-foreground')}>
+                  {playOrder === 'first' ? '1st' : playOrder === 'second' ? '2nd' : '—'}
+                </span>
+              </button>
             </div>
-            <div className="space-y-2">
-              <span id="rf-playorder-label" className="block text-sm font-medium">Play order</span>
-              <div role="group" aria-labelledby="rf-playorder-label" className="grid grid-cols-2 gap-2">
-                <Button type="button" aria-pressed={playOrder === 'first'} variant={playOrder === 'first' ? 'default' : 'outline'} className="h-12" onClick={() => setPlayOrder(playOrder === 'first' ? null : 'first')}>Went 1st</Button>
-                <Button type="button" aria-pressed={playOrder === 'second'} variant={playOrder === 'second' ? 'default' : 'outline'} className="h-12" onClick={() => setPlayOrder(playOrder === 'second' ? null : 'second')}>Went 2nd</Button>
+
+            <div className="flex items-center justify-between rounded-xl bg-emerald-600/12 p-2 pl-3" role="group" aria-label="Result">
+              <span className="text-sm font-medium">Result</span>
+              <div className="flex gap-1">
+                <button type="button" aria-pressed={result === 'win'} onClick={() => setResult('win')}
+                  className={cn('h-9 rounded-lg px-5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    result === 'win' ? 'bg-emerald-600 text-white' : 'text-emerald-700 dark:text-emerald-300')}>Win</button>
+                <button type="button" aria-pressed={result === 'loss'} onClick={() => setResult('loss')}
+                  className={cn('h-9 rounded-lg px-5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    result === 'loss' ? 'bg-red-600 text-white' : 'text-muted-foreground')}>Lose</button>
               </div>
             </div>
           </>
@@ -231,10 +263,14 @@ function RoundFormBody({
         )}
 
         <div className="space-y-2">
-          <label htmlFor="rf-notes" className="text-sm font-medium">Notes (optional)</label>
-          <Textarea id="rf-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Opening hand, key turns…" />
+          <label htmlFor="rf-notes" className="text-sm font-medium">Note (optional)</label>
+          <Textarea id="rf-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Add a note about this round…" />
         </div>
-        <Button onClick={save} disabled={!valid || saving} className="h-14 w-full text-base">{saving ? 'Saving…' : 'Save Round'}</Button>
+
+        <div className="flex gap-3 pt-1">
+          <Button variant="outline" className="h-12 flex-1" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button className="h-12 flex-[2]" onClick={save} disabled={!valid || saving}>{saving ? 'Saving…' : 'Save Round'}</Button>
+        </div>
       </div>
     </>
   );
@@ -260,7 +296,6 @@ function Bo3Games({ games, onChange }: { games: GameLog[]; onChange: (g: GameLog
     onChange(next);
   }
 
-  // Rows to render: game 0 always; each next while the match isn't decided and < 3.
   const rows: number[] = [];
   for (let i = 0; i < 3; i++) {
     if (i === 0 || (games.length > i - 1 && !decidedBefore(games, i))) rows.push(i);

@@ -69,6 +69,14 @@ describe('round service', () => {
     expect(updated.opponentMetaId).toBeNull();
   });
 
+  it('persists wonDieRoll on a swiss round', async () => {
+    const { t, opp } = await setup();
+    const won = await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win', wonDieRoll: true });
+    expect(won.wonDieRoll).toBe(true);
+    const lost = await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'loss', wonDieRoll: false });
+    expect(lost.wonDieRoll).toBe(false);
+  });
+
   it('creates a BYE as an opponent-less auto-win', async () => {
     const { t } = await setup();
     const r = await addRound(db, USER, t.id, { kind: 'bye', notes: null });

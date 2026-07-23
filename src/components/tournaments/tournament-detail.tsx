@@ -29,7 +29,7 @@ import { shareFilename } from '@/lib/share-image';
 function roundToInput(r: RoundDTO): CreateRoundInput {
   switch (r.kind) {
     case 'swiss':
-      return { kind: 'swiss', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, result: r.result, playOrder: r.playOrder, notes: r.notes };
+      return { kind: 'swiss', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, result: r.result, playOrder: r.playOrder, wonDieRoll: r.wonDieRoll, notes: r.notes };
     case 'top_cut':
       return { kind: 'top_cut', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, games: r.games ?? [], notes: r.notes };
     case 'bye':
@@ -162,6 +162,7 @@ export function TournamentDetail({ id }: { id: string }) {
       )}
 
       <RoundFormSheet open={sheetOpen} onOpenChange={setSheetOpen} initial={editing}
+        onDelete={editing ? () => handleDeleteRound(editing) : undefined}
         onSubmit={async (data) => {
           if (!online) { toast.error("You're offline — reconnect to save"); return; }
           try {
