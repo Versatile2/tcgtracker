@@ -2,23 +2,48 @@ import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { formatRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { TournamentSummaryDTO } from '@/lib/dto';
 
-export function TournamentCard({ t }: { t: TournamentSummaryDTO }) {
+export function TournamentCard({
+  t,
+  leaderName,
+}: {
+  t: TournamentSummaryDTO;
+  leaderName: (id: string) => string;
+}) {
+  const hasName = Boolean(t.name);
+  const isDraft = t.status === 'draft';
+
   return (
-    <Link href={`/tournaments/${t.id}`}>
-      <Card className="p-4 flex items-center justify-between active:scale-[0.99] transition-transform">
-        <div className="min-w-0">
+    <Link href={`/tournaments/${t.id}`} className="block">
+      <Card className="flex items-center gap-4 p-4 transition-transform active:scale-[0.99]">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
-            {t.status === 'locked' && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+            {isDraft ? (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                <span className="size-1.5 rounded-full bg-primary" />
+                Logging
+              </span>
+            ) : (
+              <Lock className="size-3.5 text-muted-foreground" aria-label="Locked" />
+            )}
           </div>
-          <p className="mt-1 truncate font-medium">{t.name ?? tournamentTypeLabel(t.type)}</p>
-          <p className="text-sm text-muted-foreground">{t.playedOn}</p>
+          {hasName && <p className="mt-1.5 truncate font-semibold">{t.name}</p>}
+          <p className={cn('truncate text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1.5')}>
+            <span className="text-foreground">{leaderName(t.myLeaderId)}</span>
+            <span> · {t.playedOn}</span>
+          </p>
         </div>
-        <div className="text-2xl font-bold tabular-nums">{formatRecord(t.record)}</div>
+        <div className="shrink-0 text-right leading-none">
+          <div className="text-2xl font-bold tabular-nums">{formatRecord(t.record)}</div>
+          <div className="mt-1.5 text-[0.625rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {t.record.draws > 0 ? 'W–L–D' : 'W–L'}
+          </div>
+        </div>
       </Card>
     </Link>
   );
