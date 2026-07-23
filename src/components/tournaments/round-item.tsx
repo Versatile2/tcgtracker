@@ -1,7 +1,10 @@
 'use client';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
+import { SwipeRow } from '@/components/ui/swipe-row';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { roundKindLabel } from '@/lib/labels';
 import type { RoundDTO, LeaderDTO } from '@/lib/dto';
 
@@ -28,15 +31,15 @@ export function RoundItem({
   onDelete: () => void;
   editable: boolean;
 }) {
+  const [confirm, setConfirm] = useState(false);
   const opponent = round.opponentLeaderId ? resolveLeader(round.opponentLeaderId) : undefined;
   const hasOpponent = round.opponentLeaderId !== null;
   const canEdit = editable && hasOpponent; // bye / no_show are delete-only
   const score = gameScore(round.games);
 
-  return (
-    <div className="flex items-center gap-3 rounded-lg border p-3">
+  const row = (
+    <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
       <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} size="md" />
-
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Badge className={resultStyle[round.result]}>{round.result[0].toUpperCase()}</Badge>
@@ -56,15 +59,41 @@ export function RoundItem({
         )}
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
       </div>
-
       {hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} size="md" />}
-
-      {editable && (
-        <div className="flex shrink-0 flex-col gap-1">
-          {canEdit && <Button variant="ghost" onClick={onEdit} className="h-9 px-2 text-xs text-muted-foreground">Edit</Button>}
-          <Button variant="ghost" onClick={onDelete} className="h-9 px-2 text-xs text-destructive hover:text-destructive">Delete</Button>
-        </div>
-      )}
     </div>
+  );
+
+  return (
+    <>
+      {editable ? (
+        <SwipeRow
+          actions={
+            <>
+              {canEdit && (
+                <button type="button" onClick={onEdit} className="flex items-center bg-muted px-5 text-sm font-medium text-foreground">Edit</button>
+              )}
+              <button type="button" onClick={() => setConfirm(true)} className="flex items-center bg-destructive px-5 text-sm font-medium text-white">Delete</button>
+            </>
+          }
+        >
+          {row}
+        </SwipeRow>
+      ) : (
+        row
+      )}
+
+      <Dialog open={confirm} onOpenChange={setConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete round {round.roundNumber}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This removes the round from the tournament. You can undo right after.</p>
+          <DialogFooter>
+            <Button variant="outline" className="h-11 flex-1" onClick={() => setConfirm(false)}>Cancel</Button>
+            <Button variant="destructive" className="h-11 flex-1" onClick={() => { setConfirm(false); onDelete(); }}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
