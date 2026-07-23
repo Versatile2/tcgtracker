@@ -19,10 +19,25 @@ import {
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { RoundDTO } from '@/lib/dto';
+import type { CreateRoundInput } from '@/lib/validation/round';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { TournamentShareCard } from '@/components/share/tournament-share-card';
 import { shareFilename } from '@/lib/share-image';
+
+/** Reconstruct a create payload from an existing round (for the delete → Undo action). */
+function roundToInput(r: RoundDTO): CreateRoundInput {
+  switch (r.kind) {
+    case 'swiss':
+      return { kind: 'swiss', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, result: r.result, playOrder: r.playOrder, notes: r.notes };
+    case 'top_cut':
+      return { kind: 'top_cut', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, games: r.games ?? [], notes: r.notes };
+    case 'bye':
+      return { kind: 'bye', notes: r.notes };
+    case 'no_show':
+      return { kind: 'no_show', notes: r.notes };
+  }
+}
 
 export function TournamentDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -58,10 +73,7 @@ export function TournamentDetail({ id }: { id: string }) {
     toast('Round deleted', {
       action: {
         label: 'Undo',
-        onClick: () => addRound.mutate({
-          opponentLeaderId: r.opponentLeaderId, opponentMetaId: r.opponentMetaId,
-          result: r.result, playOrder: r.playOrder, notes: r.notes,
-        }),
+        onClick: () => addRound.mutate(roundToInput(r)),
       },
     });
   }
@@ -145,7 +157,7 @@ export function TournamentDetail({ id }: { id: string }) {
 
       {editable && (
         <div className="fixed inset-x-0 bottom-[calc(1rem+3.25rem+env(safe-area-inset-bottom))] mx-auto w-[calc(100%-2rem)] max-w-xl">
-          <Button className="h-14 w-full text-base shadow-lg" onClick={() => { setEditing(undefined); setSheetOpen(true); }}>+ Add Round</Button>
+          <Button className="h-14 w-full text-base shadow-lg" onClick={() => { setEditing(undefined); setSheetOpen(true); }}>New Round</Button>
         </div>
       )}
 

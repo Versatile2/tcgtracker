@@ -15,6 +15,13 @@
       "when": 1784752664226,
       "tag": "0001_brave_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784809033527,
+      "tag": "0002_harsh_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

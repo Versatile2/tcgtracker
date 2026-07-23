@@ -37,8 +37,8 @@ describe('tournament service', () => {
   it('lists tournaments newest first with computed record', async () => {
     const { mine, opp } = await anyLeaderIds();
     const t = await createTournament(db, USER, { type: 'local', myLeaderId: mine, playedOn: '2026-07-20' });
-    await addRound(db, USER, t.id, { opponentLeaderId: opp, result: 'win' });
-    await addRound(db, USER, t.id, { opponentLeaderId: opp, result: 'loss' });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'loss' });
     const list = await listTournaments(db, USER);
     expect(list[0].record).toEqual({ wins: 1, losses: 1, draws: 0 });
   });
@@ -59,7 +59,7 @@ describe('tournament service', () => {
   it('deletes a tournament and its rounds', async () => {
     const { mine, opp } = await anyLeaderIds();
     const t = await createTournament(db, USER, { type: 'local', myLeaderId: mine, playedOn: '2026-07-20' });
-    await addRound(db, USER, t.id, { opponentLeaderId: opp, result: 'win' });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
     await deleteTournament(db, USER, t.id);
     await expect(getTournament(db, USER, t.id)).rejects.toBeInstanceOf(NotFoundError);
   });

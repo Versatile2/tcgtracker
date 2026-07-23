@@ -1,9 +1,12 @@
 export type LeaderDTO = { id: string; name: string; colors: string[]; isCustom: boolean; ownerId: string | null };
 export type MetaDTO = { id: string; name: string; code: string | null; isCustom: boolean; ownerId: string | null };
+export type RoundKind = 'swiss' | 'top_cut' | 'bye' | 'no_show';
+export type GameLog = { result: 'win' | 'loss'; playOrder: 'first' | 'second' | null };
 export type RoundDTO = {
-  id: string; tournamentId: string; roundNumber: number;
-  opponentLeaderId: string; opponentMetaId: string | null;
-  result: 'win' | 'loss' | 'draw'; playOrder: 'first' | 'second' | null; notes: string | null;
+  id: string; tournamentId: string; roundNumber: number; kind: RoundKind;
+  opponentLeaderId: string | null; opponentMetaId: string | null;
+  result: 'win' | 'loss' | 'draw'; playOrder: 'first' | 'second' | null;
+  games: GameLog[] | null; notes: string | null;
 };
 export type RecordDTO = { wins: number; losses: number; draws: number };
 export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing';

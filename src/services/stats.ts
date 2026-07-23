@@ -34,7 +34,8 @@ async function aggregateByMeta(db: DB, ownerId: string) {
     .from(rounds)
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
     .leftJoin(metas, eq(tournaments.metaId, metas.id))
-    .where(eq(tournaments.ownerId, ownerId))
+    // Byes / no-shows count in the raw record but not in win-rate / per-meta skill stats.
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.kind} not in ('bye', 'no_show')`))
     .groupBy(tournaments.metaId, metas.name);
   return rows.map((r) => {
     const wins = num(r.wins), losses = num(r.losses), draws = num(r.draws);
@@ -122,7 +123,7 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
   // Overall per opponent leader (all rounds)
   const leaderRows = await db
     .select({
-      leaderId: rounds.opponentLeaderId,
+      leaderId: sql<string>`${rounds.opponentLeaderId}`,
       name: leaders.name,
       wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
       losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,
@@ -137,7 +138,7 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
   // Per opponent leader x meta (only rounds with an opponent meta set)
   const metaRows = await db
     .select({
-      leaderId: rounds.opponentLeaderId,
+      leaderId: sql<string>`${rounds.opponentLeaderId}`,
       metaId: rounds.opponentMetaId,
       metaName: metas.name,
       wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
@@ -193,7 +194,7 @@ export async function getMatchupStats(db: DB, ownerId: string, leaderId: string)
   // Opponents
   const oppRows = await db
     .select({
-      leaderId: rounds.opponentLeaderId,
+      leaderId: sql<string>`${rounds.opponentLeaderId}`,
       name: leaders.name,
       wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
       losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,

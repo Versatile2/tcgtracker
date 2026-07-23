@@ -63,6 +63,17 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(o.bestMeta?.name).toBe('OP02 Paramount War');
   });
 
+  it('excludes bye / no_show rounds from win-rate stats', async () => {
+    const t = await makeTournament('OP02 Paramount War', 'Roronoa Zoro', [['Nami', 'win'], ['Sanji', 'loss']]);
+    // A bye and a no-show: opponent-less auto-wins that must NOT inflate win-rate.
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 3, kind: 'bye', opponentLeaderId: null, result: 'win', playOrder: null, notes: null });
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 4, kind: 'no_show', opponentLeaderId: null, result: 'win', playOrder: null, notes: null });
+    const o = await getOverallStats(db, USER);
+    expect(o.wins).toBe(1);
+    expect(o.losses).toBe(1);
+    expect(o.winRate).toBeCloseTo(0.5, 5); // 1 win / 2 real games, byes ignored
+  });
+
   it('returns null best-meta / most-played and zeros with no data', async () => {
     const o = await getOverallStats(db, USER);
     expect(o).toMatchObject({ totalTournaments: 0, wins: 0, losses: 0, draws: 0, winRate: 0, drawRate: 0, bestMeta: null, mostPlayedLeader: null });

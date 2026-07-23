@@ -56,17 +56,30 @@ describe('validation', () => {
   it('requires uuids on a round', () => {
     expect(() =>
       createRoundSchema.parse({
+        kind: 'swiss',
         opponentLeaderId: 'y',
         result: 'win',
       })
     ).toThrow();
   });
 
-  it('accepts an optional opponentMetaId on a round', () => {
-    const base = { opponentLeaderId: '00000000-0000-0000-0000-000000000000', result: 'win' as const };
-    expect(createRoundSchema.parse(base).opponentMetaId).toBeUndefined();
+  it('accepts an optional opponentMetaId on a swiss round', () => {
+    const base = { kind: 'swiss' as const, opponentLeaderId: '00000000-0000-0000-0000-000000000000', result: 'win' as const };
+    const parsed = createRoundSchema.parse(base);
+    expect(parsed.kind === 'swiss' && parsed.opponentMetaId).toBeUndefined();
     const withMeta = createRoundSchema.parse({ ...base, opponentMetaId: '00000000-0000-0000-0000-000000000000' });
-    expect(withMeta.opponentMetaId).toBe('00000000-0000-0000-0000-000000000000');
+    expect(withMeta.kind === 'swiss' && withMeta.opponentMetaId).toBe('00000000-0000-0000-0000-000000000000');
+  });
+
+  it('rejects an incomplete Top Cut game log and accepts a valid one', () => {
+    const opp = '00000000-0000-0000-0000-000000000000';
+    expect(() => createRoundSchema.parse({ kind: 'top_cut', opponentLeaderId: opp, games: [{ result: 'win' }] })).toThrow();
+    expect(() => createRoundSchema.parse({ kind: 'top_cut', opponentLeaderId: opp, games: [{ result: 'win' }, { result: 'win' }] })).not.toThrow();
+  });
+
+  it('accepts BYE / No Show without an opponent', () => {
+    expect(createRoundSchema.parse({ kind: 'bye' }).kind).toBe('bye');
+    expect(createRoundSchema.parse({ kind: 'no_show' }).kind).toBe('no_show');
   });
 
   it('defaults custom leader colors to empty array', () => {

@@ -17,7 +17,7 @@ describe('round routes', () => {
     const leaders = await listLeaders(db, 'user_rd');
     const t = await createTournament(db, 'user_rd', { type: 'local', myLeaderId: leaders[0].id, playedOn: '2026-07-20' });
     const { POST } = await import('../tournaments/[id]/rounds/route');
-    const body = JSON.stringify({ opponentLeaderId: leaders[1].id, result: 'win' });
+    const body = JSON.stringify({ kind: 'swiss', opponentLeaderId: leaders[1].id, result: 'win' });
 
     const res = await POST(new Request('http://test', { method: 'POST', body }), { params: Promise.resolve({ id: t.id }) });
     expect(res.status).toBe(201);

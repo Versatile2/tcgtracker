@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { formatRecord, computeRecord } from '@/lib/record';
-import { tournamentTypeLabel } from '@/lib/labels';
+import { tournamentTypeLabel, roundKindLabel } from '@/lib/labels';
 import type { TournamentDetailDTO } from '@/lib/dto';
 import { Watermark } from './watermark';
 
@@ -34,7 +34,7 @@ export function TournamentShareCard({
           <div key={r.id} className="flex items-center gap-2 text-sm">
             <span className="w-5 text-muted-foreground">{r.roundNumber}</span>
             <Badge className={chip[r.result]}>{r.result[0].toUpperCase()}</Badge>
-            <span className="truncate">{leaderName(r.opponentLeaderId)}</span>
+            <span className="truncate">{r.opponentLeaderId ? leaderName(r.opponentLeaderId) : roundKindLabel(r.kind)}</span>
           </div>
         ))}
         {tournament.rounds.length === 0 && <p className="text-sm text-muted-foreground">No rounds logged</p>}

@@ -4,9 +4,49 @@ import * as schema from '../db/schema';
 import { tournaments, rounds } from '../db/schema';
 import { NotFoundError, ConflictError } from '../lib/errors';
 import type { CreateRoundInput, UpdateRoundInput } from '../lib/validation/round';
+import { matchResultFromGames } from '../lib/validation/round';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Round = typeof rounds.$inferSelect;
+
+/** Normalize a validated round payload into the column values for its kind. */
+function valuesForKind(input: CreateRoundInput) {
+  switch (input.kind) {
+    case 'swiss':
+      return {
+        kind: 'swiss' as const,
+        opponentLeaderId: input.opponentLeaderId,
+        opponentMetaId: input.opponentMetaId ?? null,
+        result: input.result,
+        playOrder: input.playOrder ?? null,
+        games: null,
+        notes: input.notes ?? null,
+      };
+    case 'top_cut': {
+      const games = input.games.map((g) => ({ result: g.result, playOrder: g.playOrder ?? null }));
+      return {
+        kind: 'top_cut' as const,
+        opponentLeaderId: input.opponentLeaderId,
+        opponentMetaId: input.opponentMetaId ?? null,
+        result: matchResultFromGames(games),
+        playOrder: null,
+        games,
+        notes: input.notes ?? null,
+      };
+    }
+    case 'bye':
+    case 'no_show':
+      return {
+        kind: input.kind,
+        opponentLeaderId: null,
+        opponentMetaId: null,
+        result: 'win' as const,
+        playOrder: null,
+        games: null,
+        notes: input.notes ?? null,
+      };
+  }
+}
 
 async function requireEditableTournament(db: DB, ownerId: string, tournamentId: string) {
   const [t] = await db.select().from(tournaments)
@@ -35,24 +75,19 @@ export async function addRound(db: DB, ownerId: string, tournamentId: string, in
   const [row] = await db.insert(rounds).values({
     tournamentId,
     roundNumber: Number(max) + 1,
-    opponentLeaderId: input.opponentLeaderId,
-    opponentMetaId: input.opponentMetaId ?? null,
-    result: input.result,
-    playOrder: input.playOrder ?? null,
-    notes: input.notes ?? null,
+    ...valuesForKind(input),
   }).returning();
   return row;
 }
 
 export async function updateRound(db: DB, ownerId: string, roundId: string, input: UpdateRoundInput): Promise<Round> {
   await requireOwnedRound(db, ownerId, roundId);
-  const patch: Partial<typeof rounds.$inferInsert> = { updatedAt: new Date() };
-  if (input.opponentLeaderId !== undefined) patch.opponentLeaderId = input.opponentLeaderId;
-  if (input.opponentMetaId !== undefined) patch.opponentMetaId = input.opponentMetaId;
-  if (input.result !== undefined) patch.result = input.result;
-  if (input.playOrder !== undefined) patch.playOrder = input.playOrder;
-  if (input.notes !== undefined) patch.notes = input.notes;
-  const [row] = await db.update(rounds).set(patch).where(eq(rounds.id, roundId)).returning();
+  // The form resubmits a complete payload, so an edit fully replaces the round's
+  // fields for its kind (keeping tournamentId / roundNumber).
+  const [row] = await db.update(rounds)
+    .set({ ...valuesForKind(input), updatedAt: new Date() })
+    .where(eq(rounds.id, roundId))
+    .returning();
   return row;
 }
 
