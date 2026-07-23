@@ -1,9 +1,11 @@
 'use client';
 import { useState } from 'react';
+import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { SwipeRow } from '@/components/ui/swipe-row';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { roundKindLabel } from '@/lib/labels';
 import type { RoundDTO, LeaderDTO } from '@/lib/dto';
@@ -32,6 +34,7 @@ export function RoundItem({
   editable: boolean;
 }) {
   const [confirm, setConfirm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const opponent = round.opponentLeaderId ? resolveLeader(round.opponentLeaderId) : undefined;
   const hasOpponent = round.opponentLeaderId !== null;
   const canEdit = editable && hasOpponent; // bye / no_show are delete-only
@@ -60,6 +63,28 @@ export function RoundItem({
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
       </div>
       {hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} size="md" />}
+
+      {editable && (
+        // Overflow menu for pointer/mouse devices; touch users get the swipe actions instead.
+        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <PopoverTrigger
+            render={
+              <button type="button" aria-label="Round actions"
+                className="hidden size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [@media(pointer:fine)]:flex">
+                <MoreHorizontal className="size-5" />
+              </button>
+            }
+          />
+          <PopoverContent align="end" className="w-36 p-1">
+            {canEdit && (
+              <button type="button" onClick={() => { setMenuOpen(false); onEdit(); }}
+                className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-muted">Edit</button>
+            )}
+            <button type="button" onClick={() => { setMenuOpen(false); setConfirm(true); }}
+              className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10">Delete</button>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 
