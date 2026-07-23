@@ -188,7 +188,7 @@ export function TournamentDetail({ id }: { id: string }) {
         title="Share tournament"
         filename={shareFilename('tournament', t.name ?? tournamentTypeLabel(t.type))}
       >
-        <TournamentShareCard tournament={t} leaderName={leaderName} />
+        <TournamentShareCard tournament={t} leaders={leaders ?? []} metas={metas ?? []} />
       </ShareDialog>
     </main>
     </>
