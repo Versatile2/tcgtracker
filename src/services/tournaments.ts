@@ -9,7 +9,8 @@ import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/valida
 type DB = NodePgDatabase<typeof schema>;
 export type Tournament = typeof tournaments.$inferSelect;
 export type Round = typeof rounds.$inferSelect;
-export type TournamentSummary = Tournament & { record: ReturnType<typeof computeRecord>; opponentLeaderIds: string[] };
+type MatchSummary = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: Round['kind'] };
+export type TournamentSummary = Tournament & { record: ReturnType<typeof computeRecord>; matches: MatchSummary[] };
 
 const owned = (id: string, ownerId: string) =>
   and(eq(tournaments.id, id), eq(tournaments.ownerId, ownerId));
@@ -44,12 +45,9 @@ export async function listTournaments(db: DB, ownerId: string): Promise<Tourname
     byTournament.set(r.tournamentId, list);
   }
   return ts.map((t) => {
-    const rs = byTournament.get(t.id) ?? [];
-    const opponentLeaderIds: string[] = [];
-    for (const r of rs) {
-      if (r.opponentLeaderId && !opponentLeaderIds.includes(r.opponentLeaderId)) opponentLeaderIds.push(r.opponentLeaderId);
-    }
-    return { ...t, record: computeRecord(rs), opponentLeaderIds };
+    const rs = (byTournament.get(t.id) ?? []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
+    const matches: MatchSummary[] = rs.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind }));
+    return { ...t, record: computeRecord(rs), matches };
   });
 }
 

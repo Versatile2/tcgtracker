@@ -7,8 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { cn } from '@/lib/utils';
 import { formatRecord } from '@/lib/record';
-import { tournamentTypeLabel } from '@/lib/labels';
+import { tournamentTypeLabel, roundKindLabel } from '@/lib/labels';
 import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
+
+const resultPill: Record<'win' | 'loss' | 'draw', { label: string; className: string }> = {
+  win: { label: 'Win', className: 'bg-emerald-600 text-white' },
+  loss: { label: 'Lose', className: 'bg-red-600 text-white' },
+  draw: { label: 'Draw', className: 'bg-yellow-500 text-black' },
+};
 
 export function TournamentCard({
   t,
@@ -22,7 +28,6 @@ export function TournamentCard({
   const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);
   const isDraft = t.status === 'draft';
-  const opponents = t.opponentLeaderIds.map(resolveLeader).filter((l): l is LeaderDTO => Boolean(l));
 
   return (
     <Card className="[--card-spacing:0px]">
@@ -64,20 +69,23 @@ export function TournamentCard({
       </div>
 
       {open && (
-        <div className="flex items-start justify-between gap-3 border-t border-border/60 px-3 py-3">
-          <span className="mt-1 shrink-0 text-xs font-medium text-muted-foreground">Opponents</span>
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-            {opponents.length === 0 ? (
-              <span className="text-sm text-muted-foreground">No rounds yet</span>
-            ) : (
-              opponents.map((o) => (
-                <span key={o.id} className="flex items-center gap-1.5 rounded-full border border-border/60 py-1 pl-1 pr-2.5">
-                  <LeaderAvatar name={o.name} colors={o.colors} size="sm" />
-                  <span className="max-w-[7rem] truncate text-xs font-medium">{o.name}</span>
-                </span>
-              ))
-            )}
-          </div>
+        <div className="space-y-1.5 border-t border-border/60 px-3 py-3">
+          {t.matches.length === 0 ? (
+            <span className="text-sm text-muted-foreground">No rounds yet</span>
+          ) : (
+            t.matches.map((m, i) => {
+              const opp = m.opponentLeaderId ? resolveLeader(m.opponentLeaderId) : undefined;
+              const label = opp?.name ?? roundKindLabel(m.kind);
+              const pill = resultPill[m.result];
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <LeaderAvatar name={label} colors={opp?.colors} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
+                  <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', pill.className)}>{pill.label}</span>
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </Card>
