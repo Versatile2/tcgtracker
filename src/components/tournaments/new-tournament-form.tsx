@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NavBar } from '@/components/nav/nav-bar';
+import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { ReferenceCombobox } from './reference-combobox';
 import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useCreateTournament } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
@@ -62,6 +63,7 @@ export function NewTournamentForm() {
         <label htmlFor="nt-leader" className="text-sm font-medium">Leader</label>
         <ReferenceCombobox
           id="nt-leader"
+          getIcon={(lid) => { const l = leaders?.find((x) => x.id === lid); return l ? <LeaderAvatar name={l.name} colors={l.colors} size="sm" /> : null; }}
           options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
           onAddCustom={async (n) => { const l = await addLeader.mutateAsync({ name: n, colors: [] }); return { id: l.id, name: l.name }; }}
           placeholder="Choose your leader" />

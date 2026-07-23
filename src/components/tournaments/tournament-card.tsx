@@ -2,24 +2,28 @@ import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { cn } from '@/lib/utils';
 import { formatRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
-import type { TournamentSummaryDTO } from '@/lib/dto';
+import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
 
 export function TournamentCard({
   t,
-  leaderName,
+  resolveLeader,
 }: {
   t: TournamentSummaryDTO;
-  leaderName: (id: string) => string;
+  resolveLeader: (id: string) => LeaderDTO | undefined;
 }) {
+  const leader = resolveLeader(t.myLeaderId);
+  const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);
   const isDraft = t.status === 'draft';
 
   return (
     <Link href={`/tournaments/${t.id}`} className="block">
-      <Card className="flex items-center gap-4 p-4 transition-transform active:scale-[0.99]">
+      <Card className="flex items-center gap-3 p-3 transition-transform active:scale-[0.99]">
+        <LeaderAvatar name={leaderName} colors={leader?.colors} size="md" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
@@ -32,9 +36,9 @@ export function TournamentCard({
               <Lock className="size-3.5 text-muted-foreground" aria-label="Locked" />
             )}
           </div>
-          {hasName && <p className="mt-1.5 truncate font-semibold">{t.name}</p>}
-          <p className={cn('truncate text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1.5')}>
-            <span className="text-foreground">{leaderName(t.myLeaderId)}</span>
+          {hasName && <p className="mt-1 truncate font-semibold">{t.name}</p>}
+          <p className={cn('truncate text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
+            <span className="text-foreground">{leaderName}</span>
             <span> · {t.playedOn}</span>
           </p>
         </div>

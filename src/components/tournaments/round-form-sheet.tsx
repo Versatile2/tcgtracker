@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { ReferenceCombobox } from './reference-combobox';
 import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta } from '@/components/query-hooks';
 import type { RoundDTO } from '@/lib/dto';
@@ -73,7 +74,9 @@ function RoundFormBody({
       <div className="space-y-4 px-4 pb-4">
         <div className="space-y-2">
           <label htmlFor="rf-oppleader" className="text-sm font-medium">Opponent deck</label>
-          <ReferenceCombobox id="rf-oppleader" options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} placeholder="Opponent's leader" />
+          <ReferenceCombobox id="rf-oppleader"
+            getIcon={(lid) => { const l = leaders?.find((x) => x.id === lid); return l ? <LeaderAvatar name={l.name} colors={l.colors} size="sm" /> : null; }}
+            options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} placeholder="Opponent's leader" />
         </div>
         <div className="space-y-2">
           <label htmlFor="rf-oppmeta" className="text-sm font-medium">Opponent meta (optional)</label>
