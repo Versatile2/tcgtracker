@@ -81,6 +81,13 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Glassmorphism (Apple-style frosted surfaces) */
+  --glass-bg: color-mix(in oklab, var(--card) 60%, transparent);
+  --glass-bar: color-mix(in oklab, var(--background) 62%, transparent);
+  --glass-border: color-mix(in oklab, white 65%, transparent);
+  --glass-highlight: color-mix(in oklab, white 80%, transparent);
+  --glass-shadow: 0 10px 34px -12px oklch(0 0 0 / 0.22);
 }
 
 .dark {
@@ -115,6 +122,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Glassmorphism — dark: lighter translucent panels over the dark backdrop */
+  --glass-bg: color-mix(in oklab, var(--card) 52%, transparent);
+  --glass-bar: color-mix(in oklab, var(--background) 55%, transparent);
+  --glass-border: color-mix(in oklab, white 14%, transparent);
+  --glass-highlight: color-mix(in oklab, white 22%, transparent);
+  --glass-shadow: 0 10px 34px -12px oklch(0 0 0 / 0.6);
 }
 
 @layer base {
@@ -123,9 +137,55 @@
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
   }
   html {
     @apply font-sans;
+  }
+  /* Ambient accent-tinted backdrop — gives the frosted glass something vivid
+     to blur. Fixed so it stays put while content scrolls. Tinted with the
+     active accent (--primary) so it tracks the theme. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      radial-gradient(58% 44% at 12% -4%, color-mix(in oklab, var(--primary) 26%, transparent), transparent 72%),
+      radial-gradient(52% 40% at 104% 14%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 70%),
+      radial-gradient(60% 50% at 50% 116%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 72%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .glass-surface,
+  .glass-bar {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+}
+
+/* Frosted glass panel (cards, sheets, dialogs). */
+.glass-surface {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-highlight);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-surface {
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
+  }
+}
+
+/* Frosted glass bar (fixed/sticky navigation chrome). */
+.glass-bar {
+  background-color: var(--glass-bar);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-bar {
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    backdrop-filter: blur(26px) saturate(180%);
   }
 }
 

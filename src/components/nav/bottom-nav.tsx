@@ -25,7 +25,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/75 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      className="glass-bar fixed inset-x-0 bottom-0 z-40 border-t border-border/60 pb-[env(safe-area-inset-bottom)]"
     >
       <div className="mx-auto flex h-[3.25rem] max-w-xl items-stretch">
         {left.map((t) => <TabLink key={t.href} tab={t} active={t.match(pathname)} />)}

@@ -19,7 +19,7 @@ export function NavBar({
 }) {
   const router = useRouter();
   return (
-    <header className="sticky top-0 z-30 border-b border-border/60 bg-background/75 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
+    <header className="glass-bar sticky top-0 z-30 border-b border-border/60 pt-[env(safe-area-inset-top)]">
       <div className="mx-auto grid h-11 max-w-xl grid-cols-[1fr_auto_1fr] items-center px-1">
         <button
           type="button"

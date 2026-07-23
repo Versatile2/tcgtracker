@@ -41,7 +41,7 @@ export function LargeTitleScreen({
         className={cn(
           'sticky top-0 z-30 border-b pt-[env(safe-area-inset-top)] transition-colors duration-200',
           collapsed
-            ? 'border-border/60 bg-background/75 backdrop-blur-xl'
+            ? 'glass-bar border-border/60'
             : 'border-transparent',
         )}
       >
