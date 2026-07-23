@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NavBar } from '@/components/nav/nav-bar';
 import { ReferenceCombobox } from './reference-combobox';
 import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useCreateTournament } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
@@ -42,8 +43,10 @@ export function NewTournamentForm() {
   }
 
   return (
-    <main className="mx-auto max-w-xl space-y-5 p-4">
-      <h1 className="text-2xl font-bold">New Tournament</h1>
+    <>
+    <NavBar backLabel="Back" onBack={() => router.back()} />
+    <main className="mx-auto max-w-xl space-y-5 p-4 pb-6">
+      <h1 className="text-3xl font-bold tracking-tight">New Tournament</h1>
 
       <div className="space-y-2">
         <label className="text-sm font-medium">Type</label>
@@ -85,5 +88,6 @@ export function NewTournamentForm() {
         {create.isPending ? 'Creating…' : 'Create & Start Logging'}
       </Button>
     </main>
+    </>
   );
 }

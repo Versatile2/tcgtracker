@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
+import { NavBar } from '@/components/nav/nav-bar';
 import { RoundFormSheet } from './round-form-sheet';
 import { RoundItem } from './round-item';
 import { ReferenceCombobox } from './reference-combobox';
@@ -41,8 +42,10 @@ export function TournamentDetail({ id }: { id: string }) {
   const [editing, setEditing] = useState<RoundDTO | undefined>();
   const [shareOpen, setShareOpen] = useState(false);
 
-  if (isLoading) return <main className="mx-auto max-w-xl p-4"><Skeleton className="h-24 w-full" /></main>;
-  if (isError || !t) return <main className="mx-auto max-w-xl p-4"><p className="text-destructive">Couldn&apos;t load this tournament.</p></main>;
+  const backToList = () => router.push('/');
+
+  if (isLoading) return <><NavBar backLabel="Tournaments" onBack={backToList} /><main className="mx-auto max-w-xl p-4"><Skeleton className="h-24 w-full" /></main></>;
+  if (isError || !t) return <><NavBar backLabel="Tournaments" onBack={backToList} /><main className="mx-auto max-w-xl p-4"><p className="text-destructive">Couldn&apos;t load this tournament.</p></main></>;
 
   const editable = t.status === 'draft';
   const leaderName = (lid: string) => leaders?.find((l) => l.id === lid)?.name ?? '—';
@@ -64,8 +67,9 @@ export function TournamentDetail({ id }: { id: string }) {
   }
 
   return (
+    <>
+    <NavBar backLabel="Tournaments" onBack={backToList} />
     <main className="mx-auto max-w-xl p-4 pb-28">
-      <button onClick={() => router.push('/')} className="mb-2 text-sm text-muted-foreground">← All tournaments</button>
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -140,7 +144,7 @@ export function TournamentDetail({ id }: { id: string }) {
       </div>
 
       {editable && (
-        <div className="fixed inset-x-0 bottom-4 mx-auto w-[calc(100%-2rem)] max-w-xl">
+        <div className="fixed inset-x-0 bottom-[calc(1rem+3.25rem+env(safe-area-inset-bottom))] mx-auto w-[calc(100%-2rem)] max-w-xl">
           <Button className="h-14 w-full text-base shadow-lg" onClick={() => { setEditing(undefined); setSheetOpen(true); }}>+ Add Round</Button>
         </div>
       )}
@@ -166,5 +170,6 @@ export function TournamentDetail({ id }: { id: string }) {
         <TournamentShareCard tournament={t} leaderName={leaderName} />
       </ShareDialog>
     </main>
+    </>
   );
 }

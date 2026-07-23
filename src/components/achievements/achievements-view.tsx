@@ -1,7 +1,7 @@
 'use client';
-import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { LargeTitleScreen } from '@/components/nav/large-title-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAchievements } from '@/components/query-hooks';
 import { AchievementCard } from './achievement-card';
@@ -32,21 +32,19 @@ export function AchievementsView() {
   }, [data]);
 
   return (
-    <main className="mx-auto max-w-xl space-y-4 p-4 pb-16">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Achievements</h1>
-        <Link href="/" className="text-sm text-muted-foreground">← Home</Link>
+    <LargeTitleScreen title="Achievements">
+      <div className="mt-4 space-y-4">
+        {isLoading && <div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)}</div>}
+        {isError && <p className="text-destructive">Couldn’t load achievements.</p>}
+        {data && (
+          <>
+            <p className="text-sm text-muted-foreground">{data.unlockedCount} of {data.total} unlocked</p>
+            <div className="grid grid-cols-2 gap-3">
+              {data.achievements.map((a) => <AchievementCard key={a.key} a={a} />)}
+            </div>
+          </>
+        )}
       </div>
-      {isLoading && <div className="grid grid-cols-2 gap-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)}</div>}
-      {isError && <p className="text-destructive">Couldn’t load achievements.</p>}
-      {data && (
-        <>
-          <p className="text-sm text-muted-foreground">{data.unlockedCount} of {data.total} unlocked</p>
-          <div className="grid grid-cols-2 gap-3">
-            {data.achievements.map((a) => <AchievementCard key={a.key} a={a} />)}
-          </div>
-        </>
-      )}
-    </main>
+    </LargeTitleScreen>
   );
 }

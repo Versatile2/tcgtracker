@@ -5,6 +5,7 @@ import { Providers } from './providers';
 import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 import { OfflineBadge } from '@/components/offline-badge';
+import { BottomNav } from '@/components/nav/bottom-nav';
 import './globals.css';
 
 const geistSans = Geist({
@@ -27,6 +28,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#4f46e5',
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -43,7 +45,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }}
           />
           <Providers>
-            {children}
+            <div className="pb-[calc(3.25rem+env(safe-area-inset-bottom))]">{children}</div>
+            <BottomNav />
             <Toaster />
           </Providers>
           <ServiceWorkerRegister />

@@ -1,8 +1,6 @@
 'use client';
-import Link from 'next/link';
-import { Plus, Settings } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { LargeTitleScreen } from '@/components/nav/large-title-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTournaments } from '@/components/query-hooks';
 import { TournamentCard } from './tournament-card';
@@ -16,16 +14,7 @@ export function TournamentList() {
   const [filter, setFilter] = useState<TournamentType | 'all'>('all');
 
   return (
-    <main className="mx-auto max-w-xl p-4 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Grand Line TCG</h1>
-        <div className="flex items-center gap-3">
-          <Link href="/achievements" className="text-sm font-medium text-muted-foreground">Achievements</Link>
-          <Link href="/stats" className="text-sm font-medium text-muted-foreground">Stats →</Link>
-          <Link href="/settings" aria-label="Settings" className="text-muted-foreground"><Settings className="h-5 w-5" /></Link>
-        </div>
-      </div>
-
+    <LargeTitleScreen title="Grand Line TCG">
       <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
         <button onClick={() => setFilter('all')}
           className={`rounded-full px-3 py-1 text-sm ${filter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>All</button>
@@ -49,10 +38,6 @@ export function TournamentList() {
           </div>
         )}
       </div>
-
-      <Link href="/tournaments/new" className="fixed inset-x-0 bottom-4 mx-auto w-[calc(100%-2rem)] max-w-xl">
-        <Button className="h-14 w-full text-base shadow-lg"><Plus className="mr-2 h-5 w-5" /> Add Tournament</Button>
-      </Link>
-    </main>
+    </LargeTitleScreen>
   );
 }
