@@ -14,6 +14,7 @@ export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_gra
 export type TournamentSummaryDTO = {
   id: string; type: TournamentType; myLeaderId: string; metaId: string | null; name: string | null;
   playedOn: string; status: 'draft' | 'locked'; record: RecordDTO;
+  opponentLeaderIds: string[];
 };
 export type TournamentDetailDTO = Omit<TournamentSummaryDTO, 'record'> & { rounds: RoundDTO[] };
 

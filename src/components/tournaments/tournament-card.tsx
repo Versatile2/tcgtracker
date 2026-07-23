@@ -19,6 +19,7 @@ export function TournamentCard({
   const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);
   const isDraft = t.status === 'draft';
+  const opponents = t.opponentLeaderIds.map(resolveLeader).filter((l): l is LeaderDTO => Boolean(l));
 
   return (
     <Link href={`/tournaments/${t.id}`} className="block">
@@ -42,11 +43,20 @@ export function TournamentCard({
             <span> · {t.playedOn}</span>
           </p>
         </div>
-        <div className="shrink-0 text-right leading-none">
+        <div className="flex shrink-0 flex-col items-end gap-1.5 text-right leading-none">
           <div className="text-2xl font-bold tabular-nums">{formatRecord(t.record)}</div>
-          <div className="mt-1.5 text-[0.625rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            {t.record.draws > 0 ? 'W–L–D' : 'W–L'}
-          </div>
+          {opponents.length > 0 && (
+            <div className="flex items-center -space-x-1.5" aria-label="Opponents faced">
+              {opponents.slice(0, 4).map((o) => (
+                <LeaderAvatar key={o.id} name={o.name} colors={o.colors} size="sm" className="ring-2 ring-card" />
+              ))}
+              {opponents.length > 4 && (
+                <span className="flex size-6 items-center justify-center rounded-md bg-muted text-[0.625rem] font-semibold text-muted-foreground ring-2 ring-card">
+                  +{opponents.length - 4}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </Card>
     </Link>

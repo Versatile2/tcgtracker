@@ -1,8 +1,9 @@
 'use client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { roundKindLabel } from '@/lib/labels';
-import type { RoundDTO } from '@/lib/dto';
+import type { RoundDTO, LeaderDTO } from '@/lib/dto';
 
 const resultStyle: Record<RoundDTO['result'], string> = {
   win: 'bg-green-600 text-white',
@@ -17,44 +18,51 @@ function gameScore(games: RoundDTO['games']): string | null {
 }
 
 export function RoundItem({
-  round, leaderName, metaName, onEdit, onDelete, editable,
+  round, myLeader, resolveLeader, metaName, onEdit, onDelete, editable,
 }: {
   round: RoundDTO;
-  leaderName: (id: string) => string;
+  myLeader?: { name: string; colors: string[] };
+  resolveLeader: (id: string) => LeaderDTO | undefined;
   metaName: (id: string) => string;
   onEdit: () => void;
   onDelete: () => void;
   editable: boolean;
 }) {
+  const opponent = round.opponentLeaderId ? resolveLeader(round.opponentLeaderId) : undefined;
   const hasOpponent = round.opponentLeaderId !== null;
   const canEdit = editable && hasOpponent; // bye / no_show are delete-only
   const score = gameScore(round.games);
 
   return (
     <div className="flex items-center gap-3 rounded-lg border p-3">
-      <div className="w-6 text-center text-sm text-muted-foreground">{round.roundNumber}</div>
-      <Badge className={resultStyle[round.result]}>{round.result[0].toUpperCase()}</Badge>
+      <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} size="md" />
+
       <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <Badge className={resultStyle[round.result]}>{round.result[0].toUpperCase()}</Badge>
+          <span className="text-xs text-muted-foreground">Round {round.roundNumber}</span>
+          {round.kind === 'top_cut' && score && <span className="text-xs font-medium">Top Cut · {score}</span>}
+        </div>
         {hasOpponent ? (
-          <p className="truncate text-sm">
-            vs <span className="text-foreground">{leaderName(round.opponentLeaderId!)}</span>
+          <p className="mt-0.5 truncate text-sm">
+            vs <span className="text-foreground">{opponent?.name ?? '—'}</span>
             {round.opponentMetaId && <span className="text-muted-foreground"> · {metaName(round.opponentMetaId)}</span>}
           </p>
         ) : (
-          <p className="truncate text-sm font-medium">{roundKindLabel(round.kind)}</p>
-        )}
-        {round.kind === 'top_cut' && score && (
-          <p className="text-xs text-muted-foreground">Top Cut · {score}</p>
+          <p className="mt-0.5 truncate text-sm font-medium">{roundKindLabel(round.kind)}</p>
         )}
         {round.kind === 'swiss' && round.playOrder && (
           <p className="text-xs text-muted-foreground">Went {round.playOrder === 'first' ? '1st' : '2nd'}</p>
         )}
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
       </div>
+
+      {hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} size="md" />}
+
       {editable && (
-        <div className="flex shrink-0 gap-1">
-          {canEdit && <Button variant="ghost" onClick={onEdit} className="h-11 px-3 text-muted-foreground">Edit</Button>}
-          <Button variant="ghost" onClick={onDelete} className="h-11 px-3 text-destructive hover:text-destructive">Delete</Button>
+        <div className="flex shrink-0 flex-col gap-1">
+          {canEdit && <Button variant="ghost" onClick={onEdit} className="h-9 px-2 text-xs text-muted-foreground">Edit</Button>}
+          <Button variant="ghost" onClick={onDelete} className="h-9 px-2 text-xs text-destructive hover:text-destructive">Delete</Button>
         </div>
       )}
     </div>

@@ -117,7 +117,10 @@ export function TournamentDetail({ id }: { id: string }) {
       <div className="mt-5 space-y-2">
         {t.rounds.length === 0 && <p className="text-sm text-muted-foreground">No rounds yet.</p>}
         {t.rounds.map((r) => (
-          <RoundItem key={r.id} round={r} leaderName={leaderName} metaName={metaName} editable={editable}
+          <RoundItem key={r.id} round={r}
+            myLeader={myLeader ? { name: myLeader.name, colors: myLeader.colors } : undefined}
+            resolveLeader={(id) => leaders?.find((l) => l.id === id)}
+            metaName={metaName} editable={editable}
             onEdit={() => { setEditing(r); setSheetOpen(true); }}
             onDelete={() => handleDeleteRound(r)} />
         ))}

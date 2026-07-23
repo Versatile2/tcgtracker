@@ -9,7 +9,7 @@ import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/valida
 type DB = NodePgDatabase<typeof schema>;
 export type Tournament = typeof tournaments.$inferSelect;
 export type Round = typeof rounds.$inferSelect;
-export type TournamentSummary = Tournament & { record: ReturnType<typeof computeRecord> };
+export type TournamentSummary = Tournament & { record: ReturnType<typeof computeRecord>; opponentLeaderIds: string[] };
 
 const owned = (id: string, ownerId: string) =>
   and(eq(tournaments.id, id), eq(tournaments.ownerId, ownerId));
@@ -43,7 +43,14 @@ export async function listTournaments(db: DB, ownerId: string): Promise<Tourname
     list.push(r);
     byTournament.set(r.tournamentId, list);
   }
-  return ts.map((t) => ({ ...t, record: computeRecord(byTournament.get(t.id) ?? []) }));
+  return ts.map((t) => {
+    const rs = byTournament.get(t.id) ?? [];
+    const opponentLeaderIds: string[] = [];
+    for (const r of rs) {
+      if (r.opponentLeaderId && !opponentLeaderIds.includes(r.opponentLeaderId)) opponentLeaderIds.push(r.opponentLeaderId);
+    }
+    return { ...t, record: computeRecord(rs), opponentLeaderIds };
+  });
 }
 
 export async function getTournament(db: DB, ownerId: string, id: string): Promise<Tournament & { rounds: Round[] }> {
