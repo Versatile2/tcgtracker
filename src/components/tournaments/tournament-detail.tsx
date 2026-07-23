@@ -12,6 +12,7 @@ import { NavBar } from '@/components/nav/nav-bar';
 import { RoundFormSheet } from './round-form-sheet';
 import { RoundItem } from './round-item';
 import { ReferenceCombobox } from './reference-combobox';
+import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import {
   useTournament, useLeaders, useMetas, useUpdateTournament, useAddRound, useUpdateRound, useDeleteRound,
   useFinishTournament, useReopenTournament, useDeleteTournament,
@@ -66,6 +67,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const leaderName = (lid: string) => leaders?.find((l) => l.id === lid)?.name ?? '—';
   const metaName = (mid: string) => metas?.find((m) => m.id === mid)?.name ?? '';
   const record = computeRecord(t.rounds);
+  const myLeader = leaders?.find((l) => l.id === t.myLeaderId);
 
   async function handleDeleteRound(r: RoundDTO) {
     if (!online) { toast.error("You're offline — reconnect to save"); return; }
@@ -82,8 +84,10 @@ export function TournamentDetail({ id }: { id: string }) {
     <>
     <NavBar backLabel="Tournaments" onBack={backToList} />
     <main className="mx-auto max-w-xl p-4 pb-28">
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <LeaderAvatar name={myLeader?.name ?? leaderName(t.myLeaderId)} colors={myLeader?.colors} size="lg" />
+          <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
             <Badge variant={editable ? 'outline' : 'default'}>{editable ? 'Draft' : 'Locked'}</Badge>
@@ -102,8 +106,9 @@ export function TournamentDetail({ id }: { id: string }) {
               <p className="text-sm">Leader: <span className="font-medium">{leaderName(t.myLeaderId)}</span></p>
             )}
           </div>
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="text-3xl font-bold tabular-nums">{formatRecord(record)}</div>
           <Button variant="outline" onClick={() => setShareOpen(true)} className="h-11 px-4">Share</Button>
         </div>
