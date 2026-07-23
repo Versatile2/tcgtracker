@@ -21,7 +21,7 @@ export function StatsView() {
       title="Statistics"
       action={
         data && data.overall.totalTournaments > 0 ? (
-          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>Share</Button>
+          <Button variant="outline" onClick={() => setShareOpen(true)} className="h-11 px-4">Share</Button>
         ) : undefined
       }
     >

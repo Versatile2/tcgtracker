@@ -46,14 +46,18 @@ export function LargeTitleScreen({
         )}
       >
         <div className="mx-auto flex h-11 max-w-xl items-center justify-between gap-2 px-4">
-          <h2
+          {/* Visual echo of the page's <h1> that fades in once the large title
+              scrolls under the bar. aria-hidden so screen readers don't announce
+              the title twice. */}
+          <span
+            aria-hidden
             className={cn(
               'min-w-0 flex-1 truncate text-center text-[0.9375rem] font-semibold transition-opacity duration-200',
               collapsed ? 'opacity-100' : 'opacity-0',
             )}
           >
             {title}
-          </h2>
+          </span>
           {action ? (
             <div className="absolute right-4 shrink-0">{action}</div>
           ) : null}

@@ -24,7 +24,7 @@ export function NavBar({
         <button
           type="button"
           onClick={onBack ?? (() => router.back())}
-          className="-ml-1 flex items-center gap-0.5 justify-self-start rounded-md px-1 py-1 text-primary transition-opacity active:opacity-60"
+          className="-ml-2 flex h-11 items-center gap-0.5 justify-self-start rounded-md pl-2 pr-3 text-primary transition-opacity outline-none focus-visible:ring-2 focus-visible:ring-ring active:opacity-60"
         >
           <ChevronLeft className="size-6" aria-hidden />
           <span className="text-[0.9375rem]">{backLabel}</span>

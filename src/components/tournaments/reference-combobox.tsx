@@ -9,8 +9,9 @@ import { cn } from '@/lib/utils';
 type Option = { id: string; name: string };
 
 export function ReferenceCombobox({
-  options, value, onChange, onAddCustom, placeholder, disabled,
+  id, options, value, onChange, onAddCustom, placeholder, disabled,
 }: {
+  id?: string;
   options: Option[];
   value: string | null;
   onChange: (id: string) => void;
@@ -36,9 +37,11 @@ export function ReferenceCombobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button type="button" variant="outline" disabled={disabled}
+          <Button id={id} type="button" variant="outline" disabled={disabled}
             className="w-full justify-between h-12 text-base">
-            {selected ? selected.name : <span className="text-muted-foreground">{placeholder}</span>}
+            <span className={cn('truncate', !selected && 'text-muted-foreground')}>
+              {selected ? selected.name : placeholder}
+            </span>
           </Button>
         }
       />

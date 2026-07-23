@@ -34,7 +34,7 @@ export function BottomNav() {
           <Link
             href="/tournaments/new"
             aria-label="Add tournament"
-            className="flex size-11 -translate-y-1.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
+            className="flex size-11 -translate-y-1.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95"
           >
             <Plus className="size-6" strokeWidth={2.5} />
           </Link>
@@ -53,7 +53,7 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
       href={tab.href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'flex flex-1 flex-col items-center justify-center gap-1 text-[0.625rem] font-medium leading-none transition-colors',
+        'flex flex-1 flex-col items-center justify-center gap-1 text-[0.625rem] font-medium leading-none transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         active ? 'text-primary' : 'text-muted-foreground',
       )}
     >

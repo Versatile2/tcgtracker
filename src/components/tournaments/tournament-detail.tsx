@@ -93,7 +93,7 @@ export function TournamentDetail({ id }: { id: string }) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="text-3xl font-bold tabular-nums">{formatRecord(record)}</div>
-          <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>Share</Button>
+          <Button variant="outline" onClick={() => setShareOpen(true)} className="h-11 px-4">Share</Button>
         </div>
       </div>
 

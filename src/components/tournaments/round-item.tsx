@@ -1,5 +1,6 @@
 'use client';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { RoundDTO } from '@/lib/dto';
 
 const resultStyle: Record<RoundDTO['result'], string> = {
@@ -31,9 +32,9 @@ export function RoundItem({
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
       </div>
       {editable && (
-        <div className="flex gap-1">
-          <button onClick={onEdit} className="px-2 py-1 text-xs text-muted-foreground">Edit</button>
-          <button onClick={onDelete} className="px-2 py-1 text-xs text-destructive">Delete</button>
+        <div className="flex shrink-0 gap-1">
+          <Button variant="ghost" onClick={onEdit} className="h-11 px-3 text-muted-foreground">Edit</Button>
+          <Button variant="ghost" onClick={onDelete} className="h-11 px-3 text-destructive hover:text-destructive">Delete</Button>
         </div>
       )}
     </div>

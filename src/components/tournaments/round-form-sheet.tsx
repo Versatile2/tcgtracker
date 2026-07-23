@@ -72,34 +72,35 @@ function RoundFormBody({
       <SheetHeader><SheetTitle>{initial ? 'Edit Round' : 'Add Round'}</SheetTitle></SheetHeader>
       <div className="space-y-4 px-4 pb-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Opponent deck</label>
-          <ReferenceCombobox options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} placeholder="Opponent's leader" />
+          <label htmlFor="rf-oppleader" className="text-sm font-medium">Opponent deck</label>
+          <ReferenceCombobox id="rf-oppleader" options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} placeholder="Opponent's leader" />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Opponent meta (optional)</label>
+          <label htmlFor="rf-oppmeta" className="text-sm font-medium">Opponent meta (optional)</label>
           <ReferenceCombobox
+            id="rf-oppmeta"
             options={metas ?? []} value={oppMetaId} onChange={setOppMetaId}
             onAddCustom={async (n) => { const m = await addMeta.mutateAsync({ name: n }); return { id: m.id, name: m.name }; }}
             placeholder="e.g. OP16" />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Result</label>
-          <div className="grid grid-cols-3 gap-2">
+          <span id="rf-result-label" className="block text-sm font-medium">Result</span>
+          <div role="group" aria-labelledby="rf-result-label" className="grid grid-cols-3 gap-2">
             {(['win', 'loss', 'draw'] as Result[]).map((r) => (
-              <Button key={r} type="button" variant={result === r ? 'default' : 'outline'} className="h-12 capitalize" onClick={() => setResult(r)}>{r}</Button>
+              <Button key={r} type="button" aria-pressed={result === r} variant={result === r ? 'default' : 'outline'} className="h-12 capitalize" onClick={() => setResult(r)}>{r}</Button>
             ))}
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Play order</label>
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant={playOrder === 'first' ? 'default' : 'outline'} className="h-12" onClick={() => setPlayOrder(playOrder === 'first' ? null : 'first')}>Went 1st</Button>
-            <Button type="button" variant={playOrder === 'second' ? 'default' : 'outline'} className="h-12" onClick={() => setPlayOrder(playOrder === 'second' ? null : 'second')}>Went 2nd</Button>
+          <span id="rf-playorder-label" className="block text-sm font-medium">Play order</span>
+          <div role="group" aria-labelledby="rf-playorder-label" className="grid grid-cols-2 gap-2">
+            <Button type="button" aria-pressed={playOrder === 'first'} variant={playOrder === 'first' ? 'default' : 'outline'} className="h-12" onClick={() => setPlayOrder(playOrder === 'first' ? null : 'first')}>Went 1st</Button>
+            <Button type="button" aria-pressed={playOrder === 'second'} variant={playOrder === 'second' ? 'default' : 'outline'} className="h-12" onClick={() => setPlayOrder(playOrder === 'second' ? null : 'second')}>Went 2nd</Button>
           </div>
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium">Notes (optional)</label>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Opening hand, key turns…" />
+          <label htmlFor="rf-notes" className="text-sm font-medium">Notes (optional)</label>
+          <Textarea id="rf-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Opening hand, key turns…" />
         </div>
         <Button onClick={save} disabled={!valid || saving} className="h-14 w-full text-base">{saving ? 'Saving…' : 'Save Round'}</Button>
       </div>
