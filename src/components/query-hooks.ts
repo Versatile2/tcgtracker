@@ -1,88 +1,19 @@
 'use client';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
+import { keys } from '@/lib/query-keys';
+import { roundFieldsFromInput } from '@/lib/round-values';
+import * as cache from '@/lib/outbox/optimistic';
+import { useOutbox } from '@/lib/outbox/use-outbox';
+import type { RoundDTO, TournamentDetailDTO } from '@/lib/dto';
 import type { CreateRoundInput, UpdateRoundInput } from '@/lib/validation/round';
 import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validation/tournament';
-
-const keys = {
-  tournaments: ['tournaments'] as const,
-  tournament: (id: string) => ['tournament', id] as const,
-  leaders: ['leaders'] as const,
-  metas: ['metas'] as const,
-  stats: ['stats'] as const,
-  matchups: (leaderId: string) => ['matchups', leaderId] as const,
-  achievements: ['achievements'] as const,
-};
 
 export const useTournaments = () => useQuery({ queryKey: keys.tournaments, queryFn: apiClient.listTournaments });
 export const useTournament = (id: string) => useQuery({ queryKey: keys.tournament(id), queryFn: () => apiClient.getTournament(id) });
 export const useLeaders = () => useQuery({ queryKey: keys.leaders, queryFn: apiClient.listLeaders });
 export const useMetas = () => useQuery({ queryKey: keys.metas, queryFn: apiClient.listMetas });
-
-export function useCreateTournament() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (b: CreateTournamentInput) => apiClient.createTournament(b),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.tournaments }),
-  });
-}
-export function useUpdateTournament(id: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (b: UpdateTournamentInput) => apiClient.updateTournament(id, b),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.tournament(id) }); qc.invalidateQueries({ queryKey: keys.tournaments }); },
-  });
-}
-export function useDeleteTournament() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => apiClient.deleteTournament(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.tournaments }),
-  });
-}
-export function useFinishTournament(id: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => apiClient.finishTournament(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.tournament(id) }); qc.invalidateQueries({ queryKey: keys.tournaments }); },
-  });
-}
-export function useReopenTournament(id: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => apiClient.reopenTournament(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.tournament(id) }); qc.invalidateQueries({ queryKey: keys.tournaments }); },
-  });
-}
-export function useAddRound(tournamentId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (b: CreateRoundInput) => apiClient.addRound(tournamentId, b),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.tournament(tournamentId) }); qc.invalidateQueries({ queryKey: keys.tournaments }); },
-  });
-}
-export function useUpdateRound(tournamentId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: UpdateRoundInput }) => apiClient.updateRound(id, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.tournament(tournamentId) }); qc.invalidateQueries({ queryKey: keys.tournaments }); },
-  });
-}
-export function useDeleteRound(tournamentId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => apiClient.deleteRound(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: keys.tournament(tournamentId) }); qc.invalidateQueries({ queryKey: keys.tournaments }); },
-  });
-}
-export function useAddCustomLeader() {
-  const qc = useQueryClient();
-  return useMutation({ mutationFn: apiClient.addLeader, onSuccess: () => qc.invalidateQueries({ queryKey: keys.leaders }) });
-}
-export function useAddCustomMeta() {
-  const qc = useQueryClient();
-  return useMutation({ mutationFn: apiClient.addMeta, onSuccess: () => qc.invalidateQueries({ queryKey: keys.metas }) });
-}
 
 export const useStats = () => useQuery({ queryKey: keys.stats, queryFn: apiClient.getStats });
 export const useMatchups = (leaderId: string | null) =>
@@ -92,3 +23,126 @@ export const useMatchups = (leaderId: string | null) =>
     enabled: !!leaderId,
   });
 export const useAchievements = () => useQuery({ queryKey: keys.achievements, queryFn: apiClient.getAchievements });
+
+/*
+ * Writes go through the outbox — always, not only when offline. A single path
+ * means the offline code runs on every write instead of rotting until the one
+ * day it is needed, and logging never waits on a round trip.
+ */
+
+export function useTournamentWrites() {
+  const qc = useQueryClient();
+  const { push } = useOutbox();
+
+  /** Returns the new tournament's id, which the client picks so it is known at once. */
+  const create = useCallback(
+    (input: CreateTournamentInput): string => {
+      const id = input.id ?? crypto.randomUUID();
+      const detail: TournamentDetailDTO = {
+        id,
+        type: input.type,
+        myLeaderId: input.myLeaderId,
+        metaId: input.metaId ?? null,
+        name: input.name ?? null,
+        playedOn: input.playedOn,
+        status: 'draft',
+        matches: [],
+        rounds: [],
+      };
+      cache.addTournament(qc, detail);
+      push({ kind: 'tournament.create', tournamentId: id, payload: { ...input, id } });
+      return id;
+    },
+    [qc, push]
+  );
+
+  const update = useCallback(
+    (id: string, patch: UpdateTournamentInput) => {
+      cache.patchTournament(qc, id, patch as Partial<TournamentDetailDTO>);
+      push({ kind: 'tournament.update', tournamentId: id, payload: patch });
+    },
+    [qc, push]
+  );
+
+  const remove = useCallback(
+    (id: string) => {
+      cache.dropTournament(qc, id);
+      push({ kind: 'tournament.delete', tournamentId: id });
+    },
+    [qc, push]
+  );
+
+  const setStatus = useCallback(
+    (id: string, status: 'draft' | 'locked') => {
+      cache.patchTournament(qc, id, { status });
+      push({ kind: status === 'locked' ? 'tournament.finish' : 'tournament.reopen', tournamentId: id });
+    },
+    [qc, push]
+  );
+
+  return useMemo(
+    () => ({
+      create,
+      update,
+      remove,
+      finish: (id: string) => setStatus(id, 'locked'),
+      reopen: (id: string) => setStatus(id, 'draft'),
+    }),
+    [create, update, remove, setStatus]
+  );
+}
+
+export function useRoundWrites(tournamentId: string) {
+  const qc = useQueryClient();
+  const { push } = useOutbox();
+
+  /** Returns the new round's id. */
+  const add = useCallback(
+    (input: CreateRoundInput): string => {
+      const id = input.id ?? crypto.randomUUID();
+      const round: RoundDTO = {
+        id,
+        tournamentId,
+        roundNumber: cache.nextRoundNumber(qc, tournamentId),
+        ...roundFieldsFromInput(input),
+      };
+      cache.addRound(qc, tournamentId, round);
+      push({ kind: 'round.create', tournamentId, roundId: id, payload: { ...input, id } });
+      return id;
+    },
+    [qc, push, tournamentId]
+  );
+
+  const update = useCallback(
+    (roundId: string, input: UpdateRoundInput) => {
+      cache.patchRound(qc, tournamentId, roundId, roundFieldsFromInput(input));
+      push({ kind: 'round.update', tournamentId, roundId, payload: input });
+    },
+    [qc, push, tournamentId]
+  );
+
+  const remove = useCallback(
+    (roundId: string) => {
+      cache.dropRound(qc, tournamentId, roundId);
+      push({ kind: 'round.delete', tournamentId, roundId });
+    },
+    [qc, push, tournamentId]
+  );
+
+  return useMemo(() => ({ add, update, remove }), [add, update, remove]);
+}
+
+/*
+ * Custom leaders and metas stay online-only. A round takes a foreign key on the
+ * leader id, and the server enforces a uniqueness rule on the name, so a queued
+ * custom leader that collided at replay time would strand every round pointing
+ * at it. The seeded OP01–OP16 list covers venue logging; see the slice 3b spec.
+ */
+export function useAddCustomLeader() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: apiClient.addLeader, onSuccess: () => qc.invalidateQueries({ queryKey: keys.leaders }) });
+}
+export function useAddCustomMeta() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: apiClient.addMeta, onSuccess: () => qc.invalidateQueries({ queryKey: keys.metas }) });
+}

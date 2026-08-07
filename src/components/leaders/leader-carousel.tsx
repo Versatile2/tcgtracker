@@ -19,7 +19,8 @@ export function LeaderCarousel({
   options: Option[];
   value: string | null;
   onChange: (id: string) => void;
-  onAddCustom?: (name: string) => Promise<{ id: string; name: string }>;
+  /** Resolves to null when the leader could not be created (e.g. offline). */
+  onAddCustom?: (name: string) => Promise<{ id: string; name: string } | null>;
   disabled?: boolean;
 }) {
   const [search, setSearch] = useState('');
@@ -30,6 +31,7 @@ export function LeaderCarousel({
   async function add() {
     if (!onAddCustom) return;
     const created = await onAddCustom(search.trim());
+    if (!created) return;
     onChange(created.id);
     setSearch('');
   }

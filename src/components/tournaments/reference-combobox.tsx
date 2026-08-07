@@ -15,7 +15,8 @@ export function ReferenceCombobox({
   options: Option[];
   value: string | null;
   onChange: (id: string) => void;
-  onAddCustom: (name: string) => Promise<Option>;
+  /** Resolves to null when the option could not be created (e.g. offline). */
+  onAddCustom: (name: string) => Promise<Option | null>;
   placeholder: string;
   disabled?: boolean;
   getIcon?: (id: string) => ReactNode;
@@ -26,6 +27,7 @@ export function ReferenceCombobox({
 
   async function handleAdd() {
     const created = await onAddCustom(search.trim());
+    if (!created) return;
     onChange(created.id);
     setSearch('');
     setOpen(false);

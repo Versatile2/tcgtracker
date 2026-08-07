@@ -4,50 +4,10 @@ import * as schema from '../db/schema';
 import { tournaments, rounds } from '../db/schema';
 import { NotFoundError, ConflictError } from '../lib/errors';
 import type { CreateRoundInput, UpdateRoundInput } from '../lib/validation/round';
-import { matchResultFromGames } from '../lib/validation/round';
+import { roundFieldsFromInput as valuesForKind } from '../lib/round-values';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Round = typeof rounds.$inferSelect;
-
-/** Normalize a validated round payload into the column values for its kind. */
-function valuesForKind(input: CreateRoundInput) {
-  switch (input.kind) {
-    case 'swiss':
-      return {
-        kind: 'swiss' as const,
-        opponentLeaderId: input.opponentLeaderId,
-        opponentMetaId: input.opponentMetaId ?? null,
-        result: input.result,
-        playOrder: input.playOrder ?? null,
-        wonDieRoll: input.wonDieRoll ?? null,
-        games: null,
-        notes: input.notes ?? null,
-      };
-    case 'top_cut': {
-      const games = input.games.map((g) => ({ result: g.result, playOrder: g.playOrder ?? null }));
-      return {
-        kind: 'top_cut' as const,
-        opponentLeaderId: input.opponentLeaderId,
-        opponentMetaId: input.opponentMetaId ?? null,
-        result: matchResultFromGames(games),
-        playOrder: null,
-        games,
-        notes: input.notes ?? null,
-      };
-    }
-    case 'bye':
-    case 'no_show':
-      return {
-        kind: input.kind,
-        opponentLeaderId: null,
-        opponentMetaId: null,
-        result: 'win' as const,
-        playOrder: null,
-        games: null,
-        notes: input.notes ?? null,
-      };
-  }
-}
 
 async function requireEditableTournament(db: DB, ownerId: string, tournamentId: string) {
   const [t] = await db.select().from(tournaments)

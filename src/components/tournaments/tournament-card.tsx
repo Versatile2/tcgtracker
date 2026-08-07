@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Lock, ChevronDown } from 'lucide-react';
+import { Lock, ChevronDown, CloudOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
@@ -19,9 +19,12 @@ const resultPill: Record<'win' | 'loss' | 'draw', { label: string; className: st
 export function TournamentCard({
   t,
   resolveLeader,
+  unsynced = false,
 }: {
   t: TournamentSummaryDTO;
   resolveLeader: (id: string) => LeaderDTO | undefined;
+  /** Has changes still waiting in the offline queue. */
+  unsynced?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const leader = resolveLeader(t.myLeaderId);
@@ -48,6 +51,7 @@ export function TournamentCard({
               ) : (
                 <Lock className="size-3.5 text-muted-foreground" aria-label="Locked" />
               )}
+              {unsynced && <CloudOff className="size-3.5 text-muted-foreground" aria-label="Not synced yet" />}
             </div>
             {hasName && <p className="mt-1 truncate font-semibold">{t.name}</p>}
             <p className={cn('truncate text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>

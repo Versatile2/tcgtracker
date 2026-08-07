@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, CloudOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
@@ -23,7 +23,7 @@ function gameScore(games: RoundDTO['games']): string | null {
 }
 
 export function RoundItem({
-  round, myLeader, resolveLeader, metaName, onEdit, onDelete, editable,
+  round, myLeader, resolveLeader, metaName, onEdit, onDelete, editable, unsynced = false,
 }: {
   round: RoundDTO;
   myLeader?: { name: string; colors: string[] };
@@ -32,6 +32,8 @@ export function RoundItem({
   onEdit: () => void;
   onDelete: () => void;
   editable: boolean;
+  /** Logged on this device but not yet delivered to the server. */
+  unsynced?: boolean;
 }) {
   const [confirm, setConfirm] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,6 +50,9 @@ export function RoundItem({
           <Badge className={resultStyle[round.result]}>{round.result[0].toUpperCase()}</Badge>
           <span className="text-xs text-muted-foreground">Round {round.roundNumber}</span>
           {round.kind === 'top_cut' && score && <span className="text-xs font-medium">Top Cut · {score}</span>}
+          {unsynced && (
+            <CloudOff aria-label="Not synced yet" className="size-3.5 shrink-0 text-muted-foreground" />
+          )}
         </div>
         {hasOpponent ? (
           <p className="mt-0.5 truncate text-sm">

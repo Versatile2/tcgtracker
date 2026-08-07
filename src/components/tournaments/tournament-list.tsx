@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { LargeTitleScreen } from '@/components/nav/large-title-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTournaments, useLeaders } from '@/components/query-hooks';
+import { useOutbox, pendingTournamentIds } from '@/lib/outbox/use-outbox';
 import { TournamentCard } from './tournament-card';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatRecord } from '@/lib/record';
@@ -14,6 +15,8 @@ export function TournamentList() {
   const { data, isLoading, isError } = useTournaments();
   const { data: leaders } = useLeaders();
   const [filter, setFilter] = useState<TournamentType | 'all'>('all');
+  const { entries } = useOutbox();
+  const unsynced = pendingTournamentIds(entries);
 
   const resolveLeader = (id: string) => leaders?.find((l) => l.id === id);
 
@@ -45,7 +48,9 @@ export function TournamentList() {
       <div className="mt-4 flex flex-col gap-3">
         {isLoading && [0, 1, 2].map((i) => <Skeleton key={i} className="h-[84px] w-full rounded-2xl" />)}
         {isError && <p className="text-destructive">Couldn’t load tournaments. Pull to retry.</p>}
-        {data && shown.map((t) => <TournamentCard key={t.id} t={t} resolveLeader={resolveLeader} />)}
+        {data && shown.map((t) => (
+          <TournamentCard key={t.id} t={t} resolveLeader={resolveLeader} unsynced={unsynced.has(t.id)} />
+        ))}
         {data && data.length > 0 && shown.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
             No {tournamentTypeLabel(filter as TournamentType)} tournaments yet.

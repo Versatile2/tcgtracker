@@ -14,14 +14,13 @@ import { RoundItem } from './round-item';
 import { ReferenceCombobox } from './reference-combobox';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import {
-  useTournament, useLeaders, useMetas, useUpdateTournament, useAddRound, useUpdateRound, useDeleteRound,
-  useFinishTournament, useReopenTournament, useDeleteTournament,
+  useTournament, useLeaders, useMetas, useTournamentWrites, useRoundWrites,
 } from '@/components/query-hooks';
+import { useOutbox, pendingRoundIds } from '@/lib/outbox/use-outbox';
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { RoundDTO } from '@/lib/dto';
 import type { CreateRoundInput } from '@/lib/validation/round';
-import { useOnlineStatus } from '@/lib/use-online-status';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { TournamentShareCard } from '@/components/share/tournament-share-card';
 import { shareFilename } from '@/lib/share-image';
@@ -45,14 +44,10 @@ export function TournamentDetail({ id }: { id: string }) {
   const { data: t, isLoading, isError } = useTournament(id);
   const { data: leaders } = useLeaders();
   const { data: metas } = useMetas();
-  const updateTournament = useUpdateTournament(id);
-  const addRound = useAddRound(id);
-  const updateRound = useUpdateRound(id);
-  const deleteRound = useDeleteRound(id);
-  const finish = useFinishTournament(id);
-  const reopen = useReopenTournament(id);
-  const removeTournament = useDeleteTournament();
-  const online = useOnlineStatus();
+  const tournamentWrites = useTournamentWrites();
+  const roundWrites = useRoundWrites(id);
+  const { entries } = useOutbox();
+  const unsyncedRounds = pendingRoundIds(entries);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RoundDTO | undefined>();
@@ -69,13 +64,14 @@ export function TournamentDetail({ id }: { id: string }) {
   const record = computeRecord(t.rounds);
   const myLeader = leaders?.find((l) => l.id === t.myLeaderId);
 
-  async function handleDeleteRound(r: RoundDTO) {
-    if (!online) { toast.error("You're offline — reconnect to save"); return; }
-    await deleteRound.mutateAsync(r.id);
+  function handleDeleteRound(r: RoundDTO) {
+    roundWrites.remove(r.id);
     toast('Round deleted', {
       action: {
+        // Re-adding under the original id lets the outbox cancel the queued
+        // delete outright when neither has been sent yet.
         label: 'Undo',
-        onClick: () => addRound.mutate(roundToInput(r)),
+        onClick: () => roundWrites.add({ ...roundToInput(r), id: r.id }),
       },
     });
   }
@@ -99,7 +95,7 @@ export function TournamentDetail({ id }: { id: string }) {
               <ReferenceCombobox
                 options={leaders ?? []}
                 value={t.myLeaderId}
-                onChange={(lid) => { if (lid && lid !== t.myLeaderId) updateTournament.mutate({ myLeaderId: lid }); }}
+                onChange={(lid) => { if (lid && lid !== t.myLeaderId) tournamentWrites.update(id, { myLeaderId: lid }); }}
                 onAddCustom={async () => ({ id: t.myLeaderId, name: leaderName(t.myLeaderId) })}
                 placeholder="Leader" />
             ) : (
@@ -121,6 +117,7 @@ export function TournamentDetail({ id }: { id: string }) {
             myLeader={myLeader ? { name: myLeader.name, colors: myLeader.colors } : undefined}
             resolveLeader={(id) => leaders?.find((l) => l.id === id)}
             metaName={metaName} editable={editable}
+            unsynced={unsyncedRounds.has(r.id)}
             onEdit={() => { setEditing(r); setSheetOpen(true); }}
             onDelete={() => handleDeleteRound(r)} />
         ))}
@@ -134,18 +131,12 @@ export function TournamentDetail({ id }: { id: string }) {
               <DialogHeader><DialogTitle>Finish tournament?</DialogTitle></DialogHeader>
               <p className="text-sm text-muted-foreground">This locks the tournament. You can reopen it later to make changes.</p>
               <DialogFooter>
-                <Button onClick={() => {
-                  if (!online) { toast.error("You're offline — reconnect to save"); return; }
-                  finish.mutate();
-                }}>Finish & Lock</Button>
+                <Button onClick={() => tournamentWrites.finish(id)}>Finish &amp; Lock</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         ) : (
-          <Button variant="outline" className="h-12 flex-1" onClick={() => {
-            if (!online) { toast.error("You're offline — reconnect to save"); return; }
-            reopen.mutate();
-          }}>Reopen</Button>
+          <Button variant="outline" className="h-12 flex-1" onClick={() => tournamentWrites.reopen(id)}>Reopen</Button>
         )}
         <Dialog>
           <DialogTrigger render={<Button variant="destructive" className="h-12">Delete</Button>} />
@@ -153,9 +144,8 @@ export function TournamentDetail({ id }: { id: string }) {
             <DialogHeader><DialogTitle>Delete tournament?</DialogTitle></DialogHeader>
             <p className="text-sm text-muted-foreground">This permanently removes the tournament and all its rounds.</p>
             <DialogFooter>
-              <Button variant="destructive" onClick={async () => {
-                if (!online) { toast.error("You're offline — reconnect to save"); return; }
-                await removeTournament.mutateAsync(t.id);
+              <Button variant="destructive" onClick={() => {
+                tournamentWrites.remove(id);
                 router.push('/');
               }}>Delete</Button>
             </DialogFooter>
@@ -172,14 +162,8 @@ export function TournamentDetail({ id }: { id: string }) {
       <RoundFormSheet open={sheetOpen} onOpenChange={setSheetOpen} initial={editing}
         onDelete={editing ? () => handleDeleteRound(editing) : undefined}
         onSubmit={async (data) => {
-          if (!online) { toast.error("You're offline — reconnect to save"); return; }
-          try {
-            if (editing) await updateRound.mutateAsync({ id: editing.id, body: data });
-            else await addRound.mutateAsync(data);
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : 'Could not save round');
-            throw e;
-          }
+          if (editing) roundWrites.update(editing.id, data);
+          else roundWrites.add(data);
         }} />
 
       <ShareDialog

@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/sonner';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
-import { OfflineBadge } from '@/components/offline-badge';
+import { SyncStatus } from '@/components/sync-status';
 import { BottomNav } from '@/components/nav/bottom-nav';
 import './globals.css';
 
@@ -48,9 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="pb-[calc(3.25rem+env(safe-area-inset-bottom))]">{children}</div>
             <BottomNav />
             <Toaster />
+            {/* Inside Providers: it reads the query client to drain the outbox. */}
+            <SyncStatus />
           </Providers>
           <ServiceWorkerRegister />
-          <OfflineBadge />
         </body>
       </html>
     </ClerkProvider>

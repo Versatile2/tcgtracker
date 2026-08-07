@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NavBar } from '@/components/nav/nav-bar';
 import { LeaderCarousel } from '@/components/leaders/leader-carousel';
 import { ReferenceCombobox } from './reference-combobox';
-import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useCreateTournament } from '@/components/query-hooks';
+import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useTournamentWrites } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
 import type { TournamentType } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
@@ -21,7 +21,7 @@ export function NewTournamentForm() {
   const addLeader = useAddCustomLeader();
   const { data: metas } = useMetas();
   const addMeta = useAddCustomMeta();
-  const create = useCreateTournament();
+  const tournaments = useTournamentWrites();
   const online = useOnlineStatus();
 
   const [type, setType] = useState<TournamentType>('local');
@@ -30,17 +30,14 @@ export function NewTournamentForm() {
   const [name, setName] = useState('');
   const [playedOn, setPlayedOn] = useState(() => new Date().toISOString().slice(0, 10));
 
-  async function submit() {
-    if (!online) { toast.error("You're offline — reconnect to save"); return; }
+  function submit() {
     if (!myLeaderId) { toast.error('Choose your leader first'); return; }
-    try {
-      const t = await create.mutateAsync({
-        type, myLeaderId, metaId: metaId ?? undefined, name: name.trim() || undefined, playedOn,
-      });
-      router.push(`/tournaments/${t.id}`);
-    } catch {
-      toast.error('Could not create tournament');
-    }
+    // The id is generated here, so logging can start immediately whether or not
+    // the venue has signal — the outbox delivers the tournament when it can.
+    const id = tournaments.create({
+      type, myLeaderId, metaId: metaId ?? undefined, name: name.trim() || undefined, playedOn,
+    });
+    router.push(`/tournaments/${id}`);
   }
 
   return (
@@ -63,7 +60,11 @@ export function NewTournamentForm() {
         <span className="text-sm font-medium">Leader</span>
         <LeaderCarousel
           options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
-          onAddCustom={async (n) => { const l = await addLeader.mutateAsync({ name: n, colors: [] }); return { id: l.id, name: l.name }; }} />
+          onAddCustom={async (n) => {
+            if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
+            const l = await addLeader.mutateAsync({ name: n, colors: [] });
+            return { id: l.id, name: l.name };
+          }} />
       </div>
 
       <div className="space-y-2">
@@ -71,7 +72,11 @@ export function NewTournamentForm() {
         <ReferenceCombobox
           id="nt-meta"
           options={metas ?? []} value={metaId} onChange={setMetaId}
-          onAddCustom={async (n) => { const m = await addMeta.mutateAsync({ name: n }); return { id: m.id, name: m.name }; }}
+          onAddCustom={async (n) => {
+            if (!online) { toast.error('Adding a meta needs a connection — pick one from the list for now'); return null; }
+            const m = await addMeta.mutateAsync({ name: n });
+            return { id: m.id, name: m.name };
+          }}
           placeholder="e.g. OP16" />
       </div>
 
@@ -85,8 +90,8 @@ export function NewTournamentForm() {
         <Input id="nt-date" type="date" value={playedOn} onChange={(e) => setPlayedOn(e.target.value)} className="h-12 text-base" />
       </div>
 
-      <Button onClick={submit} disabled={create.isPending || !myLeaderId} className="h-14 w-full text-base">
-        {create.isPending ? 'Creating…' : 'Create & Start Logging'}
+      <Button onClick={submit} disabled={!myLeaderId} className="h-14 w-full text-base">
+        Create &amp; Start Logging
       </Button>
     </main>
     </>
