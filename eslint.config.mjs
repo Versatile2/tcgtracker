@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent/plugin tooling checked out into the repo — not app source, and its
+    // bundled JS drowns real findings (277 of 279 problems before this).
+    ".claude/**",
+    ".agents/**",
+    ".codex/**",
   ]),
 ]);
 

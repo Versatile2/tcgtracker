@@ -36,6 +36,7 @@ export function leaderInitial(name: string): string {
  * the color-tinted initial. Later: drop files in public/leaders/ and map them
  * here (keyed by leader name, which is stable across DB reseeds — ids are not).
  */
-export function getLeaderImage(_name: string): string | null {
+export function getLeaderImage(name: string): string | null {
+  void name;
   return null;
 }
