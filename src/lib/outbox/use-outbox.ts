@@ -35,7 +35,6 @@ const getServerPhase = (): SyncPhase => 'idle';
 // One drain at a time, process-wide: every screen mounts the hook, and parallel
 // drains would race on the same queue.
 let draining = false;
-let drainAgain = false;
 
 /**
  * Remove the entries this drain settled while preserving anything the user
@@ -51,10 +50,9 @@ function reconcile(attempted: OutboxEntry[], remaining: OutboxEntry[]): OutboxEn
 }
 
 export async function runFlush(qc: QueryClient): Promise<void> {
-  if (draining) {
-    drainAgain = true;
-    return;
-  }
+  // A re-entrant call is a no-op: the running drain re-reads the queue each
+  // pass, so anything enqueued meanwhile is picked up before it finishes.
+  if (draining) return;
   if (!isOnline() || readOutbox().length === 0) return;
 
   draining = true;
@@ -63,8 +61,9 @@ export async function runFlush(qc: QueryClient): Promise<void> {
   const failures: string[] = [];
 
   try {
-    do {
-      drainAgain = false;
+    // Keep going until the queue is empty or something is stuck — a player
+    // logs the next match while the previous one is still uploading.
+    for (;;) {
       const attempted = readOutbox();
       if (attempted.length === 0) break;
       const result = await flushOutbox(attempted, executeOp);
@@ -72,7 +71,7 @@ export async function runFlush(qc: QueryClient): Promise<void> {
       sentTotal += result.sent;
       failures.push(...result.failed.map((f) => f.message));
       if (result.remaining.length > 0) break; // stuck on a retryable failure
-    } while (drainAgain);
+    }
   } finally {
     draining = false;
   }
