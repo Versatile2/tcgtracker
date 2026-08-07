@@ -20,6 +20,25 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Reference data (leaders & metas)
+
+The leader catalog (132 real printings) and the OP01–OP16 meta list are generated
+from [optcgapi.com](https://optcgapi.com), not hand-maintained:
+
+```bash
+npm run data:leaders          # refresh seed-data.ts, leader-images.ts, public/leaders/
+npm run db:reset-reference    # DESTRUCTIVE: wipe tournaments/rounds, reseed the catalog
+```
+
+`npm run data:leaders` is a manual authoring step — the app never calls optcgapi at
+runtime. Everything it emits is committed, so card art is served from our own origin
+and keeps working offline.
+
+Leaders are keyed by **set code** (`OP01-003`), not name: names are not unique, and
+there are 15 distinct Monkey D. Luffy printings. Card images are Bandai's official
+promotional scans and carry a "SAMPLE" watermark — every public source (optcgapi,
+Limitless, Bandai's own card list) serves the same watermarked files.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

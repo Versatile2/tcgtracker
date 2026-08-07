@@ -49,7 +49,7 @@ describe('/api/metas', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
-    expect(body.some((m: { name: string }) => m.name === 'OP16')).toBe(true);
+    expect(body.some((m: { code: string }) => m.code === 'OP16')).toBe(true);
   });
 
   it('POST adds a custom meta', async () => {

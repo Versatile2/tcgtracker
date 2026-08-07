@@ -16,8 +16,11 @@ export async function listLeaders(db: DB, ownerId: string): Promise<Leader[]> {
 }
 
 export async function addCustomLeader(db: DB, ownerId: string, input: CustomLeaderInput): Promise<Leader> {
+  // Scoped to this owner's own customs: real card names are not unique (13
+  // Monkey D. Luffy printings), so matching the global catalog by name would
+  // hand back an arbitrary printing instead of creating the custom leader.
   const existing = await db.select().from(leaders)
-    .where(and(visibleTo(leaders, ownerId), sql`lower(${leaders.name}) = lower(${input.name})`))
+    .where(and(eq(leaders.ownerId, ownerId), sql`lower(${leaders.name}) = lower(${input.name})`))
     .limit(1);
   if (existing[0]) return existing[0];
   const [row] = await db.insert(leaders)

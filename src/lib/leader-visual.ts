@@ -1,6 +1,7 @@
-// Visual helpers for leader avatars. Real card art gets bundled later (see
-// getLeaderImage); until then leaders render a color-tinted initial placeholder
-// derived from their OPTCG colors.
+// Visual helpers for leader avatars. Real card art is bundled in public/leaders/
+// (see getLeaderImage); custom user-created leaders have no card art and fall
+// back to a color-tinted initial derived from their OPTCG colors.
+import { LEADER_IMAGE_CODES } from './leader-images';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
@@ -32,11 +33,13 @@ export function leaderInitial(name: string): string {
 }
 
 /**
- * Resolve a leader's bundled art. Returns null for now, so avatars fall back to
- * the color-tinted initial. Later: drop files in public/leaders/ and map them
- * here (keyed by leader name, which is stable across DB reseeds — ids are not).
+ * Resolve a leader's bundled card art, keyed by set code — names are not unique
+ * (there are 15 distinct Monkey D. Luffy printings) but set codes are, and they
+ * are stable across DB reseeds where row ids are not. Returns null for custom
+ * leaders, which have no card and fall back to the initial placeholder.
+ *
+ * Refresh the files with `npm run data:leaders`.
  */
-export function getLeaderImage(name: string): string | null {
-  void name;
-  return null;
+export function getLeaderImage(setCode: string | null | undefined): string | null {
+  return setCode && LEADER_IMAGE_CODES.has(setCode) ? `/leaders/${setCode}.webp` : null;
 }

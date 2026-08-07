@@ -1,4 +1,4 @@
-import { and, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db as defaultDb } from './client';
 import { leaders, metas } from './schema';
 import { SEED_LEADERS, SEED_METAS } from './seed-data';
@@ -8,12 +8,14 @@ type DB = typeof defaultDb;
 export async function seedReferenceData(db: DB) {
   let leaderCount = 0;
   for (const l of SEED_LEADERS) {
+    // Keyed on the set code, not the name: a leader name is not unique (there
+    // are 15 distinct Monkey D. Luffy printings), but a card's set code is.
     const existing = await db.select().from(leaders)
-      .where(and(isNull(leaders.ownerId), sql`lower(${leaders.name}) = lower(${l.name})`))
+      .where(and(isNull(leaders.ownerId), eq(leaders.setCode, l.setCode)))
       .limit(1);
     if (existing[0]) continue;
     const res = await db.insert(leaders)
-      .values({ name: l.name, colors: l.colors, isCustom: false, ownerId: null })
+      .values({ name: l.name, colors: l.colors, setCode: l.setCode, isCustom: false, ownerId: null })
       .returning();
     leaderCount += res.length;
   }

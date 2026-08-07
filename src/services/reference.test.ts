@@ -23,12 +23,20 @@ describe('reference service', () => {
     expect(list.some((l) => l.name === 'Secret Deck')).toBe(false);
   });
 
-  it('reuses an existing leader on duplicate custom-add (case-insensitive)', async () => {
-    const first = await addCustomLeader(db, USER, { name: 'roronoa zoro', colors: [] });
-    // Matches the global seed "Roronoa Zoro"
-    expect(first.ownerId).toBeNull();
+  it('reuses the user own custom leader on duplicate custom-add (case-insensitive)', async () => {
+    const first = await addCustomLeader(db, USER, { name: 'My Homebrew', colors: [] });
+    const second = await addCustomLeader(db, USER, { name: 'my homebrew', colors: [] });
+    expect(second.id).toBe(first.id);
     const list = await listLeaders(db, USER);
-    expect(list.filter((l) => l.name.toLowerCase() === 'roronoa zoro').length).toBe(1);
+    expect(list.filter((l) => l.name.toLowerCase() === 'my homebrew').length).toBe(1);
+  });
+
+  it('does not collapse a custom leader onto a real card with the same name', async () => {
+    // "Roronoa Zoro" is a real card, but it names two distinct printings — so a
+    // custom add must create the user's own row rather than pick one of them.
+    const custom = await addCustomLeader(db, USER, { name: 'roronoa zoro', colors: [] });
+    expect(custom.ownerId).toBe(USER);
+    expect(custom.isCustom).toBe(true);
   });
 
   it('adds and dedupes custom metas', async () => {
@@ -37,6 +45,6 @@ describe('reference service', () => {
     expect(b.id).toBe(a.id);
     const metas = await listMetas(db, USER);
     expect(metas.filter((m) => m.name.toLowerCase() === 'local promo pack').length).toBe(1);
-    expect(metas.some((m) => m.name === 'OP16')).toBe(true);
+    expect(metas.some((m) => m.code === 'OP16')).toBe(true);
   });
 });

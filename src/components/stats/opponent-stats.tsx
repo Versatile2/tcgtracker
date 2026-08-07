@@ -8,19 +8,24 @@ import type { OpponentLeaderStatDTO } from '@/lib/dto';
 export function OpponentStats({ rows }: { rows: OpponentLeaderStatDTO[] }) {
   const { data: leaders } = useLeaders();
   if (rows.length === 0) return null;
-  const colorsFor = (id: string) => leaders?.find((l) => l.id === id)?.colors ?? [];
+  const leaderFor = (id: string) => leaders?.find((l) => l.id === id);
 
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">By opponent</h2>
       <div className="space-y-2">
-        {rows.map((r) => (
+        {rows.map((r) => {
+          const leader = leaderFor(r.leaderId);
+          return (
           <div key={r.leaderId} className="rounded-lg border p-3">
             <div className="flex items-center gap-3">
-              <LeaderAvatar name={r.name} colors={colorsFor(r.leaderId)} size="md" />
+              <LeaderAvatar name={r.name} colors={leader?.colors} setCode={leader?.setCode} size="md" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate font-medium">{r.name}</span>
+                  <span className="truncate font-medium">
+                    {r.name}
+                    {leader?.setCode && <span className="font-normal text-muted-foreground"> {leader.setCode}</span>}
+                  </span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">
                     {formatRecord({ wins: r.wins, losses: r.losses, draws: r.draws })} · {pct(r.winRate)} · {r.games} {r.games === 1 ? 'game' : 'games'}
                   </span>
@@ -43,7 +48,8 @@ export function OpponentStats({ rows }: { rows: OpponentLeaderStatDTO[] }) {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

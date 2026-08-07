@@ -1,10 +1,12 @@
 import { cn } from '@/lib/utils';
 import { leaderBackground, leaderTextColor, leaderInitial, getLeaderImage } from '@/lib/leader-visual';
 
+// Card aspect (the source art is 600x838, ~5:7), so the whole card is visible
+// rather than cropped — the art is Bandai's SAMPLE-watermarked promotional scan.
 const SIZES = {
-  sm: 'size-6 rounded-md text-[0.7rem]',
-  md: 'size-11 rounded-[0.7rem] text-lg',
-  lg: 'size-16 rounded-2xl text-2xl',
+  sm: 'w-6 h-[2.1rem] rounded-[0.2rem] text-[0.7rem]',
+  md: 'w-11 h-[3.85rem] rounded-[0.35rem] text-lg',
+  lg: 'w-16 h-[5.6rem] rounded-lg text-2xl',
 } as const;
 
 /**
@@ -15,15 +17,17 @@ const SIZES = {
 export function LeaderAvatar({
   name,
   colors,
+  setCode,
   size = 'md',
   className,
 }: {
   name: string;
   colors?: string[];
+  setCode?: string | null;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
-  const src = getLeaderImage(name);
+  const src = getLeaderImage(setCode);
   return (
     <div
       aria-hidden

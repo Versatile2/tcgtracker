@@ -39,7 +39,7 @@ export function TournamentCard({
           href={`/tournaments/${t.id}`}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
         >
-          <LeaderAvatar name={leaderName} colors={leader?.colors} size="md" />
+          <LeaderAvatar name={leaderName} colors={leader?.colors} setCode={leader?.setCode} size="md" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
@@ -56,6 +56,7 @@ export function TournamentCard({
             {hasName && <p className="mt-1 truncate font-semibold">{t.name}</p>}
             <p className={cn('truncate text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
               <span className="text-foreground">{leaderName}</span>
+              {leader?.setCode && <span> {leader.setCode}</span>}
               <span> · {t.playedOn}</span>
             </p>
           </div>
@@ -83,8 +84,11 @@ export function TournamentCard({
               const pill = resultPill[m.result];
               return (
                 <div key={i} className="flex items-center gap-2">
-                  <LeaderAvatar name={label} colors={opp?.colors} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
+                  <LeaderAvatar name={label} colors={opp?.colors} setCode={opp?.setCode} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {label}
+                    {opp?.setCode && <span className="text-muted-foreground"> {opp.setCode}</span>}
+                  </span>
                   <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', pill.className)}>{pill.label}</span>
                 </div>
               );

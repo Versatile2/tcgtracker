@@ -48,7 +48,7 @@ function MatchRow({
       <span className="w-4 shrink-0 text-center text-xs font-medium tabular-nums text-muted-foreground">
         {round.roundNumber}
       </span>
-      {!condensed && hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} size="sm" />}
+      {!condensed && hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} setCode={opponent?.setCode} size="sm" />}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
           {name}
@@ -92,7 +92,7 @@ export function TournamentShareCard({
     <div className="w-[380px] space-y-4 rounded-xl border bg-card p-5 text-card-foreground">
       {/* Header: leader (left), record, event tags (right) */}
       <div className="flex items-start gap-3">
-        <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} size="lg" />
+        <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-bold leading-tight">{myLeader?.name ?? '—'}</p>
           {myLeader?.setCode && <p className="text-xs text-muted-foreground">{myLeader.setCode}</p>}

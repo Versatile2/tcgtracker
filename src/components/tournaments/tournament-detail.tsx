@@ -60,6 +60,12 @@ export function TournamentDetail({ id }: { id: string }) {
 
   const editable = t.status === 'draft';
   const leaderName = (lid: string) => leaders?.find((l) => l.id === lid)?.name ?? '—';
+  // Leader names are not unique across printings, so the picker labels each with
+  // its set code — that is also what the combobox searches on.
+  const leaderOptions = (leaders ?? []).map((l) => ({
+    id: l.id,
+    name: l.setCode ? `${l.name} ${l.setCode}` : l.name,
+  }));
   const metaName = (mid: string) => metas?.find((m) => m.id === mid)?.name ?? '';
   const record = computeRecord(t.rounds);
   const myLeader = leaders?.find((l) => l.id === t.myLeaderId);
@@ -82,7 +88,7 @@ export function TournamentDetail({ id }: { id: string }) {
     <main className="mx-auto max-w-xl p-4 pb-28">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <LeaderAvatar name={myLeader?.name ?? leaderName(t.myLeaderId)} colors={myLeader?.colors} size="lg" />
+          <LeaderAvatar name={myLeader?.name ?? leaderName(t.myLeaderId)} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />
           <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
@@ -93,7 +99,7 @@ export function TournamentDetail({ id }: { id: string }) {
           <div className="mt-2 max-w-[16rem]">
             {editable ? (
               <ReferenceCombobox
-                options={leaders ?? []}
+                options={leaderOptions}
                 value={t.myLeaderId}
                 onChange={(lid) => { if (lid && lid !== t.myLeaderId) tournamentWrites.update(id, { myLeaderId: lid }); }}
                 onAddCustom={async () => ({ id: t.myLeaderId, name: leaderName(t.myLeaderId) })}
@@ -114,7 +120,7 @@ export function TournamentDetail({ id }: { id: string }) {
         {t.rounds.length === 0 && <p className="text-sm text-muted-foreground">No rounds yet.</p>}
         {t.rounds.map((r) => (
           <RoundItem key={r.id} round={r}
-            myLeader={myLeader ? { name: myLeader.name, colors: myLeader.colors } : undefined}
+            myLeader={myLeader ? { name: myLeader.name, colors: myLeader.colors, setCode: myLeader.setCode } : undefined}
             resolveLeader={(id) => leaders?.find((l) => l.id === id)}
             metaName={metaName} editable={editable}
             unsynced={unsyncedRounds.has(r.id)}

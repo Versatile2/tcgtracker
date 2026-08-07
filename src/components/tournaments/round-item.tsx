@@ -26,7 +26,7 @@ export function RoundItem({
   round, myLeader, resolveLeader, metaName, onEdit, onDelete, editable, unsynced = false,
 }: {
   round: RoundDTO;
-  myLeader?: { name: string; colors: string[] };
+  myLeader?: { name: string; colors: string[]; setCode?: string | null };
   resolveLeader: (id: string) => LeaderDTO | undefined;
   metaName: (id: string) => string;
   onEdit: () => void;
@@ -44,7 +44,7 @@ export function RoundItem({
 
   const row = (
     <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
-      <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} size="md" />
+      <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="md" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Badge className={resultStyle[round.result]}>{round.result[0].toUpperCase()}</Badge>
@@ -57,6 +57,7 @@ export function RoundItem({
         {hasOpponent ? (
           <p className="mt-0.5 truncate text-sm">
             vs <span className="text-foreground">{opponent?.name ?? '—'}</span>
+            {opponent?.setCode && <span className="text-muted-foreground"> {opponent.setCode}</span>}
             {round.opponentMetaId && <span className="text-muted-foreground"> · {metaName(round.opponentMetaId)}</span>}
           </p>
         ) : (
@@ -67,7 +68,7 @@ export function RoundItem({
         )}
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
       </div>
-      {hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} size="md" />}
+      {hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} setCode={opponent?.setCode} size="md" />}
 
       {editable && (
         // Overflow menu for pointer/mouse devices; touch users get the swipe actions instead.

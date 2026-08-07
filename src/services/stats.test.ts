@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
 import { leaders, metas, tournaments, rounds } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { getOverallStats, getPerMetaStats, getPlayedLeaders, getOpponentStats } from './stats';
 import { afterAll } from 'vitest';
 
@@ -11,7 +11,9 @@ const USER = 'user_stats';
 afterAll(closeTestDb);
 
 async function leaderId(name: string) {
-  const [l] = await db.select().from(leaders).where(eq(leaders.name, name)).limit(1);
+  // Ordered by set code: a leader name maps to several real printings, so an
+  // unordered limit(1) would pick a different row from run to run.
+  const [l] = await db.select().from(leaders).where(eq(leaders.name, name)).orderBy(asc(leaders.setCode)).limit(1);
   return l.id;
 }
 async function metaId(name: string) {
