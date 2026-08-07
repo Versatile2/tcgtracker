@@ -3,6 +3,7 @@ import { LargeTitleScreen } from '@/components/nav/large-title-screen';
 import { Card } from '@/components/ui/card';
 import { ModeToggle } from '@/components/theme/mode-toggle';
 import { AccentPicker } from '@/components/theme/accent-picker';
+import { ExportCard } from './export-card';
 
 export function SettingsView() {
   return (
@@ -18,6 +19,7 @@ export function SettingsView() {
           <AccentPicker />
         </div>
       </Card>
+      <ExportCard />
     </LargeTitleScreen>
   );
 }
