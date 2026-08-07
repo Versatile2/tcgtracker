@@ -70,10 +70,27 @@ async function requireOwnedRound(db: DB, ownerId: string, roundId: string) {
 }
 
 export async function addRound(db: DB, ownerId: string, tournamentId: string, input: CreateRoundInput): Promise<Round> {
+  // A client-supplied id makes the create idempotent, so replaying a queued
+  // offline round whose response was lost returns the row already stored rather
+  // than logging the match twice. Checked before the editable guard: a replay of
+  // an already-applied create must still succeed even if the tournament has
+  // since been locked.
+  if (input.id) {
+    const [existing] = await db.select({ round: rounds, ownerId: tournaments.ownerId })
+      .from(rounds)
+      .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
+      .where(eq(rounds.id, input.id))
+      .limit(1);
+    if (existing) {
+      if (existing.ownerId !== ownerId) throw new ConflictError('That id is already in use');
+      return existing.round;
+    }
+  }
   await requireEditableTournament(db, ownerId, tournamentId);
   const [{ max }] = await db.select({ max: sql<number>`coalesce(max(${rounds.roundNumber}), 0)` })
     .from(rounds).where(eq(rounds.tournamentId, tournamentId));
   const [row] = await db.insert(rounds).values({
+    ...(input.id ? { id: input.id } : {}),
     tournamentId,
     roundNumber: Number(max) + 1,
     ...valuesForKind(input),

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
@@ -7,7 +8,7 @@ import {
 } from './tournaments';
 import { addRound } from './rounds';
 import { listLeaders, listMetas } from './reference';
-import { NotFoundError } from '../lib/errors';
+import { NotFoundError, ConflictError } from '../lib/errors';
 
 const db = getTestDb();
 const USER = 'user_a';
@@ -79,5 +80,32 @@ describe('tournament service', () => {
     const updated = await updateTournament(db, USER, t.id, { myLeaderId: ls[1].id, metaId: metas[0].id });
     expect(updated.myLeaderId).toBe(ls[1].id);
     expect(updated.metaId).toBe(metas[0].id);
+  });
+
+  it('honours a client-supplied id', async () => {
+    const { mine } = await anyLeaderIds();
+    const id = randomUUID();
+    const t = await createTournament(db, USER, { id, type: 'local', myLeaderId: mine, playedOn: '2026-07-20' });
+    expect(t.id).toBe(id);
+  });
+
+  it('re-creating with the same id returns the existing row instead of duplicating', async () => {
+    const { mine } = await anyLeaderIds();
+    const id = randomUUID();
+    const first = await createTournament(db, USER, { id, type: 'local', myLeaderId: mine, playedOn: '2026-07-20' });
+    const replay = await createTournament(db, USER, { id, type: 'regionals', myLeaderId: mine, playedOn: '2026-07-21' });
+    expect(replay.id).toBe(first.id);
+    // The replay is a no-op, not an update: the stored row is untouched.
+    expect(replay.type).toBe('local');
+    expect(await listTournaments(db, USER)).toHaveLength(1);
+  });
+
+  it('rejects a client id already owned by someone else', async () => {
+    const { mine } = await anyLeaderIds();
+    const id = randomUUID();
+    await createTournament(db, USER, { id, type: 'local', myLeaderId: mine, playedOn: '2026-07-20' });
+    await expect(
+      createTournament(db, 'user_other', { id, type: 'local', myLeaderId: mine, playedOn: '2026-07-20' })
+    ).rejects.toBeInstanceOf(ConflictError);
   });
 });

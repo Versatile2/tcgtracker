@@ -13,6 +13,11 @@ export const gameLogSchema = z.object({
 
 const notes = z.string().trim().max(2000).nullable().optional();
 
+// Client-generated so a round logged offline has a stable identity before the
+// server ever sees it, which also makes replaying a queued create idempotent.
+// Omitted by non-offline callers; the database defaults it.
+const clientId = z.uuid().optional();
+
 /** A complete best-of-3: one side reaches exactly 2 game wins (2–0 or 2–1). */
 export function isCompletedBo3(games: { result: 'win' | 'loss' }[]): boolean {
   const wins = games.filter((g) => g.result === 'win').length;
@@ -29,9 +34,10 @@ export function matchResultFromGames(games: { result: 'win' | 'loss' }[]): 'win'
 }
 
 const swissRound = z.object({
+  id: clientId,
   kind: z.literal('swiss'),
-  opponentLeaderId: z.string().uuid(),
-  opponentMetaId: z.string().uuid().nullable().optional(),
+  opponentLeaderId: z.uuid(),
+  opponentMetaId: z.uuid().nullable().optional(),
   result: resultEnum,
   playOrder: playOrderEnum.nullable().optional(),
   wonDieRoll: z.boolean().nullable().optional(),
@@ -39,16 +45,17 @@ const swissRound = z.object({
 });
 
 const topCutRound = z.object({
+  id: clientId,
   kind: z.literal('top_cut'),
-  opponentLeaderId: z.string().uuid(),
-  opponentMetaId: z.string().uuid().nullable().optional(),
+  opponentLeaderId: z.uuid(),
+  opponentMetaId: z.uuid().nullable().optional(),
   games: z.array(gameLogSchema).min(2).max(3)
     .refine(isCompletedBo3, { message: 'Enter a complete best-of-3 (first to 2 games).' }),
   notes,
 });
 
-const byeRound = z.object({ kind: z.literal('bye'), notes });
-const noShowRound = z.object({ kind: z.literal('no_show'), notes });
+const byeRound = z.object({ id: clientId, kind: z.literal('bye'), notes });
+const noShowRound = z.object({ id: clientId, kind: z.literal('no_show'), notes });
 
 export const createRoundSchema = z.discriminatedUnion('kind', [swissRound, topCutRound, byeRound, noShowRound]);
 // The form always resubmits a complete payload, so updates reuse the same shape.

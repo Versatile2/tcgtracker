@@ -28,7 +28,8 @@ The blocker for offline creation is that a round references a `tournamentId` the
 
 - `createTournamentSchema` / `createRoundSchema` gain an optional `id: z.uuid()`.
 - The server uses the supplied id when present, and falls back to `defaultRandom()` when absent (so existing callers and tests are unaffected).
-- Creating with an id that already exists is **idempotent**: the server returns the existing row with 200 instead of inserting. This makes replay safe under at-least-once delivery — a queued op whose response was lost to a dying connection will not duplicate on retry.
+- Creating with an id that already exists is **idempotent**: the server returns the row already stored, unmodified, instead of inserting. This makes replay safe under at-least-once delivery — a queued op whose response was lost to a dying connection will not duplicate on retry. An id owned by a *different* user is a 409 rather than a primary-key crash.
+- For rounds the idempotency check runs *before* the "tournament is editable" guard, so replaying an already-applied round create still succeeds if the tournament has since been locked.
 - `DELETE` of an already-deleted row returns success rather than 404 during replay (the client treats 404-on-delete as success rather than changing server semantics — see §2.5).
 
 Because the client controls the id, navigation after "Create & Start Logging" is instant: we push to `/tournaments/<id>` without awaiting anything.

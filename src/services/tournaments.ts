@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds } from '../db/schema';
 import { computeRecord } from '../lib/record';
-import { NotFoundError } from '../lib/errors';
+import { NotFoundError, ConflictError } from '../lib/errors';
 import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/validation/tournament';
 
 type DB = NodePgDatabase<typeof schema>;
@@ -22,8 +22,19 @@ async function requireOwned(db: DB, ownerId: string, id: string): Promise<Tourna
 }
 
 export async function createTournament(db: DB, ownerId: string, input: CreateTournamentInput): Promise<Tournament> {
+  // A client-supplied id makes the create idempotent: replaying a queued
+  // offline create whose response was lost returns the existing row instead of
+  // inserting a duplicate.
+  if (input.id) {
+    const [existing] = await db.select().from(tournaments).where(eq(tournaments.id, input.id)).limit(1);
+    if (existing) {
+      if (existing.ownerId !== ownerId) throw new ConflictError('That id is already in use');
+      return existing;
+    }
+  }
   const [row] = await db.insert(tournaments)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       ownerId, type: input.type,
       myLeaderId: input.myLeaderId,
       metaId: input.metaId ?? null,

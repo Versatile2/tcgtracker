@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
@@ -102,5 +103,42 @@ describe('round service', () => {
     expect(won.games).toHaveLength(3);
     const lost = await addRound(db, USER, t.id, { kind: 'top_cut', opponentLeaderId: opp, games: [{ result: 'win' }, { result: 'loss' }, { result: 'loss' }] });
     expect(lost.result).toBe('loss');
+  });
+
+  it('honours a client-supplied id', async () => {
+    const { t, opp } = await setup();
+    const id = randomUUID();
+    const r = await addRound(db, USER, t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    expect(r.id).toBe(id);
+    expect(r.roundNumber).toBe(1);
+  });
+
+  it('re-adding with the same id returns the existing round instead of duplicating', async () => {
+    const { t, opp } = await setup();
+    const id = randomUUID();
+    const first = await addRound(db, USER, t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    const replay = await addRound(db, USER, t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'loss' });
+    expect(replay.id).toBe(first.id);
+    expect(replay.result).toBe('win');
+    const detail = await getTournament(db, USER, t.id);
+    expect(detail.rounds).toHaveLength(1);
+  });
+
+  it('replaying an already-applied round create succeeds even once the tournament is locked', async () => {
+    const { t, opp } = await setup();
+    const id = randomUUID();
+    await addRound(db, USER, t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    await finishTournament(db, USER, t.id);
+    const replay = await addRound(db, USER, t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    expect(replay.id).toBe(id);
+  });
+
+  it('rejects a client round id already owned by someone else', async () => {
+    const { t, opp } = await setup();
+    const id = randomUUID();
+    await addRound(db, USER, t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    await expect(
+      addRound(db, 'user_other', t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'win' })
+    ).rejects.toBeInstanceOf(ConflictError);
   });
 });
