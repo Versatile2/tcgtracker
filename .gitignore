@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Agent/plugin tooling checked out into the repo, not app source
+.claude/
+.agents/
+.codex/
+skills-lock.json
