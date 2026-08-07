@@ -153,6 +153,24 @@ Target: `npm run lint` clean, zero errors and zero warnings.
 
 ---
 
-## 5. Out of scope
+---
+
+## 5. Found during implementation
+
+**Auth middleware never ran.** `middleware.ts` sat at the repo root while `app/` lives under `src/`, so Next 16 did not pick it up — `clerkMiddleware()` never executed and every API route threw and returned 500 in dev. Next 16 also renamed the convention from `middleware` to `proxy`. Fixed by moving the file to `src/proxy.ts`; protected routes now redirect/404 for an unauthenticated request instead of crashing, and the dev log shows `proxy.ts` running per request. Unrelated to this slice, but it blocked verifying the export endpoint.
+
+**Still open:** Clerk now warns that `createRouteMatcher` is deprecated and that middleware-based path matching can leave protected resources reachable; the recommended migration is per-route auth checks. Not done here — it is an auth-architecture change, not part of this slice.
+
+## 6. Manual acceptance check
+
+Automated tests cover the queue, its coalescing rules, the drain order and the reconnect round trip (`src/lib/outbox/sync.test.ts`). Service-worker and real-network behaviour still needs a browser:
+
+1. Load the app online once, then set DevTools → Network → Offline.
+2. Create a tournament and log three rounds. Each appears at once with an unsynced marker; the pill reads "Offline · N unsynced".
+3. Reload the page. Everything is still there (persisted cache + persisted queue).
+4. Go back online. The pill shows "Syncing…" then "Synced", markers clear.
+5. Reload once more and confirm each round exists exactly once — no duplicates from replay.
+
+## 7. Out of scope
 
 Offline custom leader/meta creation (§2.3); background-sync APIs; multi-device conflict resolution (last-write-wins via the server remains the model); JSON export; any billing or tier gating.

@@ -38,10 +38,10 @@ Used primarily on a phone as an installable PWA, at live tournaments and locals,
 - Global statistics: overall record, per-meta breakdown, per-opponent-leader and per-(opponent leader × opponent meta) breakdowns, and matchup stats by played leader.
 - Achievements with progress tracking and unlock notifications.
 - Appearance: light/dark theme plus a selectable accent color.
-- Export & sharing: rendered PNG cards (stats, tournament, achievement).
-- Offline PWA for viewing and persisted data; an offline **write/sync queue is explicitly deferred** (not yet built).
+- Export & sharing: rendered PNG cards (stats, tournament, achievement), plus a free CSV export of every tournament and round (one row per round). There is no paid tier.
+- Offline PWA. Tournaments and rounds can be **created and edited with no connection**: writes go to a durable queue, apply to the UI at once, and are delivered when the network returns. Custom leaders/metas are the one write that still needs a connection.
 - Terminology: **leader** (a deck's leader card), **meta** (card set / format, e.g. OP01–OP16 — this term replaced the older "set"), **round** (one match within a tournament), tournament **type**.
-- Technical constraints: Next.js 16 App Router + TypeScript + Tailwind v4, Clerk auth (currently a **dev** instance), Neon Postgres + Drizzle. `localStorage` keys use the `crewstat-*` prefix and **must not be renamed** (doing so would reset existing users' data). GitHub repo and Vercel project are named `tcgtracker`.
+- Technical constraints: Next.js 16 App Router + TypeScript + Tailwind v4, Clerk auth (currently a **dev** instance), Neon Postgres + Drizzle. Auth middleware lives at `src/proxy.ts` (Next 16 renamed the `middleware` convention to `proxy`; it must sit beside `app/`, i.e. inside `src/`). `localStorage` keys use the `crewstat-*` prefix and **must not be renamed** (doing so would reset existing users' data). GitHub repo and Vercel project are named `tcgtracker`.
 
 ## Brand Commitments
 
