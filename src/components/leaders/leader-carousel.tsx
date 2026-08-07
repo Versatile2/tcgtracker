@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { leaderBackground, leaderTextColor, leaderInitial, getLeaderImage } from '@/lib/leader-visual';
+import { leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leaderSearchText } from '@/lib/leader-visual';
 
 type Option = { id: string; name: string; colors?: string[]; setCode?: string | null };
 
@@ -13,8 +13,9 @@ type Option = { id: string; name: string; colors?: string[]; setCode?: string | 
  * an accent ring. A trailing "add" card creates a custom leader from the current
  * search text.
  *
- * Search matches the set code as well as the name, because names are not unique
- * — typing "ST13" is the only way to pick one of the 15 Monkey D. Luffy cards.
+ * Search matches the set code and any reprinting starter-deck code as well as
+ * the name, because names are not unique — typing "ST13" is the only way to pick
+ * one of the 15 Monkey D. Luffy cards.
  */
 export function LeaderCarousel({
   options, value, onChange, onAddCustom, disabled,
@@ -28,9 +29,7 @@ export function LeaderCarousel({
 }) {
   const [search, setSearch] = useState('');
   const q = search.trim().toLowerCase();
-  const shown = q
-    ? options.filter((o) => `${o.name} ${o.setCode ?? ''}`.toLowerCase().includes(q))
-    : options;
+  const shown = q ? options.filter((o) => leaderSearchText(o.name, o.setCode).includes(q)) : options;
   const canAdd = Boolean(onAddCustom) && q.length > 0 && !options.some((o) => o.name.toLowerCase() === q);
 
   async function add() {

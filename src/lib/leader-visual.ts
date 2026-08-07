@@ -1,7 +1,7 @@
 // Visual helpers for leader avatars. Real card art is bundled in public/leaders/
 // (see getLeaderImage); custom user-created leaders have no card art and fall
 // back to a color-tinted initial derived from their OPTCG colors.
-import { LEADER_IMAGE_CODES } from './leader-images';
+import { LEADER_IMAGE_CODES, LEADER_DECK_CODES } from './leader-images';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
@@ -42,4 +42,15 @@ export function leaderInitial(name: string): string {
  */
 export function getLeaderImage(setCode: string | null | undefined): string | null {
   return setCode && LEADER_IMAGE_CODES.has(setCode) ? `/leaders/${setCode}.webp` : null;
+}
+
+/**
+ * Haystack for the leader pickers: the name, the card's own set code, and the
+ * codes of any starter deck that reprints it. The single-colour starter decks
+ * ship an existing booster leader under its original code, so without the last
+ * part a player searching for their "ST17" deck would find nothing.
+ */
+export function leaderSearchText(name: string, setCode: string | null | undefined): string {
+  const decks = setCode ? (LEADER_DECK_CODES[setCode] ?? []) : [];
+  return [name, setCode, ...decks].filter(Boolean).join(' ').toLowerCase();
 }

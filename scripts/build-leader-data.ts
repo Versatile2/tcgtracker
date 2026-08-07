@@ -33,6 +33,7 @@ type ApiCard = {
   card_image: string;
 };
 type ApiSet = { set_id: string; set_name: string };
+type ApiDeck = { structure_deck_id: string; structure_deck_name: string };
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -127,6 +128,27 @@ async function main() {
     .sort((a, b) => a.code.localeCompare(b.code));
   console.log(`  ${metas.length} metas`);
 
+  // The single-colour starter decks (ST15–ST20, ST23–ST28) contain no new leader
+  // cards — they reprint a booster leader with alternate art under its original
+  // set code. Players still call those decks by their ST number, so index which
+  // decks each leader ships in and let the picker search on that; otherwise
+  // typing "ST17" finds nothing because that card is filed as OP01-060.
+  const decks = await getJson<ApiDeck[]>(`${API}/allDecks/`);
+  const deckCodes = new Map<string, string[]>();
+  for (const d of decks) {
+    const code = d.structure_deck_id.replace('-', '');
+    const cardsInDeck = await getJson<ApiCard[]>(`${API}/decks/${d.structure_deck_id}/`);
+    for (const c of cardsInDeck) {
+      if (c.card_type !== 'Leader') continue;
+      // Skip the deck's own numbering (ST01 → ST01-001 adds nothing to search).
+      if (c.card_set_id.startsWith(code)) continue;
+      const list = deckCodes.get(c.card_set_id) ?? [];
+      if (!list.includes(code)) list.push(code);
+      deckCodes.set(c.card_set_id, list);
+    }
+  }
+  console.log(`  ${deckCodes.size} leaders reprinted in a starter deck`);
+
   const leaderRows = cards
     .map((c) => {
       const colors = parseColors(c.card_color).map((x) => `'${x}'`).join(', ');
@@ -150,7 +172,17 @@ async function main() {
       '\n/** Leader set codes with bundled art in public/leaders/. */\n' +
       'export const LEADER_IMAGE_CODES: ReadonlySet<string> = new Set([\n' +
       cards.map((c) => `  '${c.card_set_id}',`).join('\n') +
-      '\n]);\n',
+      '\n]);\n\n' +
+      '/**\n' +
+      ' * Starter decks that reprint a leader under a different set code, so the\n' +
+      " * picker can find OP01-060 when a player searches for their \"ST17\" deck.\n" +
+      ' */\n' +
+      'export const LEADER_DECK_CODES: Readonly<Record<string, readonly string[]>> = {\n' +
+      [...deckCodes.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([code, ds]) => `  '${code}': [${ds.sort().map((d) => `'${d}'`).join(', ')}],`)
+        .join('\n') +
+      '\n};\n',
   );
 
   console.log('Wrote src/db/seed-data.ts, src/lib/leader-images.ts, public/leaders/');
