@@ -53,8 +53,9 @@ Used primarily on a phone as an installable PWA, at live tournaments and locals,
 ## Evidence on Hand
 
 - Live app: https://tcgtracker-three.vercel.app
-- Real demo data: the owner account holds ~11 tournaments / ~46 rounds with backfilled opponent metas.
-- Seeded reference data: leaders and metas OP01–OP16.
+- **No logged data currently exists.** The former ~11 demo tournaments / ~46 rounds were deleted on 2026-08-07 when the invented leader catalog was replaced with the real one (the old leaders had no sane mapping onto real cards). Screenshots and demos need data logged first.
+- Seeded reference data: **132 real OPTCG leader printings** (boosters + starter decks, keyed by set code) and metas OP01–OP16 with their real set names, generated from optcgapi.com — see `docs/superpowers/specs/2026-08-07-real-card-data-design.md`.
+- Leader card art is Bandai's official promotional scan and carries a visible "SAMPLE" watermark. Every public source serves the same watermarked file; there is no clean-art version to switch to.
 - No testimonials, user counts, ratings, pricing, or press exist — future work must not fabricate any of these.
 
 ## Product Principles
