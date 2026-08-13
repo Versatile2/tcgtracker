@@ -30,7 +30,13 @@ export async function addCustomLeader(db: DB, ownerId: string, input: CustomLead
 }
 
 export async function listMetas(db: DB, ownerId: string): Promise<Meta[]> {
-  return db.select().from(metas).where(visibleTo(metas, ownerId)).orderBy(asc(metas.name));
+  // Official sets newest-first (codes are zero-padded, so lexical DESC is
+  // correct), then the user's custom metas alphabetically. Keeping customs
+  // below the official list means the form's default (the first coded row)
+  // can never be hijacked by a custom meta whose name outranks "OP16".
+  return db.select().from(metas)
+    .where(visibleTo(metas, ownerId))
+    .orderBy(asc(metas.isCustom), sql`${metas.code} desc nulls last`, asc(metas.name));
 }
 
 export async function addCustomMeta(db: DB, ownerId: string, input: CustomMetaInput): Promise<Meta> {
