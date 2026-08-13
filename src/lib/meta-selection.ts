@@ -10,6 +10,13 @@ type Selectable = { id: string; code: string | null; isCustom: boolean };
  *
  * Custom metas are excluded: they have no code, and one named "Zoro locals"
  * would otherwise outrank OP16 and silently become everyone's default.
+ *
+ * Known limit: lexical comparison is self-maintaining only for `OP01`…`OP99`.
+ * It breaks if a meta is ever seeded with a non-`OP` prefix (OPTCG also
+ * ships `EB`/`PRB`/`ST` products — an `ST`-coded meta would sort above
+ * `OP16` and become the default), or once `OP100` exists, since `"OP99" >
+ * "OP100"` lexically. All 16 seeded metas are `OPnn` today; this is
+ * documentation of the boundary, not a guard against it.
  */
 export function pickDefaultMetaId(metas: Selectable[]): string | null {
   const official = metas.filter((m): m is Selectable & { code: string } => !m.isCustom && m.code !== null);

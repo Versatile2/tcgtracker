@@ -40,8 +40,9 @@ export function ReferenceCombobox({
     setOpen(false);
   }
 
-  const showAdd = search.trim().length > 0 &&
-    !options.some((o) => o.name.toLowerCase() === search.trim().toLowerCase());
+  const query = search.trim().toLowerCase();
+  const showAdd = query.length > 0 &&
+    !options.some((o) => o.name.toLowerCase() === query || label(o).toLowerCase() === query);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
