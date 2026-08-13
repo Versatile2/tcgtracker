@@ -8,6 +8,37 @@ import { leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leade
 type Option = { id: string; name: string; colors?: string[]; setCode?: string | null };
 
 /**
+ * Card art (or color-fallback initial) plus the white name/set-code caption
+ * strip. Shared by the expanded row's cards and the collapsed single-card
+ * view so the two renders can never drift apart — the collapse must mirror
+ * the expanded card exactly, and one shared piece guarantees that where two
+ * copies would only guarantee it by discipline.
+ */
+function LeaderCardVisual({ leader }: { leader: Option }) {
+  const src = getLeaderImage(leader.setCode);
+  return (
+    <>
+      {/* 5:7 card aspect, matching the 600x838 source art. */}
+      <div
+        className="flex h-[8.4rem] items-center justify-center text-3xl font-bold"
+        style={src ? undefined : { background: leaderBackground(leader.colors), color: leaderTextColor(leader.colors) }}
+      >
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+        ) : (
+          leaderInitial(leader.name)
+        )}
+      </div>
+      <div className="bg-white px-1.5 py-1 text-left text-black">
+        <div className="truncate text-xs font-bold leading-tight">{leader.name}</div>
+        <div className="truncate text-[0.625rem] text-neutral-500">{leader.setCode ?? '—'}</div>
+      </div>
+    </>
+  );
+}
+
+/**
  * Visual opponent-leader picker: a search box over a horizontal row of portrait
  * leader cards (real card art + name/set-code caption). The selected card gets
  * an accent ring. A trailing "add" card creates a custom leader from the current
@@ -51,25 +82,10 @@ export function LeaderCarousel({
   }
 
   if (collapsed && selected) {
-    const src = getLeaderImage(selected.setCode);
     return (
       <div className="flex items-start gap-3">
         <div className="w-24 shrink-0 overflow-hidden rounded-xl ring-2 ring-primary">
-          <div
-            className="flex h-[8.4rem] items-center justify-center text-3xl font-bold"
-            style={src ? undefined : { background: leaderBackground(selected.colors), color: leaderTextColor(selected.colors) }}
-          >
-            {src ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={src} alt="" loading="lazy" className="size-full object-cover" />
-            ) : (
-              leaderInitial(selected.name)
-            )}
-          </div>
-          <div className="bg-white px-1.5 py-1 text-left text-black">
-            <div className="truncate text-xs font-bold leading-tight">{selected.name}</div>
-            <div className="truncate text-[0.625rem] text-neutral-500">{selected.setCode ?? '—'}</div>
-          </div>
+          <LeaderCardVisual leader={selected} />
         </div>
         <button
           type="button"
@@ -95,7 +111,6 @@ export function LeaderCarousel({
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
         {shown.map((o) => {
           const selected = value === o.id;
-          const src = getLeaderImage(o.setCode);
           return (
             <button
               key={o.id}
@@ -108,22 +123,7 @@ export function LeaderCarousel({
                 selected ? 'ring-primary' : 'ring-transparent opacity-75 hover:opacity-100',
               )}
             >
-              {/* 5:7 card aspect, matching the 600x838 source art. */}
-              <div
-                className="flex h-[8.4rem] items-center justify-center text-3xl font-bold"
-                style={src ? undefined : { background: leaderBackground(o.colors), color: leaderTextColor(o.colors) }}
-              >
-                {src ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={src} alt="" loading="lazy" className="size-full object-cover" />
-                ) : (
-                  leaderInitial(o.name)
-                )}
-              </div>
-              <div className="bg-white px-1.5 py-1 text-left text-black">
-                <div className="truncate text-xs font-bold leading-tight">{o.name}</div>
-                <div className="truncate text-[0.625rem] text-neutral-500">{o.setCode ?? '—'}</div>
-              </div>
+              <LeaderCardVisual leader={o} />
             </button>
           );
         })}
