@@ -47,4 +47,20 @@ describe('reference service', () => {
     expect(metas.filter((m) => m.name.toLowerCase() === 'local promo pack').length).toBe(1);
     expect(metas.some((m) => m.code === 'OP16')).toBe(true);
   });
+
+  it('lists official metas newest-first, with custom ones after', async () => {
+    await addCustomMeta(db, USER, { name: 'Zoro locals' });
+    const list = await listMetas(db, USER);
+
+    const officialCodes = list.filter((m) => !m.isCustom).map((m) => m.code);
+    expect(officialCodes[0]).toBe('OP16');
+    expect(officialCodes.at(-1)).toBe('OP01');
+    expect([...officialCodes].sort().reverse()).toEqual(officialCodes);
+
+    // "Zoro locals" sorts above "OP16" lexically, so a flat DESC sort by name
+    // would put it first and it would become the form's default.
+    const customIndex = list.findIndex((m) => m.name === 'Zoro locals');
+    const lastOfficialIndex = list.map((m) => m.isCustom).lastIndexOf(false);
+    expect(customIndex).toBeGreaterThan(lastOfficialIndex);
+  });
 });

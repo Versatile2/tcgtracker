@@ -18,7 +18,7 @@ import {
 } from '@/components/query-hooks';
 import { useOutbox, pendingRoundIds } from '@/lib/outbox/use-outbox';
 import { formatRecord, computeRecord } from '@/lib/record';
-import { tournamentTypeLabel } from '@/lib/labels';
+import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
 import type { RoundDTO } from '@/lib/dto';
 import type { CreateRoundInput } from '@/lib/validation/round';
 import { ShareDialog } from '@/components/share/share-dialog';
@@ -66,7 +66,7 @@ export function TournamentDetail({ id }: { id: string }) {
     id: l.id,
     name: l.setCode ? `${l.name} ${l.setCode}` : l.name,
   }));
-  const metaName = (mid: string) => metas?.find((m) => m.id === mid)?.name ?? '';
+  const metaName = (mid: string) => { const m = metas?.find((x) => x.id === mid); return m ? metaLabel(m) : ''; };
   const record = computeRecord(t.rounds);
   const myLeader = leaders?.find((l) => l.id === t.myLeaderId);
 

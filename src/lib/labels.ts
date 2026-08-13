@@ -30,3 +30,11 @@ export const ROUND_KIND_SUBTITLES: Record<RoundKind, string> = {
 export function roundKindLabel(kind: RoundKind): string {
   return ROUND_KIND_LABELS[kind];
 }
+
+/**
+ * Metas display as their set code alone — "OP01", not "OP01 Romance Dawn".
+ * Custom metas have no code, so their full name is the label.
+ */
+export function metaLabel(meta: { name: string; code?: string | null }): string {
+  return meta.code ?? meta.name;
+}

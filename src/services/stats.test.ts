@@ -62,7 +62,7 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(o.winRate).toBeCloseTo(0.5, 5);
     expect(o.drawRate).toBeCloseTo(0.25, 5);
     expect(o.mostPlayedLeader?.name).toBe('Roronoa Zoro');
-    expect(o.bestMeta?.name).toBe('OP02 Paramount War');
+    expect(o.bestMeta?.name).toBe('OP02');
   });
 
   it('excludes bye / no_show rounds from win-rate stats', async () => {
@@ -85,10 +85,10 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     await makeTournament('OP02 Paramount War', 'Roronoa Zoro', [['Nami', 'win'], ['Nami', 'win']]);
     await makeTournament('OP01 Romance Dawn', 'Nami', [['Sanji', 'loss']]);
     const per = await getPerMetaStats(db, USER);
-    expect(per[0].name).toBe('OP02 Paramount War');
+    expect(per[0].name).toBe('OP02');
     expect(per[0]).toMatchObject({ tournaments: 1, wins: 2, losses: 0, draws: 0 });
     expect(per[0].winRate).toBeCloseTo(1, 5);
-    const romance = per.find((p) => p.name === 'OP01 Romance Dawn')!;
+    const romance = per.find((p) => p.name === 'OP01')!;
     expect(romance.winRate).toBeCloseTo(0, 5);
   });
 
@@ -127,7 +127,7 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(nami.wins).toBe(2);
     expect(nami.losses).toBe(1);
     expect(nami.byMeta).toHaveLength(1); // only the 2 meta-tagged rounds
-    expect(nami.byMeta[0].name).toBe('OP02 Paramount War');
+    expect(nami.byMeta[0].name).toBe('OP02');
     expect(nami.byMeta[0].games).toBe(2);
     expect(nami.byMeta[0].wins).toBe(1);
     expect(nami.byMeta[0].losses).toBe(1);
@@ -135,5 +135,12 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     const sanji = opp.find((o) => o.name === 'Sanji')!;
     expect(sanji.games).toBe(1);
     expect(sanji.byMeta).toHaveLength(0); // no meta ever set
+  });
+
+  it('reports per-meta rows by set code, and keeps the no-meta fallback', async () => {
+    await makeTournament('OP02 Paramount War', 'Roronoa Zoro', [['Nami', 'win']]);
+    await makeTournament(null, 'Roronoa Zoro', [['Nami', 'loss']]);
+    const rows = await getPerMetaStats(db, USER);
+    expect(rows.map((r) => r.name).sort()).toEqual(['No meta', 'OP02']);
   });
 });

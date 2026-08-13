@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { LeaderCarousel } from '@/components/leaders/leader-carousel';
 import { ReferenceCombobox } from './reference-combobox';
 import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta } from '@/components/query-hooks';
-import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
+import { roundKindLabel, ROUND_KIND_SUBTITLES, metaLabel } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
 import { cn } from '@/lib/utils';
 import type { CreateRoundInput } from '@/lib/validation/round';
@@ -223,6 +223,7 @@ function RoundFormBody({
           <label htmlFor="rf-oppmeta" className="text-sm font-medium">Opponent meta (optional)</label>
           <ReferenceCombobox id="rf-oppmeta"
             options={metas ?? []} value={oppMetaId} onChange={setOppMetaId}
+            getLabel={metaLabel}
             onAddCustom={async (n) => { const m = await addMeta.mutateAsync({ name: n }); return { id: m.id, name: m.name }; }}
             placeholder="e.g. OP16" />
         </div>
