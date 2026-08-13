@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { NavBar } from '@/components/nav/nav-bar';
 import { LeaderCarousel } from '@/components/leaders/leader-carousel';
 import { ReferenceCombobox } from './reference-combobox';
 import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useTournamentWrites } from '@/components/query-hooks';
-import { tournamentTypeLabel } from '@/lib/labels';
+import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
+import { pickDefaultMetaId } from '@/lib/meta-selection';
 import type { TournamentType } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
@@ -30,6 +31,16 @@ export function NewTournamentForm() {
   const [name, setName] = useState('');
   const [playedOn, setPlayedOn] = useState(() => new Date().toISOString().slice(0, 10));
 
+  // Metas load asynchronously, so the default is applied on arrival. The ref
+  // makes it fire exactly once: a refetch must never overwrite a choice the
+  // user has already made.
+  const defaultApplied = useRef(false);
+  useEffect(() => {
+    if (defaultApplied.current || !metas?.length) return;
+    defaultApplied.current = true;
+    setMetaId((current) => current ?? pickDefaultMetaId(metas));
+  }, [metas]);
+
   function submit() {
     if (!myLeaderId) { toast.error('Choose your leader first'); return; }
     // The id is generated here, so logging can start immediately whether or not
@@ -45,6 +56,11 @@ export function NewTournamentForm() {
     <NavBar backLabel="Back" onBack={() => router.back()} />
     <main className="mx-auto max-w-xl space-y-5 p-4 pb-6">
       <h1 className="text-3xl font-bold tracking-tight">New Tournament</h1>
+
+      <div className="space-y-2">
+        <label htmlFor="nt-name" className="text-sm font-medium">Name (optional)</label>
+        <Input id="nt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Spring Regional" className="h-12 text-base" />
+      </div>
 
       <div className="space-y-2">
         <label htmlFor="nt-type" className="text-sm font-medium">Type</label>
@@ -72,17 +88,13 @@ export function NewTournamentForm() {
         <ReferenceCombobox
           id="nt-meta"
           options={metas ?? []} value={metaId} onChange={setMetaId}
+          getLabel={metaLabel}
           onAddCustom={async (n) => {
             if (!online) { toast.error('Adding a meta needs a connection — pick one from the list for now'); return null; }
             const m = await addMeta.mutateAsync({ name: n });
             return { id: m.id, name: m.name };
           }}
           placeholder="e.g. OP16" />
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="nt-name" className="text-sm font-medium">Name (optional)</label>
-        <Input id="nt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Spring Regional" className="h-12 text-base" />
       </div>
 
       <div className="space-y-2">
