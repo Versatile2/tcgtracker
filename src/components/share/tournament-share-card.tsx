@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { cn } from '@/lib/utils';
 import { formatRecord, computeRecord } from '@/lib/record';
-import { tournamentTypeLabel, roundKindLabel } from '@/lib/labels';
+import { tournamentTypeLabel, roundKindLabel, metaLabel } from '@/lib/labels';
 import type { TournamentDetailDTO, RoundDTO, LeaderDTO, MetaDTO } from '@/lib/dto';
 
 // Rows tint by result; the badge uses the stronger fill. Both read in light and dark.
@@ -81,6 +81,7 @@ export function TournamentShareCard({
 }) {
   const leaderById = (id: string): LeaderDTO | undefined => leaders.find((l) => l.id === id);
   const metaById = (id: string): MetaDTO | undefined => metas.find((m) => m.id === id);
+  const metaLabelFor = (id: string): string | null => { const m = metaById(id); return m ? metaLabel(m) : null; };
 
   const myLeader = leaderById(tournament.myLeaderId);
   const record = formatRecord(computeRecord(tournament.rounds));
@@ -102,7 +103,7 @@ export function TournamentShareCard({
           <p className="truncate text-sm font-semibold">{eventName}</p>
           <div className="mt-1 flex flex-wrap justify-end gap-1">
             <Badge variant="secondary">{tournamentTypeLabel(tournament.type)}</Badge>
-            {eventMeta && <Badge variant="outline">{eventMeta.code ?? eventMeta.name}</Badge>}
+            {eventMeta && <Badge variant="outline">{metaLabel(eventMeta)}</Badge>}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{tournament.playedOn}</p>
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Made with Grand Line TCG</p>
@@ -116,7 +117,7 @@ export function TournamentShareCard({
             key={r.id}
             round={r}
             opponent={r.opponentLeaderId ? leaderById(r.opponentLeaderId) : undefined}
-            metaName={r.opponentMetaId ? (metaById(r.opponentMetaId)?.name ?? null) : null}
+            metaName={r.opponentMetaId ? metaLabelFor(r.opponentMetaId) : null}
             condensed={condensed}
           />
         ))}
