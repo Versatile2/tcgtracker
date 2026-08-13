@@ -46,3 +46,6 @@ next-env.d.ts
 .agents/
 .codex/
 skills-lock.json
+
+# Agent brainstorm/SDD scratch
+.superpowers/
