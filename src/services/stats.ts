@@ -26,6 +26,7 @@ async function aggregateByMeta(db: DB, ownerId: string) {
     .select({
       metaId: tournaments.metaId,
       metaName: metas.name,
+      metaCode: metas.code,
       tournaments: sql<number>`count(distinct ${tournaments.id})`,
       wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
       losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,
@@ -36,12 +37,13 @@ async function aggregateByMeta(db: DB, ownerId: string) {
     .leftJoin(metas, eq(tournaments.metaId, metas.id))
     // Byes / no-shows count in the raw record but not in win-rate / per-meta skill stats.
     .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.kind} not in ('bye', 'no_show')`))
-    .groupBy(tournaments.metaId, metas.name);
+    .groupBy(tournaments.metaId, metas.name, metas.code);
   return rows.map((r) => {
     const wins = num(r.wins), losses = num(r.losses), draws = num(r.draws);
     return {
       metaId: r.metaId ?? null,
-      name: r.metaName ?? 'No meta',
+      // Same rule as metaLabel(): official sets show as their code alone.
+      name: r.metaCode ?? r.metaName ?? 'No meta',
       tournaments: num(r.tournaments),
       wins, losses, draws,
       games: wins + losses + draws,
@@ -141,6 +143,7 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
       leaderId: sql<string>`${rounds.opponentLeaderId}`,
       metaId: rounds.opponentMetaId,
       metaName: metas.name,
+      metaCode: metas.code,
       wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
       losses: sql<number>`count(*) filter (where ${rounds.result} = 'loss')`,
       draws: sql<number>`count(*) filter (where ${rounds.result} = 'draw')`,
@@ -149,7 +152,7 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
     .innerJoin(metas, eq(rounds.opponentMetaId, metas.id))
     .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.opponentMetaId} is not null`))
-    .groupBy(rounds.opponentLeaderId, rounds.opponentMetaId, metas.name);
+    .groupBy(rounds.opponentLeaderId, rounds.opponentMetaId, metas.name, metas.code);
 
   const byLeaderMeta = new Map<string, OpponentMetaStat[]>();
   for (const r of metaRows) {
@@ -157,7 +160,7 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
     const wins = num(r.wins), losses = num(r.losses), draws = num(r.draws);
     const list = byLeaderMeta.get(r.leaderId) ?? [];
     list.push({
-      metaId: r.metaId, name: r.metaName ?? '—',
+      metaId: r.metaId, name: r.metaCode ?? r.metaName ?? '—',
       wins, losses, draws, games: wins + losses + draws, winRate: rate(wins, wins + losses + draws),
     });
     byLeaderMeta.set(r.leaderId, list);
