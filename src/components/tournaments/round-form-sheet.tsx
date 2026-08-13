@@ -6,9 +6,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { LeaderCarousel } from '@/components/leaders/leader-carousel';
-import { ReferenceCombobox } from './reference-combobox';
-import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta } from '@/components/query-hooks';
-import { roundKindLabel, ROUND_KIND_SUBTITLES, metaLabel } from '@/lib/labels';
+import { useLeaders, useAddCustomLeader } from '@/components/query-hooks';
+import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
 import { cn } from '@/lib/utils';
 import type { CreateRoundInput } from '@/lib/validation/round';
@@ -137,6 +136,35 @@ function TypeCard({ icon: Icon, kind, onPick, disabled }: { icon: LucideIcon; ki
 
 /* ── Step 2: opponent + result (Swiss) or best-of-3 (Top Cut) ──── */
 
+/** Two mutually exclusive options, both always visible. `null` renders neither as active. */
+function Segmented<T extends string | boolean>({
+  value, options, onChange, activeClass = 'bg-primary text-primary-foreground',
+}: {
+  value: T | null;
+  options: { value: T; label: string; activeClass?: string }[];
+  onChange: (v: T) => void;
+  activeClass?: string;
+}) {
+  return (
+    <div className="flex gap-1">
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            'h-9 flex-1 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+            value === o.value ? (o.activeClass ?? activeClass) : 'text-muted-foreground',
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function RoundFormBody({
   kind, onBack, onOpenChange, initial, onSubmit, onDelete,
 }: {
@@ -149,16 +177,21 @@ function RoundFormBody({
 }) {
   const { data: leaders } = useLeaders();
   const addLeader = useAddCustomLeader();
-  const { data: metas } = useMetas();
-  const addMeta = useAddCustomMeta();
 
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
-  const [oppMetaId, setOppMetaId] = useState<string | null>(initial?.opponentMetaId ?? null);
+  // Defaults apply when adding; editing shows what was recorded. Swiss only —
+  // top cut has no die roll and derives its result from the game log.
   const [result, setResult] = useState<WinLoss | null>(
-    kind === 'swiss' && (initial?.result === 'win' || initial?.result === 'loss') ? initial.result : null,
+    kind === 'swiss'
+      ? (initial ? (initial.result === 'win' || initial.result === 'loss' ? initial.result : null) : 'win')
+      : null,
   );
-  const [playOrder, setPlayOrder] = useState<PlayOrder | null>(kind === 'swiss' ? (initial?.playOrder ?? null) : null);
-  const [wonDieRoll, setWonDieRoll] = useState<boolean | null>(kind === 'swiss' ? (initial?.wonDieRoll ?? null) : null);
+  const [playOrder, setPlayOrder] = useState<PlayOrder | null>(
+    kind === 'swiss' ? (initial ? initial.playOrder : 'first') : null,
+  );
+  const [wonDieRoll, setWonDieRoll] = useState<boolean | null>(
+    kind === 'swiss' ? (initial ? initial.wonDieRoll : true) : null,
+  );
   const [games, setGames] = useState<GameLog[]>(kind === 'top_cut' ? (initial?.games ?? []) : []);
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
@@ -171,15 +204,18 @@ function RoundFormBody({
     const l = await addLeader.mutateAsync({ name: n, colors: [] });
     return { id: l.id, name: l.name };
   };
-  const cycle = <T,>(cur: T | null, a: T, b: T): T | null => (cur === null ? a : cur === a ? b : null);
-
   async function save() {
     if (!valid || !oppLeaderId) return;
     setSaving(true);
     try {
+      // Every round is played in its tournament's meta, so this form never lets
+      // the user set opponentMetaId — but on edit it must still pass the
+      // recorded value through, or saving would silently erase it (and
+      // getOpponentStats would then coalesce the round into the tournament's
+      // meta, rewriting history). See roundToInput in tournament-detail.tsx.
       const payload: CreateRoundInput = kind === 'swiss'
-        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
-        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, games, notes: notes.trim() || null };
+        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
+        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, games, notes: notes.trim() || null };
       await onSubmit(payload);
       onOpenChange(false);
     } finally {
@@ -219,32 +255,30 @@ function RoundFormBody({
           <LeaderCarousel options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="rf-oppmeta" className="text-sm font-medium">Opponent meta (optional)</label>
-          <ReferenceCombobox id="rf-oppmeta"
-            options={metas ?? []} value={oppMetaId} onChange={setOppMetaId}
-            getLabel={metaLabel}
-            onAddCustom={async (n) => { const m = await addMeta.mutateAsync({ name: n }); return { id: m.id, name: m.name }; }}
-            placeholder="e.g. OP16" />
-        </div>
-
         {kind === 'swiss' ? (
           <>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setWonDieRoll(cycle(wonDieRoll, true, false))}
-                className="flex h-12 items-center justify-between rounded-xl border border-border/60 px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="flex items-center gap-2 text-sm font-medium"><Dices className="size-4" /> Dice Roll</span>
-                <span className={cn('text-sm font-semibold', wonDieRoll === true ? 'text-emerald-500' : wonDieRoll === false ? 'text-red-500' : 'text-muted-foreground')}>
-                  {wonDieRoll === true ? 'Won' : wonDieRoll === false ? 'Lost' : '—'}
+              <div className="rounded-xl border border-border/60 p-2" role="group" aria-label="Dice Roll">
+                <span className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground">
+                  <Dices className="size-3.5" /> Dice Roll
                 </span>
-              </button>
-              <button type="button" onClick={() => setPlayOrder(cycle(playOrder, 'first', 'second'))}
-                className="flex h-12 items-center justify-between rounded-xl border border-border/60 px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="text-sm font-medium">Start</span>
-                <span className={cn('text-sm font-semibold', playOrder ? 'text-foreground' : 'text-muted-foreground')}>
-                  {playOrder === 'first' ? '1st' : playOrder === 'second' ? '2nd' : '—'}
-                </span>
-              </button>
+                <Segmented
+                  value={wonDieRoll}
+                  onChange={setWonDieRoll}
+                  options={[
+                    { value: true, label: 'Won', activeClass: 'bg-emerald-600 text-white' },
+                    { value: false, label: 'Lost', activeClass: 'bg-red-600 text-white' },
+                  ]}
+                />
+              </div>
+              <div className="rounded-xl border border-border/60 p-2" role="group" aria-label="Start">
+                <span className="mb-1 block px-1 text-xs font-medium text-muted-foreground">Start</span>
+                <Segmented
+                  value={playOrder}
+                  onChange={setPlayOrder}
+                  options={[{ value: 'first' as PlayOrder, label: '1st' }, { value: 'second' as PlayOrder, label: '2nd' }]}
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-between rounded-xl bg-emerald-600/12 p-2 pl-3" role="group" aria-label="Result">

@@ -23,12 +23,11 @@ function gameScore(games: RoundDTO['games']): string | null {
 }
 
 export function RoundItem({
-  round, myLeader, resolveLeader, metaName, onEdit, onDelete, editable, unsynced = false,
+  round, myLeader, resolveLeader, onEdit, onDelete, editable, unsynced = false,
 }: {
   round: RoundDTO;
   myLeader?: { name: string; colors: string[]; setCode?: string | null };
   resolveLeader: (id: string) => LeaderDTO | undefined;
-  metaName: (id: string) => string;
   onEdit: () => void;
   onDelete: () => void;
   editable: boolean;
@@ -58,7 +57,6 @@ export function RoundItem({
           <p className="mt-0.5 truncate text-sm">
             vs <span className="text-foreground">{opponent?.name ?? '—'}</span>
             {opponent?.setCode && <span className="text-muted-foreground"> {opponent.setCode}</span>}
-            {round.opponentMetaId && <span className="text-muted-foreground"> · {metaName(round.opponentMetaId)}</span>}
           </p>
         ) : (
           <p className="mt-0.5 truncate text-sm font-medium">{roundKindLabel(round.kind)}</p>

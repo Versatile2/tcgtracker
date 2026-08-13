@@ -8,6 +8,37 @@ import { leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leade
 type Option = { id: string; name: string; colors?: string[]; setCode?: string | null };
 
 /**
+ * Card art (or color-fallback initial) plus the white name/set-code caption
+ * strip. Shared by the expanded row's cards and the collapsed single-card
+ * view so the two renders can never drift apart — the collapse must mirror
+ * the expanded card exactly, and one shared piece guarantees that where two
+ * copies would only guarantee it by discipline.
+ */
+function LeaderCardVisual({ leader }: { leader: Option }) {
+  const src = getLeaderImage(leader.setCode);
+  return (
+    <>
+      {/* 5:7 card aspect, matching the 600x838 source art. */}
+      <div
+        className="flex h-[8.4rem] items-center justify-center text-3xl font-bold"
+        style={src ? undefined : { background: leaderBackground(leader.colors), color: leaderTextColor(leader.colors) }}
+      >
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+        ) : (
+          leaderInitial(leader.name)
+        )}
+      </div>
+      <div className="bg-white px-1.5 py-1 text-left text-black">
+        <div className="truncate text-xs font-bold leading-tight">{leader.name}</div>
+        <div className="truncate text-[0.625rem] text-neutral-500">{leader.setCode ?? '—'}</div>
+      </div>
+    </>
+  );
+}
+
+/**
  * Visual opponent-leader picker: a search box over a horizontal row of portrait
  * leader cards (real card art + name/set-code caption). The selected card gets
  * an accent ring. A trailing "add" card creates a custom leader from the current
@@ -28,16 +59,44 @@ export function LeaderCarousel({
   disabled?: boolean;
 }) {
   const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState(false);
+  const selected = options.find((o) => o.id === value);
+  // Collapsed once a leader is chosen: the point of the row is choosing, and
+  // 132 equal-sized cards make the chosen one easy to lose.
+  const collapsed = Boolean(selected) && !expanded;
   const q = search.trim().toLowerCase();
   const shown = q ? options.filter((o) => leaderSearchText(o.name, o.setCode).includes(q)) : options;
   const canAdd = Boolean(onAddCustom) && q.length > 0 && !options.some((o) => o.name.toLowerCase() === q);
+
+  function choose(id: string) {
+    onChange(id);
+    setExpanded(false);
+    setSearch('');
+  }
 
   async function add() {
     if (!onAddCustom) return;
     const created = await onAddCustom(search.trim());
     if (!created) return;
-    onChange(created.id);
-    setSearch('');
+    choose(created.id);
+  }
+
+  if (collapsed && selected) {
+    return (
+      <div className="flex items-start gap-3">
+        <div className="w-24 shrink-0 overflow-hidden rounded-xl ring-2 ring-primary">
+          <LeaderCardVisual leader={selected} />
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          disabled={disabled}
+          className="rounded-md px-2 py-1 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          Change
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -52,35 +111,19 @@ export function LeaderCarousel({
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
         {shown.map((o) => {
           const selected = value === o.id;
-          const src = getLeaderImage(o.setCode);
           return (
             <button
               key={o.id}
               type="button"
               aria-pressed={selected}
-              onClick={() => onChange(o.id)}
+              onClick={() => choose(o.id)}
               disabled={disabled}
               className={cn(
                 'w-24 shrink-0 overflow-hidden rounded-xl outline-none ring-2 transition focus-visible:ring-ring',
                 selected ? 'ring-primary' : 'ring-transparent opacity-75 hover:opacity-100',
               )}
             >
-              {/* 5:7 card aspect, matching the 600x838 source art. */}
-              <div
-                className="flex h-[8.4rem] items-center justify-center text-3xl font-bold"
-                style={src ? undefined : { background: leaderBackground(o.colors), color: leaderTextColor(o.colors) }}
-              >
-                {src ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={src} alt="" loading="lazy" className="size-full object-cover" />
-                ) : (
-                  leaderInitial(o.name)
-                )}
-              </div>
-              <div className="bg-white px-1.5 py-1 text-left text-black">
-                <div className="truncate text-xs font-bold leading-tight">{o.name}</div>
-                <div className="truncate text-[0.625rem] text-neutral-500">{o.setCode ?? '—'}</div>
-              </div>
+              <LeaderCardVisual leader={o} />
             </button>
           );
         })}

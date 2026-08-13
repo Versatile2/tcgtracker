@@ -137,11 +137,17 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
     .where(eq(tournaments.ownerId, ownerId))
     .groupBy(rounds.opponentLeaderId, leaders.name);
 
-  // Per opponent leader x meta (only rounds with an opponent meta set)
+  // Per opponent leader x meta. A round's meta is its own when set, otherwise
+  // its tournament's — every round is played in its tournament's meta, so the
+  // form no longer asks. Coalescing rather than always using the tournament's
+  // meta preserves rounds recorded under a different meta before the picker
+  // was removed.
+  const effectiveMetaId = sql<string>`coalesce(${rounds.opponentMetaId}, ${tournaments.metaId})`;
+
   const metaRows = await db
     .select({
       leaderId: sql<string>`${rounds.opponentLeaderId}`,
-      metaId: rounds.opponentMetaId,
+      metaId: effectiveMetaId,
       metaName: metas.name,
       metaCode: metas.code,
       wins: sql<number>`count(*) filter (where ${rounds.result} = 'win')`,
@@ -150,9 +156,13 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
     })
     .from(rounds)
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
-    .innerJoin(metas, eq(rounds.opponentMetaId, metas.id))
-    .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.opponentMetaId} is not null`))
-    .groupBy(rounds.opponentLeaderId, rounds.opponentMetaId, metas.name, metas.code);
+    .innerJoin(metas, eq(metas.id, effectiveMetaId))
+    // Byes / no-shows never carry an opponent leader, but they can still
+    // coalesce to a non-null meta once their tournament has one — exclude
+    // them explicitly so they don't leak a leaderId=null row into the map
+    // (harmless today only because leaderRows' innerJoin on leaders drops it).
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.opponentLeaderId} is not null`))
+    .groupBy(rounds.opponentLeaderId, effectiveMetaId, metas.name, metas.code);
 
   const byLeaderMeta = new Map<string, OpponentMetaStat[]>();
   for (const r of metaRows) {

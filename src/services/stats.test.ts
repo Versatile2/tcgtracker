@@ -114,7 +114,7 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(other.wins).toBe(0);
   });
 
-  it('breaks opponents down by leader and by opponent meta', async () => {
+  it('breaks opponents down by leader and by meta, falling back to the tournament meta', async () => {
     const t = await makeTournament('OP02 Paramount War', 'Roronoa Zoro', []);
     await addRoundTo(t.id, 1, 'Nami', 'win', 'OP02 Paramount War');
     await addRoundTo(t.id, 2, 'Nami', 'loss', 'OP02 Paramount War');
@@ -126,15 +126,55 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(nami.games).toBe(3); // all rounds counted overall
     expect(nami.wins).toBe(2);
     expect(nami.losses).toBe(1);
-    expect(nami.byMeta).toHaveLength(1); // only the 2 meta-tagged rounds
+    // The untagged round now falls back to its tournament's meta (OP02), so all
+    // three Nami rounds land in the same bucket instead of only the tagged two.
+    expect(nami.byMeta).toHaveLength(1);
     expect(nami.byMeta[0].name).toBe('OP02');
-    expect(nami.byMeta[0].games).toBe(2);
-    expect(nami.byMeta[0].wins).toBe(1);
+    expect(nami.byMeta[0].games).toBe(3);
+    expect(nami.byMeta[0].wins).toBe(2);
     expect(nami.byMeta[0].losses).toBe(1);
 
     const sanji = opp.find((o) => o.name === 'Sanji')!;
     expect(sanji.games).toBe(1);
-    expect(sanji.byMeta).toHaveLength(0); // no meta ever set
+    // Previously empty: an untagged round used to be excluded entirely. It now
+    // inherits the tournament's meta.
+    expect(sanji.byMeta).toHaveLength(1);
+    expect(sanji.byMeta[0].name).toBe('OP02');
+  });
+
+  it('prefers a round own meta over its tournament meta, and skips rounds with neither', async () => {
+    // Tournament is OP02; one round is explicitly tagged OP01.
+    const tagged = await makeTournament('OP02 Paramount War', 'Roronoa Zoro', []);
+    await addRoundTo(tagged.id, 1, 'Nami', 'win', 'OP01 Romance Dawn');
+
+    // Tournament with no meta at all, and a round with no meta either.
+    const bare = await makeTournament(null, 'Roronoa Zoro', []);
+    await addRoundTo(bare.id, 1, 'Sanji', 'win');
+
+    const opp = await getOpponentStats(db, USER);
+
+    // The round's own meta wins over the tournament's — coalesce order matters.
+    const nami = opp.find((o) => o.name === 'Nami')!;
+    expect(nami.byMeta.map((m) => m.name)).toEqual(['OP01']);
+
+    // Nothing to coalesce to, so the round contributes no meta bucket.
+    const sanji = opp.find((o) => o.name === 'Sanji')!;
+    expect(sanji.games).toBe(1);
+    expect(sanji.byMeta).toHaveLength(0);
+  });
+
+  it('excludes byes from opponent stats even when their tournament has a meta', async () => {
+    // Tournament has a meta, so a bye's coalesced meta would be non-null if it
+    // weren't excluded — it must still contribute nothing to getOpponentStats.
+    const t = await makeTournament('OP02 Paramount War', 'Roronoa Zoro', [['Nami', 'win']]);
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 2, kind: 'bye', opponentLeaderId: null, result: 'win', playOrder: null, notes: null });
+
+    const opp = await getOpponentStats(db, USER);
+    expect(opp).toHaveLength(1);
+    const nami = opp.find((o) => o.name === 'Nami')!;
+    expect(nami.games).toBe(1);
+    expect(nami.byMeta).toHaveLength(1);
+    expect(nami.byMeta[0].games).toBe(1);
   });
 
   it('reports per-meta rows by set code, and keeps the no-meta fallback', async () => {
