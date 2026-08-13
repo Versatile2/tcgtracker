@@ -28,16 +28,59 @@ export function LeaderCarousel({
   disabled?: boolean;
 }) {
   const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState(false);
+  const selected = options.find((o) => o.id === value);
+  // Collapsed once a leader is chosen: the point of the row is choosing, and
+  // 132 equal-sized cards make the chosen one easy to lose.
+  const collapsed = Boolean(selected) && !expanded;
   const q = search.trim().toLowerCase();
   const shown = q ? options.filter((o) => leaderSearchText(o.name, o.setCode).includes(q)) : options;
   const canAdd = Boolean(onAddCustom) && q.length > 0 && !options.some((o) => o.name.toLowerCase() === q);
+
+  function choose(id: string) {
+    onChange(id);
+    setExpanded(false);
+    setSearch('');
+  }
 
   async function add() {
     if (!onAddCustom) return;
     const created = await onAddCustom(search.trim());
     if (!created) return;
-    onChange(created.id);
-    setSearch('');
+    choose(created.id);
+  }
+
+  if (collapsed && selected) {
+    const src = getLeaderImage(selected.setCode);
+    return (
+      <div className="flex items-start gap-3">
+        <div className="w-24 shrink-0 overflow-hidden rounded-xl ring-2 ring-primary">
+          <div
+            className="flex h-[8.4rem] items-center justify-center text-3xl font-bold"
+            style={src ? undefined : { background: leaderBackground(selected.colors), color: leaderTextColor(selected.colors) }}
+          >
+            {src ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+            ) : (
+              leaderInitial(selected.name)
+            )}
+          </div>
+          <div className="bg-white px-1.5 py-1 text-left text-black">
+            <div className="truncate text-xs font-bold leading-tight">{selected.name}</div>
+            <div className="truncate text-[0.625rem] text-neutral-500">{selected.setCode ?? '—'}</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          disabled={disabled}
+          className="rounded-md px-2 py-1 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          Change
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -58,7 +101,7 @@ export function LeaderCarousel({
               key={o.id}
               type="button"
               aria-pressed={selected}
-              onClick={() => onChange(o.id)}
+              onClick={() => choose(o.id)}
               disabled={disabled}
               className={cn(
                 'w-24 shrink-0 overflow-hidden rounded-xl outline-none ring-2 transition focus-visible:ring-ring',
