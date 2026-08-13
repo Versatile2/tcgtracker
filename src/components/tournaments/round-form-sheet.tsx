@@ -136,6 +136,35 @@ function TypeCard({ icon: Icon, kind, onPick, disabled }: { icon: LucideIcon; ki
 
 /* ── Step 2: opponent + result (Swiss) or best-of-3 (Top Cut) ──── */
 
+/** Two mutually exclusive options, both always visible. `null` renders neither as active. */
+function Segmented<T extends string | boolean>({
+  value, options, onChange, activeClass = 'bg-primary text-primary-foreground',
+}: {
+  value: T | null;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+  activeClass?: string;
+}) {
+  return (
+    <div className="flex gap-1">
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            'h-9 flex-1 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
+            value === o.value ? activeClass : 'text-muted-foreground',
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function RoundFormBody({
   kind, onBack, onOpenChange, initial, onSubmit, onDelete,
 }: {
@@ -150,11 +179,19 @@ function RoundFormBody({
   const addLeader = useAddCustomLeader();
 
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
+  // Defaults apply when adding; editing shows what was recorded. Swiss only —
+  // top cut has no die roll and derives its result from the game log.
   const [result, setResult] = useState<WinLoss | null>(
-    kind === 'swiss' && (initial?.result === 'win' || initial?.result === 'loss') ? initial.result : null,
+    kind === 'swiss'
+      ? (initial ? (initial.result === 'win' || initial.result === 'loss' ? initial.result : null) : 'win')
+      : null,
   );
-  const [playOrder, setPlayOrder] = useState<PlayOrder | null>(kind === 'swiss' ? (initial?.playOrder ?? null) : null);
-  const [wonDieRoll, setWonDieRoll] = useState<boolean | null>(kind === 'swiss' ? (initial?.wonDieRoll ?? null) : null);
+  const [playOrder, setPlayOrder] = useState<PlayOrder | null>(
+    kind === 'swiss' ? (initial ? initial.playOrder : 'first') : null,
+  );
+  const [wonDieRoll, setWonDieRoll] = useState<boolean | null>(
+    kind === 'swiss' ? (initial ? initial.wonDieRoll : true) : null,
+  );
   const [games, setGames] = useState<GameLog[]>(kind === 'top_cut' ? (initial?.games ?? []) : []);
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
@@ -167,8 +204,6 @@ function RoundFormBody({
     const l = await addLeader.mutateAsync({ name: n, colors: [] });
     return { id: l.id, name: l.name };
   };
-  const cycle = <T,>(cur: T | null, a: T, b: T): T | null => (cur === null ? a : cur === a ? b : null);
-
   async function save() {
     if (!valid || !oppLeaderId) return;
     setSaving(true);
@@ -218,20 +253,25 @@ function RoundFormBody({
         {kind === 'swiss' ? (
           <>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setWonDieRoll(cycle(wonDieRoll, true, false))}
-                className="flex h-12 items-center justify-between rounded-xl border border-border/60 px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="flex items-center gap-2 text-sm font-medium"><Dices className="size-4" /> Dice Roll</span>
-                <span className={cn('text-sm font-semibold', wonDieRoll === true ? 'text-emerald-500' : wonDieRoll === false ? 'text-red-500' : 'text-muted-foreground')}>
-                  {wonDieRoll === true ? 'Won' : wonDieRoll === false ? 'Lost' : '—'}
+              <div className="rounded-xl border border-border/60 p-2">
+                <span className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground">
+                  <Dices className="size-3.5" /> Dice Roll
                 </span>
-              </button>
-              <button type="button" onClick={() => setPlayOrder(cycle(playOrder, 'first', 'second'))}
-                className="flex h-12 items-center justify-between rounded-xl border border-border/60 px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="text-sm font-medium">Start</span>
-                <span className={cn('text-sm font-semibold', playOrder ? 'text-foreground' : 'text-muted-foreground')}>
-                  {playOrder === 'first' ? '1st' : playOrder === 'second' ? '2nd' : '—'}
-                </span>
-              </button>
+                <Segmented
+                  value={wonDieRoll}
+                  onChange={setWonDieRoll}
+                  activeClass="bg-emerald-600 text-white"
+                  options={[{ value: true, label: 'Won' }, { value: false, label: 'Lost' }]}
+                />
+              </div>
+              <div className="rounded-xl border border-border/60 p-2">
+                <span className="mb-1 block px-1 text-xs font-medium text-muted-foreground">Start</span>
+                <Segmented
+                  value={playOrder}
+                  onChange={setPlayOrder}
+                  options={[{ value: 'first' as PlayOrder, label: '1st' }, { value: 'second' as PlayOrder, label: '2nd' }]}
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-between rounded-xl bg-emerald-600/12 p-2 pl-3" role="group" aria-label="Result">
