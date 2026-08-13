@@ -125,14 +125,19 @@ Name (optional) → Type → Leader → Meta (optional, pre-filled) → Date. On
 
 ## 5. Testing
 
+**Constraint discovered while planning:** this repo has **no component-test infrastructure**. `vitest.config.ts` sets `environment: 'node'` and collects `.ts` only (`include: ['tests/**/*.test.ts', 'src/**/*.test.ts']`); there is not one component test in the codebase. `@testing-library/react` and `jsdom` are installed but unused, and the `e2e` script has no Playwright config behind it.
+
+Rather than expand this change into a test-infrastructure project, the pre-selection rule is **extracted into a pure function** (`pickDefaultMetaId`) and tested directly. That is where the real failure modes live — newest-official, never-custom, no hardcoded set code.
+
 | Test | Asserts |
 |---|---|
 | `metaLabel` unit tests | Official meta → code; custom meta (`code: null`) → full name |
+| `pickDefaultMetaId` unit tests | Highest code wins; order-independent; never a custom meta; `null` when no official meta exists; a newly seeded OP17 wins automatically |
 | `listMetas` ordering test | Official metas descend by code; custom metas follow, alphabetical |
-| New-tournament form test | Pre-selects the newest official meta once metas load; does **not** overwrite an already-chosen meta on refetch; never auto-selects a custom meta |
-| Combobox test | Searching a set title matches an item displaying only its code |
-| Form field-order test | Name is the first input |
+| `getPerMetaStats` test | Rows report `"OP02"`; the `'No meta'` fallback survives |
 | `src/services/stats.test.ts:65` | **Existing test needs updating** — currently expects `bestMeta?.name === 'OP02 Paramount War'`, becomes `'OP02'` |
+
+**Not covered by automation:** field order, and the combobox display/search split. Both are verified by manual check during implementation. Standing up jsdom component testing to close this gap is specified as an optional task in the plan, to be done only on request.
 
 ## 6. Out of scope
 
