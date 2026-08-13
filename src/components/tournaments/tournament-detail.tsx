@@ -18,7 +18,7 @@ import {
 } from '@/components/query-hooks';
 import { useOutbox, pendingRoundIds } from '@/lib/outbox/use-outbox';
 import { formatRecord, computeRecord } from '@/lib/record';
-import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
+import { tournamentTypeLabel } from '@/lib/labels';
 import type { RoundDTO } from '@/lib/dto';
 import type { CreateRoundInput } from '@/lib/validation/round';
 import { ShareDialog } from '@/components/share/share-dialog';
@@ -66,7 +66,6 @@ export function TournamentDetail({ id }: { id: string }) {
     id: l.id,
     name: l.setCode ? `${l.name} ${l.setCode}` : l.name,
   }));
-  const metaName = (mid: string) => { const m = metas?.find((x) => x.id === mid); return m ? metaLabel(m) : ''; };
   const record = computeRecord(t.rounds);
   const myLeader = leaders?.find((l) => l.id === t.myLeaderId);
 
@@ -122,7 +121,7 @@ export function TournamentDetail({ id }: { id: string }) {
           <RoundItem key={r.id} round={r}
             myLeader={myLeader ? { name: myLeader.name, colors: myLeader.colors, setCode: myLeader.setCode } : undefined}
             resolveLeader={(id) => leaders?.find((l) => l.id === id)}
-            metaName={metaName} editable={editable}
+            editable={editable}
             unsynced={unsyncedRounds.has(r.id)}
             onEdit={() => { setEditing(r); setSheetOpen(true); }}
             onDelete={() => handleDeleteRound(r)} />

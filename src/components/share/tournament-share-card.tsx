@@ -31,12 +31,10 @@ function Pill({ children }: { children: React.ReactNode }) {
 function MatchRow({
   round,
   opponent,
-  metaName,
   condensed,
 }: {
   round: RoundDTO;
   opponent: LeaderDTO | undefined;
-  metaName: string | null;
   condensed: boolean;
 }) {
   const hasOpponent = round.opponentLeaderId !== null;
@@ -55,7 +53,6 @@ function MatchRow({
           {hasOpponent && opponent?.setCode && (
             <span className="font-normal text-muted-foreground"> {opponent.setCode}</span>
           )}
-          {!condensed && metaName && <span className="font-normal text-muted-foreground"> · {metaName}</span>}
         </p>
         {!condensed && round.notes && (
           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{round.notes}</p>
@@ -81,7 +78,6 @@ export function TournamentShareCard({
 }) {
   const leaderById = (id: string): LeaderDTO | undefined => leaders.find((l) => l.id === id);
   const metaById = (id: string): MetaDTO | undefined => metas.find((m) => m.id === id);
-  const metaLabelFor = (id: string): string | null => { const m = metaById(id); return m ? metaLabel(m) : null; };
 
   const myLeader = leaderById(tournament.myLeaderId);
   const record = formatRecord(computeRecord(tournament.rounds));
@@ -117,7 +113,6 @@ export function TournamentShareCard({
             key={r.id}
             round={r}
             opponent={r.opponentLeaderId ? leaderById(r.opponentLeaderId) : undefined}
-            metaName={r.opponentMetaId ? metaLabelFor(r.opponentMetaId) : null}
             condensed={condensed}
           />
         ))}
