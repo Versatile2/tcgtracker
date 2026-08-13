@@ -157,7 +157,11 @@ export async function getOpponentStats(db: DB, ownerId: string): Promise<Opponen
     .from(rounds)
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
     .innerJoin(metas, eq(metas.id, effectiveMetaId))
-    .where(eq(tournaments.ownerId, ownerId))
+    // Byes / no-shows never carry an opponent leader, but they can still
+    // coalesce to a non-null meta once their tournament has one — exclude
+    // them explicitly so they don't leak a leaderId=null row into the map
+    // (harmless today only because leaderRows' innerJoin on leaders drops it).
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.opponentLeaderId} is not null`))
     .groupBy(rounds.opponentLeaderId, effectiveMetaId, metas.name, metas.code);
 
   const byLeaderMeta = new Map<string, OpponentMetaStat[]>();

@@ -208,9 +208,14 @@ function RoundFormBody({
     if (!valid || !oppLeaderId) return;
     setSaving(true);
     try {
+      // Every round is played in its tournament's meta, so this form never lets
+      // the user set opponentMetaId — but on edit it must still pass the
+      // recorded value through, or saving would silently erase it (and
+      // getOpponentStats would then coalesce the round into the tournament's
+      // meta, rewriting history). See roundToInput in tournament-detail.tsx.
       const payload: CreateRoundInput = kind === 'swiss'
-        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
-        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, games, notes: notes.trim() || null };
+        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
+        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, games, notes: notes.trim() || null };
       await onSubmit(payload);
       onOpenChange(false);
     } finally {

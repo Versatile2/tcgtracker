@@ -163,6 +163,20 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(sanji.byMeta).toHaveLength(0);
   });
 
+  it('excludes byes from opponent stats even when their tournament has a meta', async () => {
+    // Tournament has a meta, so a bye's coalesced meta would be non-null if it
+    // weren't excluded — it must still contribute nothing to getOpponentStats.
+    const t = await makeTournament('OP02 Paramount War', 'Roronoa Zoro', [['Nami', 'win']]);
+    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 2, kind: 'bye', opponentLeaderId: null, result: 'win', playOrder: null, notes: null });
+
+    const opp = await getOpponentStats(db, USER);
+    expect(opp).toHaveLength(1);
+    const nami = opp.find((o) => o.name === 'Nami')!;
+    expect(nami.games).toBe(1);
+    expect(nami.byMeta).toHaveLength(1);
+    expect(nami.byMeta[0].games).toBe(1);
+  });
+
   it('reports per-meta rows by set code, and keeps the no-meta fallback', async () => {
     await makeTournament('OP02 Paramount War', 'Roronoa Zoro', [['Nami', 'win']]);
     await makeTournament(null, 'Roronoa Zoro', [['Nami', 'loss']]);
