@@ -141,7 +141,7 @@ function Segmented<T extends string | boolean>({
   value, options, onChange, activeClass = 'bg-primary text-primary-foreground',
 }: {
   value: T | null;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; activeClass?: string }[];
   onChange: (v: T) => void;
   activeClass?: string;
 }) {
@@ -155,7 +155,7 @@ function Segmented<T extends string | boolean>({
           onClick={() => onChange(o.value)}
           className={cn(
             'h-9 flex-1 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
-            value === o.value ? activeClass : 'text-muted-foreground',
+            value === o.value ? (o.activeClass ?? activeClass) : 'text-muted-foreground',
           )}
         >
           {o.label}
@@ -253,18 +253,20 @@ function RoundFormBody({
         {kind === 'swiss' ? (
           <>
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-border/60 p-2">
+              <div className="rounded-xl border border-border/60 p-2" role="group" aria-label="Dice Roll">
                 <span className="mb-1 flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground">
                   <Dices className="size-3.5" /> Dice Roll
                 </span>
                 <Segmented
                   value={wonDieRoll}
                   onChange={setWonDieRoll}
-                  activeClass="bg-emerald-600 text-white"
-                  options={[{ value: true, label: 'Won' }, { value: false, label: 'Lost' }]}
+                  options={[
+                    { value: true, label: 'Won', activeClass: 'bg-emerald-600 text-white' },
+                    { value: false, label: 'Lost', activeClass: 'bg-red-600 text-white' },
+                  ]}
                 />
               </div>
-              <div className="rounded-xl border border-border/60 p-2">
+              <div className="rounded-xl border border-border/60 p-2" role="group" aria-label="Start">
                 <span className="mb-1 block px-1 text-xs font-medium text-muted-foreground">Start</span>
                 <Segmented
                   value={playOrder}
