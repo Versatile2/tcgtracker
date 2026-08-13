@@ -6,9 +6,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { LeaderCarousel } from '@/components/leaders/leader-carousel';
-import { ReferenceCombobox } from './reference-combobox';
-import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta } from '@/components/query-hooks';
-import { roundKindLabel, ROUND_KIND_SUBTITLES, metaLabel } from '@/lib/labels';
+import { useLeaders, useAddCustomLeader } from '@/components/query-hooks';
+import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
 import { cn } from '@/lib/utils';
 import type { CreateRoundInput } from '@/lib/validation/round';
@@ -149,11 +148,8 @@ function RoundFormBody({
 }) {
   const { data: leaders } = useLeaders();
   const addLeader = useAddCustomLeader();
-  const { data: metas } = useMetas();
-  const addMeta = useAddCustomMeta();
 
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
-  const [oppMetaId, setOppMetaId] = useState<string | null>(initial?.opponentMetaId ?? null);
   const [result, setResult] = useState<WinLoss | null>(
     kind === 'swiss' && (initial?.result === 'win' || initial?.result === 'loss') ? initial.result : null,
   );
@@ -178,8 +174,8 @@ function RoundFormBody({
     setSaving(true);
     try {
       const payload: CreateRoundInput = kind === 'swiss'
-        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
-        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: oppMetaId, games, notes: notes.trim() || null };
+        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
+        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, games, notes: notes.trim() || null };
       await onSubmit(payload);
       onOpenChange(false);
     } finally {
@@ -217,15 +213,6 @@ function RoundFormBody({
         <div className="space-y-2">
           <span className="text-sm font-medium">Opponent’s Deck</span>
           <LeaderCarousel options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="rf-oppmeta" className="text-sm font-medium">Opponent meta (optional)</label>
-          <ReferenceCombobox id="rf-oppmeta"
-            options={metas ?? []} value={oppMetaId} onChange={setOppMetaId}
-            getLabel={metaLabel}
-            onAddCustom={async (n) => { const m = await addMeta.mutateAsync({ name: n }); return { id: m.id, name: m.name }; }}
-            placeholder="e.g. OP16" />
         </div>
 
         {kind === 'swiss' ? (
