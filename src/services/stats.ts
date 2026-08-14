@@ -8,6 +8,13 @@ type DB = NodePgDatabase<typeof schema>;
 const num = (v: unknown): number => Number(v ?? 0);
 const rate = (wins: number, total: number): number => (total > 0 ? wins / total : 0);
 
+/**
+ * Which leader the player used for a round. Classic tournaments own the leader;
+ * freeplay records it per round. The invariant guarantees exactly one of the two
+ * is set for any real game, so this never resolves to null.
+ */
+const playedLeaderId = sql<string>`coalesce(${rounds.myLeaderId}, ${tournaments.myLeaderId})`;
+
 export type OverallStats = {
   totalTournaments: number;
   wins: number; losses: number; draws: number;
@@ -21,7 +28,9 @@ export type PerMetaStat = {
 };
 
 // Shared per-meta aggregation used by both getPerMetaStats and getOverallStats (bestMeta).
-async function aggregateByMeta(db: DB, ownerId: string) {
+// Overall excludes freeplay (it is not part of the competitive record) while the
+// per-meta breakdown includes it, so this cannot be computed once and shared.
+async function aggregateByMeta(db: DB, ownerId: string, opts: { includeFreeplay: boolean }) {
   const rows = await db
     .select({
       metaId: tournaments.metaId,
@@ -36,7 +45,11 @@ async function aggregateByMeta(db: DB, ownerId: string) {
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
     .leftJoin(metas, eq(tournaments.metaId, metas.id))
     // Byes / no-shows count in the raw record but not in win-rate / per-meta skill stats.
-    .where(and(eq(tournaments.ownerId, ownerId), sql`${rounds.kind} not in ('bye', 'no_show')`))
+    .where(and(
+      eq(tournaments.ownerId, ownerId),
+      sql`${rounds.kind} not in ('bye', 'no_show')`,
+      ...(opts.includeFreeplay ? [] : [sql`${tournaments.type} <> 'freeplay'`]),
+    ))
     .groupBy(tournaments.metaId, metas.name, metas.code);
   return rows.map((r) => {
     const wins = num(r.wins), losses = num(r.losses), draws = num(r.draws);
@@ -53,7 +66,7 @@ async function aggregateByMeta(db: DB, ownerId: string) {
 }
 
 export async function getPerMetaStats(db: DB, ownerId: string): Promise<PerMetaStat[]> {
-  const rows = await aggregateByMeta(db, ownerId);
+  const rows = await aggregateByMeta(db, ownerId, { includeFreeplay: true });
   return rows
     .map(({ metaId, name, tournaments, wins, losses, draws, winRate }) => ({ metaId, name, tournaments, wins, losses, draws, winRate }))
     .sort((a, b) => b.winRate - a.winRate || a.name.localeCompare(b.name));
@@ -64,13 +77,13 @@ export async function getPlayedLeaders(db: DB, ownerId: string): Promise<{ id: s
     .selectDistinct({ id: leaders.id, name: leaders.name })
     .from(tournaments)
     .innerJoin(rounds, eq(rounds.tournamentId, tournaments.id))
-    .innerJoin(leaders, eq(tournaments.myLeaderId, leaders.id))
+    .innerJoin(leaders, eq(leaders.id, playedLeaderId))
     .where(eq(tournaments.ownerId, ownerId))
     .orderBy(leaders.name);
 }
 
 export async function getOverallStats(db: DB, ownerId: string): Promise<OverallStats> {
-  const byMeta = await aggregateByMeta(db, ownerId);
+  const byMeta = await aggregateByMeta(db, ownerId, { includeFreeplay: false });
   const wins = byMeta.reduce((s, r) => s + r.wins, 0);
   const losses = byMeta.reduce((s, r) => s + r.losses, 0);
   const draws = byMeta.reduce((s, r) => s + r.draws, 0);
@@ -79,7 +92,7 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
   const [{ count: totalTournaments }] = await db
     .select({ count: sql<number>`count(*)` })
     .from(tournaments)
-    .where(eq(tournaments.ownerId, ownerId));
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${tournaments.type} <> 'freeplay'`));
 
   // best meta: highest win rate among metas with at least one game
   const withGames = byMeta.filter((r) => r.games > 0);
@@ -95,7 +108,7 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
     })
     .from(tournaments)
     .innerJoin(leaders, eq(tournaments.myLeaderId, leaders.id))
-    .where(eq(tournaments.ownerId, ownerId))
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${tournaments.type} <> 'freeplay'`))
     .groupBy(tournaments.myLeaderId, leaders.name)
     .orderBy(desc(sql`count(*)`), leaders.name)
     .limit(1);
@@ -217,7 +230,7 @@ export async function getMatchupStats(db: DB, ownerId: string, leaderId: string)
     .from(rounds)
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
     .innerJoin(leaders, eq(rounds.opponentLeaderId, leaders.id))
-    .where(and(eq(tournaments.ownerId, ownerId), eq(tournaments.myLeaderId, leaderId)))
+    .where(and(eq(tournaments.ownerId, ownerId), eq(playedLeaderId, leaderId)))
     .groupBy(rounds.opponentLeaderId, leaders.name);
   const opponents = oppRows
     .map((r) => {
@@ -236,7 +249,7 @@ export async function getMatchupStats(db: DB, ownerId: string, leaderId: string)
     })
     .from(rounds)
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
-    .where(and(eq(tournaments.ownerId, ownerId), eq(tournaments.myLeaderId, leaderId), sql`${rounds.playOrder} is not null`))
+    .where(and(eq(tournaments.ownerId, ownerId), eq(playedLeaderId, leaderId), sql`${rounds.playOrder} is not null`))
     .groupBy(rounds.playOrder);
   const toFor = (po: 'first' | 'second') => {
     const r = toRows.find((x) => x.playOrder === po);
