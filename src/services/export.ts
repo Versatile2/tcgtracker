@@ -1,4 +1,4 @@
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
@@ -43,9 +43,9 @@ export async function exportRounds(db: DB, ownerId: string): Promise<ExportRow[]
       notes: rounds.notes,
     })
     .from(tournaments)
-    .innerJoin(myLeader, eq(tournaments.myLeaderId, myLeader.id))
     .leftJoin(tournamentMeta, eq(tournaments.metaId, tournamentMeta.id))
     .leftJoin(rounds, eq(rounds.tournamentId, tournaments.id))
+    .leftJoin(myLeader, eq(myLeader.id, sql`coalesce(${rounds.myLeaderId}, ${tournaments.myLeaderId})`))
     .leftJoin(opponentLeader, eq(rounds.opponentLeaderId, opponentLeader.id))
     .leftJoin(opponentMeta, eq(rounds.opponentMetaId, opponentMeta.id))
     .where(eq(tournaments.ownerId, ownerId))

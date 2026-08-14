@@ -31,7 +31,7 @@ export type ExportRow = {
   tournamentType: string;
   playedOn: string;
   status: string;
-  myLeader: string;
+  myLeader: string | null;
   tournamentMeta: string | null;
   roundNumber: number | null;
   roundKind: string | null;
