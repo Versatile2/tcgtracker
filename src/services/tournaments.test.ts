@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { asc, eq } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { leaders } from '../db/schema';
 import {
   createTournament, listTournaments, getTournament,
   updateTournament, deleteTournament, finishTournament, reopenTournament,
@@ -16,6 +18,13 @@ const USER = 'user_a';
 async function anyLeaderIds() {
   const ls = await listLeaders(db, USER);
   return { mine: ls[0].id, opp: ls[1].id };
+}
+
+async function leaderId(name: string) {
+  // Ordered by set code: a leader name maps to several real printings, so an
+  // unordered limit(1) would pick a different row from run to run.
+  const [l] = await db.select().from(leaders).where(eq(leaders.name, name)).orderBy(asc(leaders.setCode)).limit(1);
+  return l.id;
 }
 
 describe('tournament service', () => {
@@ -107,5 +116,83 @@ describe('tournament service', () => {
     await expect(
       createTournament(db, 'user_other', { id, type: 'local', myLeaderId: mine, playedOn: '2026-07-20' })
     ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('requires a leader for a non-freeplay tournament', async () => {
+    await expect(createTournament(db, USER, {
+      type: 'local', playedOn: '2026-08-14',
+    } as never)).rejects.toThrow();
+  });
+
+  it('rejects a leader on a freeplay tournament', async () => {
+    const { mine } = await anyLeaderIds();
+    await expect(createTournament(db, USER, {
+      type: 'freeplay', myLeaderId: mine, playedOn: '2026-08-14',
+    })).rejects.toThrow();
+  });
+
+  it('stores a freeplay tournament with no leader', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    expect(t.myLeaderId).toBeNull();
+  });
+
+  it('refuses to change a tournament into or out of freeplay', async () => {
+    const { mine } = await anyLeaderIds();
+    const classic = await createTournament(db, USER, {
+      type: 'local', myLeaderId: mine, playedOn: '2026-08-14',
+    });
+    await expect(updateTournament(db, USER, classic.id, { type: 'freeplay' })).rejects.toThrow();
+
+    const free = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    await expect(updateTournament(db, USER, free.id, { type: 'local' })).rejects.toThrow();
+
+    // A classic-to-classic change still works.
+    const ok = await updateTournament(db, USER, classic.id, { type: 'regionals' });
+    expect(ok.type).toBe('regionals');
+  });
+
+  it('rejects assigning a leader to a freeplay tournament via a partial patch with no type field', async () => {
+    const { mine } = await anyLeaderIds();
+    const free = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    await expect(updateTournament(db, USER, free.id, { myLeaderId: mine })).rejects.toThrow();
+  });
+
+  it('still allows a plain leader change on a non-freeplay tournament', async () => {
+    const ls = await listLeaders(db, USER);
+    const classic = await createTournament(db, USER, { type: 'local', myLeaderId: ls[0].id, playedOn: '2026-08-14' });
+    const updated = await updateTournament(db, USER, classic.id, { myLeaderId: ls[1].id });
+    expect(updated.myLeaderId).toBe(ls[1].id);
+  });
+
+  it('reports the distinct deck count for a freeplay session', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const zoro = await leaderId('Roronoa Zoro');
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: zoro });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Sanji'), result: 'loss', myLeaderId: zoro });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: await leaderId('Edward Newgate') });
+
+    const list = await listTournaments(db, USER);
+    // Two distinct decks across three rounds — a repeat does not double-count.
+    expect(list.find((x) => x.id === t.id)?.deckCount).toBe(2);
+  });
+
+  it('reports a deck count of zero for a classic tournament', async () => {
+    const t = await createTournament(db, USER, {
+      type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: '2026-08-14',
+    });
+    const list = await listTournaments(db, USER);
+    expect(list.find((x) => x.id === t.id)?.deckCount).toBe(0);
+  });
+
+  it('getTournament reports the distinct deck count for a freeplay session', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const zoro = await leaderId('Roronoa Zoro');
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: zoro });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Sanji'), result: 'loss', myLeaderId: zoro });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: await leaderId('Edward Newgate') });
+
+    const detail = await getTournament(db, USER, t.id);
+    // Two distinct decks across three rounds — a repeat does not double-count.
+    expect(detail.deckCount).toBe(2);
   });
 });

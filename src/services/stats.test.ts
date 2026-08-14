@@ -3,7 +3,7 @@ import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
 import { leaders, metas, tournaments, rounds } from '../db/schema';
 import { asc, eq } from 'drizzle-orm';
-import { getOverallStats, getPerMetaStats, getPlayedLeaders, getOpponentStats } from './stats';
+import { getOverallStats, getPerMetaStats, getPlayedLeaders, getOpponentStats, getMatchupStats } from './stats';
 import { afterAll } from 'vitest';
 
 const db = getTestDb();
@@ -182,5 +182,60 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     await makeTournament(null, 'Roronoa Zoro', [['Nami', 'loss']]);
     const rows = await getPerMetaStats(db, USER);
     expect(rows.map((r) => r.name).sort()).toEqual(['No meta', 'OP02']);
+  });
+
+  it('attributes a freeplay round to the round leader, not the session', async () => {
+    const [t] = await db.insert(tournaments).values({
+      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: await metaId('OP02 Paramount War'),
+      playedOn: '2026-08-14', status: 'locked',
+    }).returning();
+    await db.insert(rounds).values({
+      tournamentId: t.id, roundNumber: 1,
+      myLeaderId: await leaderId('Edward Newgate'),
+      opponentLeaderId: await leaderId('Nami'),
+      result: 'win', playOrder: null, notes: null,
+    });
+
+    // The deck appears in the selector...
+    const played = await getPlayedLeaders(db, USER);
+    expect(played.some((l) => l.name === 'Edward Newgate')).toBe(true);
+
+    // ...and its matchups are attributed to it.
+    const m = await getMatchupStats(db, USER, await leaderId('Edward Newgate'));
+    expect(m.opponents.some((o) => o.name === 'Nami')).toBe(true);
+
+    // ...including the colour breakdown, which must coalesce the same way as
+    // opponents/turnOrder — otherwise a freeplay-only deck shows an
+    // internally inconsistent matchups screen (opponents present, colours
+    // empty). Nami (OP03-040, the printing `leaderId` resolves to) is blue.
+    expect(m.colorBreakdown.length).toBeGreaterThan(0);
+    const blue = m.colorBreakdown.find((c) => c.color === 'blue');
+    expect(blue?.games).toBe(1);
+    expect(blue?.wins).toBe(1);
+  });
+
+  it('keeps freeplay out of the overall record but inside per-meta', async () => {
+    const [t] = await db.insert(tournaments).values({
+      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: await metaId('OP02 Paramount War'),
+      playedOn: '2026-08-14', status: 'locked',
+    }).returning();
+    await db.insert(rounds).values({
+      tournamentId: t.id, roundNumber: 1,
+      myLeaderId: await leaderId('Edward Newgate'),
+      opponentLeaderId: await leaderId('Nami'),
+      result: 'win', playOrder: null, notes: null,
+    });
+
+    const o = await getOverallStats(db, USER);
+    expect(o.wins).toBe(0);
+    expect(o.totalTournaments).toBe(0);
+
+    const per = await getPerMetaStats(db, USER);
+    expect(per.find((p) => p.name === 'OP02')?.wins).toBe(1);
+
+    // By opponent needs no change at all — it is keyed by the opponent's
+    // leader, never mine. This pins that it keeps counting freeplay.
+    const opp = await getOpponentStats(db, USER);
+    expect(opp.find((x) => x.name === 'Nami')?.games).toBe(1);
   });
 });

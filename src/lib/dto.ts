@@ -5,17 +5,22 @@ export type GameLog = { result: 'win' | 'loss'; playOrder: 'first' | 'second' | 
 export type RoundDTO = {
   id: string; tournamentId: string; roundNumber: number; kind: RoundKind;
   opponentLeaderId: string | null; opponentMetaId: string | null;
+  // Set only on a freeplay swiss/top_cut round; null otherwise (including on
+  // freeplay byes/no-shows, which are not games).
+  myLeaderId: string | null;
   result: 'win' | 'loss' | 'draw'; playOrder: 'first' | 'second' | null;
   wonDieRoll: boolean | null;
   games: GameLog[] | null; notes: string | null;
 };
 export type RecordDTO = { wins: number; losses: number; draws: number };
-export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing';
+export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing' | 'freeplay';
 export type MatchSummaryDTO = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: RoundKind };
 export type TournamentSummaryDTO = {
-  id: string; type: TournamentType; myLeaderId: string; metaId: string | null; name: string | null;
+  id: string; type: TournamentType; myLeaderId: string | null; metaId: string | null; name: string | null;
   playedOn: string; status: 'draft' | 'locked'; record: RecordDTO;
   matches: MatchSummaryDTO[];
+  /** Distinct leaders played across the session's rounds; 0 for classic types. */
+  deckCount: number;
 };
 export type TournamentDetailDTO = Omit<TournamentSummaryDTO, 'record'> & { rounds: RoundDTO[] };
 

@@ -2,7 +2,7 @@ import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb }
 import type { GameLog } from '../lib/dto';
 
 export const tournamentType = pgEnum('tournament_type', [
-  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing',
+  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay',
 ]);
 export const tournamentStatus = pgEnum('tournament_status', ['draft', 'locked']);
 export const roundResult = pgEnum('round_result', ['win', 'loss', 'draw']);
@@ -33,7 +33,8 @@ export const tournaments = pgTable('tournaments', {
   id: uuid('id').primaryKey().defaultRandom(),
   ownerId: text('owner_id').notNull(),
   type: tournamentType('type').notNull(),
-  myLeaderId: uuid('my_leader_id').notNull().references(() => leaders.id),
+  // Null for freeplay, where the leader is recorded per round instead.
+  myLeaderId: uuid('my_leader_id').references(() => leaders.id),
   metaId: uuid('meta_id').references(() => metas.id),
   name: text('name'),
   playedOn: date('played_on').notNull(),
@@ -49,6 +50,9 @@ export const rounds = pgTable('rounds', {
   kind: roundKind('round_kind').notNull().default('swiss'),
   // Null for bye / no_show (no opponent).
   opponentLeaderId: uuid('opponent_leader_id').references(() => leaders.id),
+  // Set only on freeplay rounds, where the leader changes per round; null
+  // otherwise, and null on freeplay byes / no-shows (not games).
+  myLeaderId: uuid('my_leader_id').references(() => leaders.id),
   opponentMetaId: uuid('opponent_meta_id').references(() => metas.id),
   result: roundResult('result').notNull(),
   playOrder: playOrder('play_order'),

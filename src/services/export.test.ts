@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
 import { createTournament } from './tournaments';
@@ -6,9 +7,17 @@ import { addRound } from './rounds';
 import { listLeaders, listMetas } from './reference';
 import { exportRounds } from './export';
 import { exportToCsv } from '../lib/csv';
+import { leaders, rounds, tournaments } from '../db/schema';
 
 const db = getTestDb();
 const USER = 'user_export';
+
+async function leaderId(name: string) {
+  // Ordered by set code: a leader name maps to several real printings, so an
+  // unordered limit(1) would pick a different row from run to run.
+  const [l] = await db.select().from(leaders).where(eq(leaders.name, name)).orderBy(asc(leaders.setCode)).limit(1);
+  return l.id;
+}
 
 describe('export service', () => {
   beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
@@ -86,5 +95,33 @@ describe('export service', () => {
     });
     const csv = exportToCsv(await exportRounds(db, USER));
     expect(csv.split('\r\n')[1]).toContain('W(first);L;W(second)');
+  });
+
+  it('exports a freeplay round with the round own leader', async () => {
+    const [t] = await db.insert(tournaments).values({
+      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: null,
+      playedOn: '2026-08-14', status: 'locked',
+    }).returning();
+    await db.insert(rounds).values({
+      tournamentId: t.id, roundNumber: 1,
+      myLeaderId: await leaderId('Edward Newgate'),
+      opponentLeaderId: await leaderId('Nami'),
+      result: 'win', playOrder: null, notes: null,
+    });
+    const rows = await exportRounds(db, USER);
+    const row = rows.find((r) => r.tournamentId === t.id);
+    expect(row).toBeDefined();
+    expect(row!.myLeader).toBe('Edward Newgate');
+  });
+
+  it('keeps a freeplay session with zero rounds, with an empty leader cell', async () => {
+    const [t] = await db.insert(tournaments).values({
+      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: null,
+      playedOn: '2026-08-14', status: 'draft',
+    }).returning();
+    const rows = await exportRounds(db, USER);
+    const row = rows.find((r) => r.tournamentId === t.id);
+    expect(row).toBeDefined();
+    expect(row!.myLeader).toBeNull();
   });
 });

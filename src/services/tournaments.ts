@@ -2,15 +2,20 @@ import { and, eq, desc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds } from '../db/schema';
-import { computeRecord } from '../lib/record';
-import { NotFoundError, ConflictError } from '../lib/errors';
+import { computeRecord, computeDeckCount } from '../lib/record';
+import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
 import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/validation/tournament';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Tournament = typeof tournaments.$inferSelect;
 export type Round = typeof rounds.$inferSelect;
 type MatchSummary = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: Round['kind'] };
-export type TournamentSummary = Tournament & { record: ReturnType<typeof computeRecord>; matches: MatchSummary[] };
+export type TournamentSummary = Tournament & {
+  record: ReturnType<typeof computeRecord>;
+  matches: MatchSummary[];
+  /** Distinct leaders played across the session's rounds; 0 for classic types. */
+  deckCount: number;
+};
 
 const owned = (id: string, ownerId: string) =>
   and(eq(tournaments.id, id), eq(tournaments.ownerId, ownerId));
@@ -22,6 +27,17 @@ async function requireOwned(db: DB, ownerId: string, id: string): Promise<Tourna
 }
 
 export async function createTournament(db: DB, ownerId: string, input: CreateTournamentInput): Promise<Tournament> {
+  // Exactly one leader source per session: freeplay records the leader per
+  // round instead and has none of its own; every other type requires one.
+  // The zod schema carries the same rule for callers that go through it (the
+  // API route), but this service is also called directly (e.g. from tests),
+  // so it must enforce the rule itself too.
+  if (input.type === 'freeplay' && input.myLeaderId !== undefined) {
+    throw new ValidationError('A freeplay session has no leader of its own.');
+  }
+  if (input.type !== 'freeplay' && input.myLeaderId === undefined) {
+    throw new ValidationError('Choose your leader.');
+  }
   // A client-supplied id makes the create idempotent: replaying a queued
   // offline create whose response was lost returns the existing row instead of
   // inserting a duplicate.
@@ -36,7 +52,7 @@ export async function createTournament(db: DB, ownerId: string, input: CreateTou
     .values({
       ...(input.id ? { id: input.id } : {}),
       ownerId, type: input.type,
-      myLeaderId: input.myLeaderId,
+      myLeaderId: input.myLeaderId ?? null,
       metaId: input.metaId ?? null,
       name: input.name ?? null, playedOn: input.playedOn, status: 'draft',
     })
@@ -58,20 +74,34 @@ export async function listTournaments(db: DB, ownerId: string): Promise<Tourname
   return ts.map((t) => {
     const rs = (byTournament.get(t.id) ?? []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
     const matches: MatchSummary[] = rs.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind }));
-    return { ...t, record: computeRecord(rs), matches };
+    return { ...t, record: computeRecord(rs), matches, deckCount: computeDeckCount(rs) };
   });
 }
 
-export async function getTournament(db: DB, ownerId: string, id: string): Promise<Tournament & { rounds: Round[] }> {
+export async function getTournament(db: DB, ownerId: string, id: string): Promise<Tournament & { rounds: Round[]; deckCount: number }> {
   const t = await requireOwned(db, ownerId, id);
   const rs = await db.select().from(rounds)
     .where(eq(rounds.tournamentId, id))
     .orderBy(rounds.roundNumber);
-  return { ...t, rounds: rs };
+  return { ...t, rounds: rs, deckCount: computeDeckCount(rs) };
 }
 
 export async function updateTournament(db: DB, ownerId: string, id: string, input: UpdateTournamentInput): Promise<Tournament> {
-  await requireOwned(db, ownerId, id);
+  const current = await requireOwned(db, ownerId, id);
+  // The leader invariant cannot survive a type switch: going to freeplay would
+  // orphan the session leader, and leaving it would leave rounds owning leaders
+  // the tournament should own.
+  if (input.type !== undefined && (input.type === 'freeplay') !== (current.type === 'freeplay')) {
+    throw new ValidationError('A session cannot be changed into or out of freeplay.');
+  }
+  // Also guard the type-omitted case: a patch that only touches myLeaderId
+  // still has to respect an already-freeplay tournament having no leader of
+  // its own — this is the same one-leader-per-session rule, just reached
+  // without a type change. (A freeplay tournament's own myLeaderId is always
+  // already null, so an explicit `null` here is a no-op, not a violation.)
+  if (current.type === 'freeplay' && input.myLeaderId !== undefined && input.myLeaderId !== null) {
+    throw new ValidationError('A freeplay session has no leader of its own.');
+  }
   const patch: Partial<typeof tournaments.$inferInsert> = { updatedAt: new Date() };
   if (input.type !== undefined) patch.type = input.type;
   if (input.myLeaderId !== undefined) patch.myLeaderId = input.myLeaderId;

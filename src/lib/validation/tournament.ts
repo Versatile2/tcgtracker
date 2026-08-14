@@ -7,6 +7,7 @@ export const tournamentTypeEnum = z.enum([
   'extra_grand_battle',
   'pirates_party',
   'testing',
+  'freeplay',
 ]);
 
 const dateString = z
@@ -18,10 +19,19 @@ export const createTournamentSchema = z.object({
   // immediately. Omitted by non-offline callers; the database defaults it.
   id: z.uuid().optional(),
   type: tournamentTypeEnum,
-  myLeaderId: z.uuid(),
+  // Required for every type except freeplay, which records the leader per
+  // round instead and has none of its own. Enforced below.
+  myLeaderId: z.uuid().optional(),
   metaId: z.uuid().optional(),
   name: z.string().trim().max(120).optional(),
   playedOn: dateString,
+}).superRefine((v, ctx) => {
+  if (v.type === 'freeplay' && v.myLeaderId !== undefined) {
+    ctx.addIssue({ code: 'custom', path: ['myLeaderId'], message: 'A freeplay session has no leader of its own.' });
+  }
+  if (v.type !== 'freeplay' && v.myLeaderId === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['myLeaderId'], message: 'Choose your leader.' });
+  }
 });
 
 export const updateTournamentSchema = z.object({

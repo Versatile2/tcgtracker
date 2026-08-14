@@ -41,12 +41,17 @@ export function useTournamentWrites() {
       const detail: TournamentDetailDTO = {
         id,
         type: input.type,
-        myLeaderId: input.myLeaderId,
+        // Freeplay omits myLeaderId entirely (the schema rejects it being
+        // present); every other type requires it. The DTO models the
+        // freeplay case as `null`.
+        myLeaderId: input.myLeaderId ?? null,
         metaId: input.metaId ?? null,
         name: input.name ?? null,
         playedOn: input.playedOn,
         status: 'draft',
         matches: [],
+        // No rounds yet, so no decks played yet either.
+        deckCount: 0,
         rounds: [],
       };
       cache.addTournament(qc, detail);

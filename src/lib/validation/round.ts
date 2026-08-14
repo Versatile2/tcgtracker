@@ -41,6 +41,9 @@ const swissRound = z.object({
   result: resultEnum,
   playOrder: playOrderEnum.nullable().optional(),
   wonDieRoll: z.boolean().nullable().optional(),
+  // Set only on a freeplay round, where the leader changes per round instead
+  // of being fixed on the tournament. The service enforces which is required.
+  myLeaderId: z.uuid().nullable().optional(),
   notes,
 });
 
@@ -51,6 +54,7 @@ const topCutRound = z.object({
   opponentMetaId: z.uuid().nullable().optional(),
   games: z.array(gameLogSchema).min(2).max(3)
     .refine(isCompletedBo3, { message: 'Enter a complete best-of-3 (first to 2 games).' }),
+  myLeaderId: z.uuid().nullable().optional(),
   notes,
 });
 

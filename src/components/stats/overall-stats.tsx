@@ -3,6 +3,16 @@ import { formatRecord } from '@/lib/record';
 import type { OverallStatsDTO } from '@/lib/dto';
 
 export function OverallStats({ o }: { o: OverallStatsDTO }) {
+  if (o.totalTournaments === 0) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Overall</h2>
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          No tournaments logged yet — freeplay sessions aren’t counted here.
+        </p>
+      </section>
+    );
+  }
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">Overall</h2>

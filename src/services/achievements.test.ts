@@ -147,4 +147,22 @@ describe('getAchievements', () => {
     expect(veteran.unlocked).toBe(false);
     expect(veteran.progress).toEqual({ current: 0, target: 25 });
   });
+
+  it('does not count freeplay rounds toward achievements', async () => {
+    const before = await getAchievements(db, USER);
+    const [t] = await db.insert(tournaments).values({
+      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: null,
+      playedOn: '2026-08-14', status: 'locked',
+    }).returning();
+    await db.insert(rounds).values({
+      tournamentId: t.id, roundNumber: 1,
+      myLeaderId: await leaderId('Roronoa Zoro'),
+      opponentLeaderId: await leaderId('Nami'),
+      result: 'win', playOrder: 'second', notes: null,
+    });
+    const after = await getAchievements(db, USER);
+    expect(after.map((a) => ({ unlocked: a.unlocked, progress: a.progress }))).toEqual(
+      before.map((a) => ({ unlocked: a.unlocked, progress: a.progress }))
+    );
+  });
 });

@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { asc, eq } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { leaders } from '../db/schema';
 import { createTournament, finishTournament, getTournament } from './tournaments';
 import { addRound, updateRound, deleteRound } from './rounds';
 import { listLeaders, listMetas } from './reference';
@@ -14,6 +16,13 @@ async function setup() {
   const ls = await listLeaders(db, USER);
   const t = await createTournament(db, USER, { type: 'local', myLeaderId: ls[0].id, playedOn: '2026-07-20' });
   return { t, opp: ls[1].id };
+}
+
+async function leaderId(name: string) {
+  // Ordered by set code: a leader name maps to several real printings, so an
+  // unordered limit(1) would pick a different row from run to run.
+  const [l] = await db.select().from(leaders).where(eq(leaders.name, name)).orderBy(asc(leaders.setCode)).limit(1);
+  return l.id;
 }
 
 describe('round service', () => {
@@ -140,5 +149,69 @@ describe('round service', () => {
     await expect(
       addRound(db, 'user_other', t.id, { id, kind: 'swiss', opponentLeaderId: opp, result: 'win' })
     ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it('requires a leader on a freeplay swiss round', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    await expect(addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win',
+    })).rejects.toThrow();
+  });
+
+  it('stores a per-round leader on a freeplay round', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const mine = await leaderId('Roronoa Zoro');
+    const r = await addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: mine,
+    });
+    expect(r.myLeaderId).toBe(mine);
+  });
+
+  it('rejects a per-round leader on a non-freeplay round', async () => {
+    const t = await createTournament(db, USER, {
+      type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: '2026-08-14',
+    });
+    await expect(addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win',
+      myLeaderId: await leaderId('Sanji'),
+    })).rejects.toThrow();
+  });
+
+  it('accepts a freeplay bye with no leader', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const r = await addRound(db, USER, t.id, { kind: 'bye', notes: null });
+    expect(r.myLeaderId).toBeNull();
+  });
+
+  it('rejects updating a freeplay swiss round without myLeaderId', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const mine = await leaderId('Roronoa Zoro');
+    const r = await addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: mine,
+    });
+    await expect(updateRound(db, USER, r.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win',
+    })).rejects.toThrow();
+  });
+
+  it('updating a freeplay swiss round with myLeaderId stores it', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const mine = await leaderId('Roronoa Zoro');
+    const other = await leaderId('Sanji');
+    const r = await addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: mine,
+    });
+    const updated = await updateRound(db, USER, r.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: other,
+    });
+    expect(updated.myLeaderId).toBe(other);
+  });
+
+  it('rejects updating a classic round with a myLeaderId', async () => {
+    const { t, opp } = await setup();
+    const r = await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    await expect(updateRound(db, USER, r.id, {
+      kind: 'swiss', opponentLeaderId: opp, result: 'win', myLeaderId: await leaderId('Sanji'),
+    })).rejects.toThrow();
   });
 });

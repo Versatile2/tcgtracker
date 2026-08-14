@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds, leaders } from '../db/schema';
@@ -118,12 +118,12 @@ export async function getAchievements(db: DB, ownerId: string): Promise<Achievem
     .from(rounds)
     .innerJoin(tournaments, eq(rounds.tournamentId, tournaments.id))
     .innerJoin(leaders, eq(rounds.opponentLeaderId, leaders.id))
-    .where(eq(tournaments.ownerId, ownerId));
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${tournaments.type} <> 'freeplay'`));
 
   const tourneyRows = await db
     .select({ id: tournaments.id, metaId: tournaments.metaId, playedOn: tournaments.playedOn, createdAt: tournaments.createdAt })
     .from(tournaments)
-    .where(eq(tournaments.ownerId, ownerId));
+    .where(and(eq(tournaments.ownerId, ownerId), sql`${tournaments.type} <> 'freeplay'`));
 
   const ctx = computeCtx(roundRows as RoundRow[], tourneyRows as TourneyRow[]);
   return ACHIEVEMENTS.map((d) => {

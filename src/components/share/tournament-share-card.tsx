@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
+import { FreeplayGlyph } from '@/components/tournaments/freeplay-glyph';
 import { cn } from '@/lib/utils';
 import { formatRecord, computeRecord } from '@/lib/record';
-import { tournamentTypeLabel, roundKindLabel, metaLabel } from '@/lib/labels';
+import { tournamentTypeLabel, roundKindLabel, metaLabel, deckCountLabel } from '@/lib/labels';
 import type { TournamentDetailDTO, RoundDTO, LeaderDTO, MetaDTO } from '@/lib/dto';
 
 // Rows tint by result; the badge uses the stronger fill. Both read in light and dark.
@@ -31,10 +32,12 @@ function Pill({ children }: { children: React.ReactNode }) {
 function MatchRow({
   round,
   opponent,
+  myLeader,
   condensed,
 }: {
   round: RoundDTO;
   opponent: LeaderDTO | undefined;
+  myLeader: LeaderDTO | undefined;
   condensed: boolean;
 }) {
   const hasOpponent = round.opponentLeaderId !== null;
@@ -46,6 +49,7 @@ function MatchRow({
       <span className="w-4 shrink-0 text-center text-xs font-medium tabular-nums text-muted-foreground">
         {round.roundNumber}
       </span>
+      {myLeader && <LeaderAvatar name={myLeader.name} colors={myLeader.colors} setCode={myLeader.setCode} size="sm" />}
       {!condensed && hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} setCode={opponent?.setCode} size="sm" />}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
@@ -79,7 +83,7 @@ export function TournamentShareCard({
   const leaderById = (id: string): LeaderDTO | undefined => leaders.find((l) => l.id === id);
   const metaById = (id: string): MetaDTO | undefined => metas.find((m) => m.id === id);
 
-  const myLeader = leaderById(tournament.myLeaderId);
+  const myLeader = tournament.myLeaderId ? leaderById(tournament.myLeaderId) : undefined;
   const record = formatRecord(computeRecord(tournament.rounds));
   const eventName = tournament.name ?? tournamentTypeLabel(tournament.type);
   const eventMeta = tournament.metaId ? metaById(tournament.metaId) : undefined;
@@ -89,9 +93,15 @@ export function TournamentShareCard({
     <div className="w-[380px] space-y-4 rounded-xl border bg-card p-5 text-card-foreground">
       {/* Header: leader (left), record, event tags (right) */}
       <div className="flex items-start gap-3">
-        <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />
+        {tournament.type === 'freeplay'
+          ? <FreeplayGlyph size="lg" />
+          : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-bold leading-tight">{myLeader?.name ?? '—'}</p>
+          <p className="truncate text-base font-bold leading-tight">
+            {tournament.type === 'freeplay'
+              ? (tournament.deckCount > 0 ? deckCountLabel(tournament.deckCount) : tournamentTypeLabel(tournament.type))
+              : (myLeader?.name ?? '—')}
+          </p>
           {myLeader?.setCode && <p className="text-xs text-muted-foreground">{myLeader.setCode}</p>}
           <p className="mt-1 text-3xl font-bold leading-none tabular-nums">{record}</p>
         </div>
@@ -113,6 +123,7 @@ export function TournamentShareCard({
             key={r.id}
             round={r}
             opponent={r.opponentLeaderId ? leaderById(r.opponentLeaderId) : undefined}
+            myLeader={tournament.type === 'freeplay' && r.myLeaderId ? leaderById(r.myLeaderId) : undefined}
             condensed={condensed}
           />
         ))}
