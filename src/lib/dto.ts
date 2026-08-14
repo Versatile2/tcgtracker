@@ -10,7 +10,7 @@ export type RoundDTO = {
   games: GameLog[] | null; notes: string | null;
 };
 export type RecordDTO = { wins: number; losses: number; draws: number };
-export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing';
+export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing' | 'freeplay';
 export type MatchSummaryDTO = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: RoundKind };
 export type TournamentSummaryDTO = {
   id: string; type: TournamentType; myLeaderId: string; metaId: string | null; name: string | null;

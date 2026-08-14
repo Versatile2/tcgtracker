@@ -14,7 +14,7 @@ import { pickDefaultMetaId } from '@/lib/meta-selection';
 import type { TournamentType } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
-const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
+const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay'];
 
 export function NewTournamentForm() {
   const router = useRouter();

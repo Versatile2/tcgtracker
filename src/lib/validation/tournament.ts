@@ -7,6 +7,7 @@ export const tournamentTypeEnum = z.enum([
   'extra_grand_battle',
   'pirates_party',
   'testing',
+  'freeplay',
 ]);
 
 const dateString = z

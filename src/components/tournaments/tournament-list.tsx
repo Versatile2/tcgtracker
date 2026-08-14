@@ -9,7 +9,7 @@ import { tournamentTypeLabel } from '@/lib/labels';
 import { formatRecord } from '@/lib/record';
 import type { TournamentType } from '@/lib/dto';
 
-const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
+const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay'];
 
 export function TournamentList() {
   const { data, isLoading, isError } = useTournaments();

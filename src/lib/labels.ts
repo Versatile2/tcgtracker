@@ -7,6 +7,7 @@ export const TOURNAMENT_TYPE_LABELS: Record<TournamentType, string> = {
   extra_grand_battle: 'Extra Grand Battle',
   pirates_party: 'Pirates Party',
   testing: 'Testing',
+  freeplay: 'Freeplay',
 };
 
 export function tournamentTypeLabel(type: TournamentType): string {

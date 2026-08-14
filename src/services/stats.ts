@@ -99,7 +99,8 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
     .groupBy(tournaments.myLeaderId, leaders.name)
     .orderBy(desc(sql`count(*)`), leaders.name)
     .limit(1);
-  const mostPlayedLeader = mp ? { leaderId: mp.leaderId, name: mp.name, tournaments: num(mp.tournaments) } : null;
+  // Non-null: the inner join above only yields rows where myLeaderId matched a leader.
+  const mostPlayedLeader = mp ? { leaderId: mp.leaderId!, name: mp.name, tournaments: num(mp.tournaments) } : null;
 
   return {
     totalTournaments: num(totalTournaments),

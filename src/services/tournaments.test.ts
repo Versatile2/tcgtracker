@@ -108,4 +108,12 @@ describe('tournament service', () => {
       createTournament(db, 'user_other', { id, type: 'local', myLeaderId: mine, playedOn: '2026-07-20' })
     ).rejects.toBeInstanceOf(ConflictError);
   });
+
+  it('accepts freeplay as a tournament type', async () => {
+    // The invariant (freeplay has no session leader) lands in the next task;
+    // this only pins that the enum value exists end to end.
+    const { mine } = await anyLeaderIds();
+    const t = await createTournament(db, USER, { type: 'freeplay', myLeaderId: mine, playedOn: '2026-08-14' });
+    expect(t.type).toBe('freeplay');
+  });
 });
