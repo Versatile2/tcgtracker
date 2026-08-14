@@ -30,6 +30,7 @@ export function NewTournamentForm() {
   const [metaId, setMetaId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [playedOn, setPlayedOn] = useState(() => new Date().toISOString().slice(0, 10));
+  const isFreeplay = type === 'freeplay';
 
   // Metas load asynchronously, so the default is applied on arrival. The ref
   // makes it fire exactly once: a refetch must never overwrite a choice the
@@ -42,11 +43,13 @@ export function NewTournamentForm() {
   }, [metas]);
 
   function submit() {
-    if (!myLeaderId) { toast.error('Choose your leader first'); return; }
+    if (!isFreeplay && !myLeaderId) { toast.error('Choose your leader first'); return; }
     // The id is generated here, so logging can start immediately whether or not
     // the venue has signal — the outbox delivers the tournament when it can.
     const id = tournaments.create({
-      type, myLeaderId, metaId: metaId ?? undefined, name: name.trim() || undefined, playedOn,
+      type,
+      myLeaderId: isFreeplay ? undefined : myLeaderId!,
+      metaId: metaId ?? undefined, name: name.trim() || undefined, playedOn,
     });
     router.push(`/tournaments/${id}`);
   }
@@ -72,16 +75,24 @@ export function NewTournamentForm() {
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <span className="text-sm font-medium">Leader</span>
-        <LeaderCarousel
-          options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
-          onAddCustom={async (n) => {
-            if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
-            const l = await addLeader.mutateAsync({ name: n, colors: [] });
-            return { id: l.id, name: l.name };
-          }} />
-      </div>
+      {!isFreeplay && (
+        <div className="space-y-2">
+          <span className="text-sm font-medium">Leader</span>
+          <LeaderCarousel
+            options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
+            onAddCustom={async (n) => {
+              if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
+              const l = await addLeader.mutateAsync({ name: n, colors: [] });
+              return { id: l.id, name: l.name };
+            }} />
+        </div>
+      )}
+
+      {isFreeplay && (
+        <p className="text-sm text-muted-foreground">
+          You’ll pick a deck on each round — a freeplay session has no fixed leader.
+        </p>
+      )}
 
       <div className="space-y-2">
         <label htmlFor="nt-meta" className="text-sm font-medium">Meta (optional)</label>
@@ -102,7 +113,7 @@ export function NewTournamentForm() {
         <Input id="nt-date" type="date" value={playedOn} onChange={(e) => setPlayedOn(e.target.value)} className="h-12 text-base" />
       </div>
 
-      <Button onClick={submit} disabled={!myLeaderId} className="h-14 w-full text-base">
+      <Button onClick={submit} disabled={!isFreeplay && !myLeaderId} className="h-14 w-full text-base">
         Create &amp; Start Logging
       </Button>
     </main>
