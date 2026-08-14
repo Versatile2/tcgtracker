@@ -203,6 +203,15 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     // ...and its matchups are attributed to it.
     const m = await getMatchupStats(db, USER, await leaderId('Edward Newgate'));
     expect(m.opponents.some((o) => o.name === 'Nami')).toBe(true);
+
+    // ...including the colour breakdown, which must coalesce the same way as
+    // opponents/turnOrder — otherwise a freeplay-only deck shows an
+    // internally inconsistent matchups screen (opponents present, colours
+    // empty). Nami (OP03-040, the printing `leaderId` resolves to) is blue.
+    expect(m.colorBreakdown.length).toBeGreaterThan(0);
+    const blue = m.colorBreakdown.find((c) => c.color === 'blue');
+    expect(blue?.games).toBe(1);
+    expect(blue?.wins).toBe(1);
   });
 
   it('keeps freeplay out of the overall record but inside per-meta', async () => {

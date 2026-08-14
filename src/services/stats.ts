@@ -269,7 +269,7 @@ export async function getMatchupStats(db: DB, ownerId: string, leaderId: string)
     LEFT JOIN LATERAL unnest(
       CASE WHEN cardinality(opp.colors) = 0 THEN ARRAY['colorless'] ELSE opp.colors END
     ) AS color ON true
-    WHERE t.owner_id = ${ownerId} AND t.my_leader_id = ${leaderId}
+    WHERE t.owner_id = ${ownerId} AND coalesce(r.my_leader_id, t.my_leader_id) = ${leaderId}
     GROUP BY color
   `);
   const colorBreakdown = (colorResult.rows as { color: string; wins: unknown; losses: unknown; draws: unknown }[])
