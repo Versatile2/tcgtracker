@@ -261,7 +261,7 @@ function RoundFormBody({
                 <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Playing as</div>
                 <div className="truncate text-sm font-bold">{myLeaderName}</div>
               </div>
-              <button type="button" onClick={() => setPickingLeader(true)}
+              <button type="button" onClick={() => setPickingLeader(true)} aria-label="Switch deck"
                 className="rounded-md px-2 py-1 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 Switch
               </button>

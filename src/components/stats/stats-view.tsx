@@ -15,6 +15,9 @@ import { shareFilename } from '@/lib/share-image';
 export function StatsView() {
   const { data, isLoading, isError } = useStats();
   const [shareOpen, setShareOpen] = useState(false);
+  const hasAnyData = Boolean(
+    data && (data.overall.totalTournaments > 0 || (data.playedLeaders?.length ?? 0) > 0),
+  );
 
   return (
     <LargeTitleScreen
@@ -28,12 +31,12 @@ export function StatsView() {
       <div className="mt-4 space-y-6">
         {isLoading && <div className="space-y-3"><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></div>}
         {isError && <p className="text-destructive">Couldn’t load statistics.</p>}
-        {data && data.overall.totalTournaments === 0 && (
+        {data && !hasAnyData && (
           <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
             No stats yet — log a tournament to get started.
           </div>
         )}
-        {data && data.overall.totalTournaments > 0 && (
+        {data && hasAnyData && (
           <>
             <OverallStats o={data.overall} />
             <PerMetaStats rows={data.perMeta ?? []} />

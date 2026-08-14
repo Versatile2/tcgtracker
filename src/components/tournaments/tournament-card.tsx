@@ -5,6 +5,7 @@ import { Lock, ChevronDown, CloudOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
+import { FreeplayGlyph } from './freeplay-glyph';
 import { cn } from '@/lib/utils';
 import { formatRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel } from '@/lib/labels';
@@ -27,8 +28,6 @@ export function TournamentCard({
   unsynced?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  // Freeplay has no session leader (null here) — Task 8 adds its own
-  // presentation for that case; this is just a safe fallback for now.
   const leader = t.myLeaderId ? resolveLeader(t.myLeaderId) : undefined;
   const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);
@@ -41,7 +40,9 @@ export function TournamentCard({
           href={`/tournaments/${t.id}`}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
         >
-          <LeaderAvatar name={leaderName} colors={leader?.colors} setCode={leader?.setCode} size="md" />
+          {t.type === 'freeplay'
+            ? <FreeplayGlyph size="md" />
+            : <LeaderAvatar name={leaderName} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
@@ -60,6 +61,7 @@ export function TournamentCard({
               <span className="text-foreground">{leaderName}</span>
               {leader?.setCode && <span> {leader.setCode}</span>}
               <span> · {t.playedOn}</span>
+              {t.type === 'freeplay' && t.deckCount > 0 && ` · ${t.deckCount} ${t.deckCount === 1 ? 'deck' : 'decks'}`}
             </p>
           </div>
           <div className="shrink-0 text-2xl font-bold leading-none tabular-nums">{formatRecord(t.record)}</div>
