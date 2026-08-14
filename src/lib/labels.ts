@@ -39,3 +39,8 @@ export function roundKindLabel(kind: RoundKind): string {
 export function metaLabel(meta: { name: string; code?: string | null }): string {
   return meta.code ?? meta.name;
 }
+
+/** "5 decks" / "1 deck" — the distinct-deck count for a freeplay session. */
+export function deckCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'deck' : 'decks'}`;
+}

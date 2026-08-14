@@ -8,7 +8,7 @@ import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { FreeplayGlyph } from './freeplay-glyph';
 import { cn } from '@/lib/utils';
 import { formatRecord } from '@/lib/record';
-import { tournamentTypeLabel, roundKindLabel } from '@/lib/labels';
+import { tournamentTypeLabel, roundKindLabel, deckCountLabel } from '@/lib/labels';
 import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
 
 const resultPill: Record<'win' | 'loss' | 'draw', { label: string; className: string }> = {
@@ -58,10 +58,16 @@ export function TournamentCard({
             </div>
             {hasName && <p className="mt-1 truncate font-semibold">{t.name}</p>}
             <p className={cn('truncate text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
-              <span className="text-foreground">{leaderName}</span>
-              {leader?.setCode && <span> {leader.setCode}</span>}
-              <span> · {t.playedOn}</span>
-              {t.type === 'freeplay' && t.deckCount > 0 && ` · ${t.deckCount} ${t.deckCount === 1 ? 'deck' : 'decks'}`}
+              {t.type === 'freeplay' ? (
+                <span>{t.playedOn}</span>
+              ) : (
+                <>
+                  <span className="text-foreground">{leaderName}</span>
+                  {leader?.setCode && <span> {leader.setCode}</span>}
+                  <span> · {t.playedOn}</span>
+                </>
+              )}
+              {t.type === 'freeplay' && t.deckCount > 0 && ` · ${deckCountLabel(t.deckCount)}`}
             </p>
           </div>
           <div className="shrink-0 text-2xl font-bold leading-none tabular-nums">{formatRecord(t.record)}</div>

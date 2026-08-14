@@ -3,7 +3,7 @@ import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { FreeplayGlyph } from '@/components/tournaments/freeplay-glyph';
 import { cn } from '@/lib/utils';
 import { formatRecord, computeRecord } from '@/lib/record';
-import { tournamentTypeLabel, roundKindLabel, metaLabel } from '@/lib/labels';
+import { tournamentTypeLabel, roundKindLabel, metaLabel, deckCountLabel } from '@/lib/labels';
 import type { TournamentDetailDTO, RoundDTO, LeaderDTO, MetaDTO } from '@/lib/dto';
 
 // Rows tint by result; the badge uses the stronger fill. Both read in light and dark.
@@ -97,7 +97,11 @@ export function TournamentShareCard({
           ? <FreeplayGlyph size="lg" />
           : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-bold leading-tight">{myLeader?.name ?? '—'}</p>
+          <p className="truncate text-base font-bold leading-tight">
+            {tournament.type === 'freeplay'
+              ? (tournament.deckCount > 0 ? deckCountLabel(tournament.deckCount) : tournamentTypeLabel(tournament.type))
+              : (myLeader?.name ?? '—')}
+          </p>
           {myLeader?.setCode && <p className="text-xs text-muted-foreground">{myLeader.setCode}</p>}
           <p className="mt-1 text-3xl font-bold leading-none tabular-nums">{record}</p>
         </div>
