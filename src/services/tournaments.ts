@@ -83,11 +83,19 @@ export async function getTournament(db: DB, ownerId: string, id: string): Promis
 
 export async function updateTournament(db: DB, ownerId: string, id: string, input: UpdateTournamentInput): Promise<Tournament> {
   const current = await requireOwned(db, ownerId, id);
-  // The leader invariant cannot survive this switch: going to freeplay would
+  // The leader invariant cannot survive a type switch: going to freeplay would
   // orphan the session leader, and leaving it would leave rounds owning leaders
   // the tournament should own.
   if (input.type !== undefined && (input.type === 'freeplay') !== (current.type === 'freeplay')) {
     throw new ValidationError('A session cannot be changed into or out of freeplay.');
+  }
+  // Also guard the type-omitted case: a patch that only touches myLeaderId
+  // still has to respect an already-freeplay tournament having no leader of
+  // its own — this is the same one-leader-per-session rule, just reached
+  // without a type change. (A freeplay tournament's own myLeaderId is always
+  // already null, so an explicit `null` here is a no-op, not a violation.)
+  if (current.type === 'freeplay' && input.myLeaderId !== undefined && input.myLeaderId !== null) {
+    throw new ValidationError('A freeplay session has no leader of its own.');
   }
   const patch: Partial<typeof tournaments.$inferInsert> = { updatedAt: new Date() };
   if (input.type !== undefined) patch.type = input.type;

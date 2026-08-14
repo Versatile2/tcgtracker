@@ -141,4 +141,17 @@ describe('tournament service', () => {
     const ok = await updateTournament(db, USER, classic.id, { type: 'regionals' });
     expect(ok.type).toBe('regionals');
   });
+
+  it('rejects assigning a leader to a freeplay tournament via a partial patch with no type field', async () => {
+    const { mine } = await anyLeaderIds();
+    const free = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    await expect(updateTournament(db, USER, free.id, { myLeaderId: mine })).rejects.toThrow();
+  });
+
+  it('still allows a plain leader change on a non-freeplay tournament', async () => {
+    const ls = await listLeaders(db, USER);
+    const classic = await createTournament(db, USER, { type: 'local', myLeaderId: ls[0].id, playedOn: '2026-08-14' });
+    const updated = await updateTournament(db, USER, classic.id, { myLeaderId: ls[1].id });
+    expect(updated.myLeaderId).toBe(ls[1].id);
+  });
 });
