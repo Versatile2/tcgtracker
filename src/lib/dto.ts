@@ -5,6 +5,9 @@ export type GameLog = { result: 'win' | 'loss'; playOrder: 'first' | 'second' | 
 export type RoundDTO = {
   id: string; tournamentId: string; roundNumber: number; kind: RoundKind;
   opponentLeaderId: string | null; opponentMetaId: string | null;
+  // Set only on a freeplay swiss/top_cut round; null otherwise (including on
+  // freeplay byes/no-shows, which are not games).
+  myLeaderId: string | null;
   result: 'win' | 'loss' | 'draw'; playOrder: 'first' | 'second' | null;
   wonDieRoll: boolean | null;
   games: GameLog[] | null; notes: string | null;

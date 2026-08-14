@@ -3,7 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds } from '../db/schema';
 import { computeRecord } from '../lib/record';
-import { NotFoundError, ConflictError } from '../lib/errors';
+import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
 import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/validation/tournament';
 
 type DB = NodePgDatabase<typeof schema>;
@@ -22,6 +22,17 @@ async function requireOwned(db: DB, ownerId: string, id: string): Promise<Tourna
 }
 
 export async function createTournament(db: DB, ownerId: string, input: CreateTournamentInput): Promise<Tournament> {
+  // Exactly one leader source per session: freeplay records the leader per
+  // round instead and has none of its own; every other type requires one.
+  // The zod schema carries the same rule for callers that go through it (the
+  // API route), but this service is also called directly (e.g. from tests),
+  // so it must enforce the rule itself too.
+  if (input.type === 'freeplay' && input.myLeaderId !== undefined) {
+    throw new ValidationError('A freeplay session has no leader of its own.');
+  }
+  if (input.type !== 'freeplay' && input.myLeaderId === undefined) {
+    throw new ValidationError('Choose your leader.');
+  }
   // A client-supplied id makes the create idempotent: replaying a queued
   // offline create whose response was lost returns the existing row instead of
   // inserting a duplicate.
@@ -36,7 +47,7 @@ export async function createTournament(db: DB, ownerId: string, input: CreateTou
     .values({
       ...(input.id ? { id: input.id } : {}),
       ownerId, type: input.type,
-      myLeaderId: input.myLeaderId,
+      myLeaderId: input.myLeaderId ?? null,
       metaId: input.metaId ?? null,
       name: input.name ?? null, playedOn: input.playedOn, status: 'draft',
     })
@@ -71,7 +82,13 @@ export async function getTournament(db: DB, ownerId: string, id: string): Promis
 }
 
 export async function updateTournament(db: DB, ownerId: string, id: string, input: UpdateTournamentInput): Promise<Tournament> {
-  await requireOwned(db, ownerId, id);
+  const current = await requireOwned(db, ownerId, id);
+  // The leader invariant cannot survive this switch: going to freeplay would
+  // orphan the session leader, and leaving it would leave rounds owning leaders
+  // the tournament should own.
+  if (input.type !== undefined && (input.type === 'freeplay') !== (current.type === 'freeplay')) {
+    throw new ValidationError('A session cannot be changed into or out of freeplay.');
+  }
   const patch: Partial<typeof tournaments.$inferInsert> = { updatedAt: new Date() };
   if (input.type !== undefined) patch.type = input.type;
   if (input.myLeaderId !== undefined) patch.myLeaderId = input.myLeaderId;

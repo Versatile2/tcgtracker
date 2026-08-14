@@ -41,7 +41,11 @@ export function useTournamentWrites() {
       const detail: TournamentDetailDTO = {
         id,
         type: input.type,
-        myLeaderId: input.myLeaderId,
+        // Non-null: the schema now allows omitting this for freeplay, but the
+        // form still always collects a leader regardless of type (freeplay's
+        // own UI lands in a later task) — so this always holds today. The DTO
+        // itself is widened to `string | null` once that UI exists.
+        myLeaderId: input.myLeaderId!,
         metaId: input.metaId ?? null,
         name: input.name ?? null,
         playedOn: input.playedOn,

@@ -109,11 +109,36 @@ describe('tournament service', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('accepts freeplay as a tournament type', async () => {
-    // The invariant (freeplay has no session leader) lands in the next task;
-    // this only pins that the enum value exists end to end.
+  it('requires a leader for a non-freeplay tournament', async () => {
+    await expect(createTournament(db, USER, {
+      type: 'local', playedOn: '2026-08-14',
+    } as never)).rejects.toThrow();
+  });
+
+  it('rejects a leader on a freeplay tournament', async () => {
     const { mine } = await anyLeaderIds();
-    const t = await createTournament(db, USER, { type: 'freeplay', myLeaderId: mine, playedOn: '2026-08-14' });
-    expect(t.type).toBe('freeplay');
+    await expect(createTournament(db, USER, {
+      type: 'freeplay', myLeaderId: mine, playedOn: '2026-08-14',
+    })).rejects.toThrow();
+  });
+
+  it('stores a freeplay tournament with no leader', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    expect(t.myLeaderId).toBeNull();
+  });
+
+  it('refuses to change a tournament into or out of freeplay', async () => {
+    const { mine } = await anyLeaderIds();
+    const classic = await createTournament(db, USER, {
+      type: 'local', myLeaderId: mine, playedOn: '2026-08-14',
+    });
+    await expect(updateTournament(db, USER, classic.id, { type: 'freeplay' })).rejects.toThrow();
+
+    const free = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    await expect(updateTournament(db, USER, free.id, { type: 'local' })).rejects.toThrow();
+
+    // A classic-to-classic change still works.
+    const ok = await updateTournament(db, USER, classic.id, { type: 'regionals' });
+    expect(ok.type).toBe('regionals');
   });
 });
