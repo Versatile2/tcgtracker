@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { LeaderCarousel } from '@/components/leaders/leader-carousel';
+import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { useLeaders, useAddCustomLeader } from '@/components/query-hooks';
 import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
@@ -17,32 +18,37 @@ type WinLoss = 'win' | 'loss';
 type PlayOrder = 'first' | 'second';
 
 export function RoundFormSheet({
-  open, onOpenChange, initial, onSubmit, onDelete,
+  open, onOpenChange, initial, onSubmit, onDelete, isFreeplay, defaultMyLeaderId,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
   onDelete?: () => Promise<void> | void;
+  isFreeplay: boolean;
+  /** Previous round's leader, inherited by a new freeplay round. Null on the first. */
+  defaultMyLeaderId: string | null;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
         <div className="mx-auto mt-1 mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
         {/* Keyed by open+initial so all step/form state re-initializes each time the sheet opens. */}
-        <RoundSheetBody key={open ? (initial?.id ?? 'new') : 'closed'} onOpenChange={onOpenChange} initial={initial} onSubmit={onSubmit} onDelete={onDelete} />
+        <RoundSheetBody key={open ? (initial?.id ?? 'new') : 'closed'} onOpenChange={onOpenChange} initial={initial} onSubmit={onSubmit} onDelete={onDelete} isFreeplay={isFreeplay} defaultMyLeaderId={defaultMyLeaderId} />
       </SheetContent>
     </Sheet>
   );
 }
 
 function RoundSheetBody({
-  onOpenChange, initial, onSubmit, onDelete,
+  onOpenChange, initial, onSubmit, onDelete, isFreeplay, defaultMyLeaderId,
 }: {
   onOpenChange: (o: boolean) => void;
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
   onDelete?: () => Promise<void> | void;
+  isFreeplay: boolean;
+  defaultMyLeaderId: string | null;
 }) {
   const [step, setStep] = useState<'type' | 'form'>(initial ? 'form' : 'type');
   const [kind, setKind] = useState<RoundKind>(initial?.kind ?? 'swiss');
@@ -70,6 +76,8 @@ function RoundSheetBody({
       onOpenChange={onOpenChange}
       onSubmit={onSubmit}
       onDelete={onDelete}
+      isFreeplay={isFreeplay}
+      defaultMyLeaderId={defaultMyLeaderId}
     />
   );
 }
@@ -166,7 +174,7 @@ function Segmented<T extends string | boolean>({
 }
 
 function RoundFormBody({
-  kind, onBack, onOpenChange, initial, onSubmit, onDelete,
+  kind, onBack, onOpenChange, initial, onSubmit, onDelete, isFreeplay, defaultMyLeaderId,
 }: {
   kind: 'swiss' | 'top_cut';
   onBack?: () => void;
@@ -174,11 +182,23 @@ function RoundFormBody({
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
   onDelete?: () => Promise<void> | void;
+  isFreeplay: boolean;
+  defaultMyLeaderId: string | null;
 }) {
   const { data: leaders } = useLeaders();
   const addLeader = useAddCustomLeader();
 
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
+  // Editing shows what the round recorded; a new round inherits the previous
+  // round's deck so a run of games on one deck costs no extra taps.
+  const [myLeaderId, setMyLeaderId] = useState<string | null>(
+    initial ? (initial.myLeaderId ?? null) : defaultMyLeaderId,
+  );
+  const [pickingLeader, setPickingLeader] = useState(false);
+  const myLeader = myLeaderId ? leaders?.find((l) => l.id === myLeaderId) : undefined;
+  const myLeaderName = myLeader?.name ?? '—';
+  const myLeaderColors = myLeader?.colors;
+  const myLeaderSetCode = myLeader?.setCode;
   // Defaults apply when adding; editing shows what was recorded. Swiss only —
   // top cut has no die roll and derives its result from the game log.
   const [result, setResult] = useState<WinLoss | null>(
@@ -196,9 +216,10 @@ function RoundFormBody({
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
 
-  const valid = kind === 'swiss'
+  const valid = (kind === 'swiss'
     ? Boolean(oppLeaderId && result)
-    : Boolean(oppLeaderId && isCompletedBo3(games));
+    : Boolean(oppLeaderId && isCompletedBo3(games)))
+    && (!isFreeplay || Boolean(myLeaderId));
 
   const addLeaderCustom = async (n: string) => {
     const l = await addLeader.mutateAsync({ name: n, colors: [] });
@@ -214,8 +235,8 @@ function RoundFormBody({
       // getOpponentStats would then coalesce the round into the tournament's
       // meta, rewriting history). See roundToInput in tournament-detail.tsx.
       const payload: CreateRoundInput = kind === 'swiss'
-        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
-        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, games, notes: notes.trim() || null };
+        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, ...(isFreeplay ? { myLeaderId } : {}), result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
+        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, ...(isFreeplay ? { myLeaderId } : {}), games, notes: notes.trim() || null };
       await onSubmit(payload);
       onOpenChange(false);
     } finally {
@@ -231,6 +252,36 @@ function RoundFormBody({
 
   return (
     <>
+      {isFreeplay && (
+        <div className="mx-4 mb-3 rounded-xl border border-primary/35 bg-primary/8 p-2">
+          {myLeaderId ? (
+            <div className="flex items-center gap-2.5">
+              <LeaderAvatar name={myLeaderName} colors={myLeaderColors} setCode={myLeaderSetCode} size="md" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Playing as</div>
+                <div className="truncate text-sm font-bold">{myLeaderName}</div>
+              </div>
+              <button type="button" onClick={() => setPickingLeader(true)}
+                className="rounded-md px-2 py-1 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                Switch
+              </button>
+            </div>
+          ) : (
+            <p className="px-1 py-0.5 text-sm text-muted-foreground">Pick the deck you’re playing this round.</p>
+          )}
+        </div>
+      )}
+
+      {isFreeplay && (!myLeaderId || pickingLeader) && (
+        <div className="mb-3 px-4">
+          <LeaderCarousel
+            options={leaders ?? []}
+            value={myLeaderId}
+            onChange={(id) => { setMyLeaderId(id); setPickingLeader(false); }}
+            onAddCustom={addLeaderCustom} />
+        </div>
+      )}
+
       <SheetHeader>
         <div className="flex items-center justify-between gap-2">
           <SheetTitle className="text-2xl font-bold">{initial ? 'Edit Round' : `Add ${roundKindLabel(kind)} Round`}</SheetTitle>

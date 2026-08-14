@@ -168,6 +168,8 @@ export function TournamentDetail({ id }: { id: string }) {
       )}
 
       <RoundFormSheet open={sheetOpen} onOpenChange={setSheetOpen} initial={editing}
+        isFreeplay={t.type === 'freeplay'}
+        defaultMyLeaderId={t.rounds.length > 0 ? (t.rounds[t.rounds.length - 1].myLeaderId ?? null) : null}
         onDelete={editing ? () => handleDeleteRound(editing) : undefined}
         onSubmit={async (data) => {
           if (editing) roundWrites.update(editing.id, data);
