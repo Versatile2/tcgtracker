@@ -43,14 +43,16 @@ export function useTournamentWrites() {
         type: input.type,
         // Non-null: the schema now allows omitting this for freeplay, but the
         // form still always collects a leader regardless of type (freeplay's
-        // own UI lands in a later task) — so this always holds today. The DTO
-        // itself is widened to `string | null` once that UI exists.
+        // own UI lands in a later task) — so this always holds today, even
+        // though the DTO itself is now `string | null`.
         myLeaderId: input.myLeaderId!,
         metaId: input.metaId ?? null,
         name: input.name ?? null,
         playedOn: input.playedOn,
         status: 'draft',
         matches: [],
+        // No rounds yet, so no decks played yet either.
+        deckCount: 0,
         rounds: [],
       };
       cache.addTournament(qc, detail);

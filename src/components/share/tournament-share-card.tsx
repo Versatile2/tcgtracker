@@ -79,7 +79,7 @@ export function TournamentShareCard({
   const leaderById = (id: string): LeaderDTO | undefined => leaders.find((l) => l.id === id);
   const metaById = (id: string): MetaDTO | undefined => metas.find((m) => m.id === id);
 
-  const myLeader = leaderById(tournament.myLeaderId);
+  const myLeader = tournament.myLeaderId ? leaderById(tournament.myLeaderId) : undefined;
   const record = formatRecord(computeRecord(tournament.rounds));
   const eventName = tournament.name ?? tournamentTypeLabel(tournament.type);
   const eventMeta = tournament.metaId ? metaById(tournament.metaId) : undefined;

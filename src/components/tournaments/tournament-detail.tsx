@@ -67,7 +67,7 @@ export function TournamentDetail({ id }: { id: string }) {
     name: l.setCode ? `${l.name} ${l.setCode}` : l.name,
   }));
   const record = computeRecord(t.rounds);
-  const myLeader = leaders?.find((l) => l.id === t.myLeaderId);
+  const myLeader = t.myLeaderId ? leaders?.find((l) => l.id === t.myLeaderId) : undefined;
 
   function handleDeleteRound(r: RoundDTO) {
     roundWrites.remove(r.id);
@@ -87,7 +87,7 @@ export function TournamentDetail({ id }: { id: string }) {
     <main className="mx-auto max-w-xl p-4 pb-28">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <LeaderAvatar name={myLeader?.name ?? leaderName(t.myLeaderId)} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />
+          <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />
           <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
@@ -96,16 +96,19 @@ export function TournamentDetail({ id }: { id: string }) {
           <h1 className="mt-1 text-xl font-bold">{t.name ?? tournamentTypeLabel(t.type)}</h1>
           <p className="text-sm text-muted-foreground">{t.playedOn}</p>
           <div className="mt-2 max-w-[16rem]">
-            {editable ? (
-              <ReferenceCombobox
-                options={leaderOptions}
-                value={t.myLeaderId}
-                onChange={(lid) => { if (lid && lid !== t.myLeaderId) tournamentWrites.update(id, { myLeaderId: lid }); }}
-                onAddCustom={async () => ({ id: t.myLeaderId, name: leaderName(t.myLeaderId) })}
-                placeholder="Leader" />
-            ) : (
-              <p className="text-sm">Leader: <span className="font-medium">{leaderName(t.myLeaderId)}</span></p>
-            )}
+            {/* Freeplay has no session leader — Task 8 adds its own presentation here. */}
+            {t.myLeaderId ? (
+              editable ? (
+                <ReferenceCombobox
+                  options={leaderOptions}
+                  value={t.myLeaderId}
+                  onChange={(lid) => { if (lid && lid !== t.myLeaderId) tournamentWrites.update(id, { myLeaderId: lid }); }}
+                  onAddCustom={async () => ({ id: t.myLeaderId!, name: leaderName(t.myLeaderId!) })}
+                  placeholder="Leader" />
+              ) : (
+                <p className="text-sm">Leader: <span className="font-medium">{leaderName(t.myLeaderId)}</span></p>
+              )
+            ) : null}
           </div>
           </div>
         </div>

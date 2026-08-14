@@ -27,7 +27,7 @@ export function TournamentCard({
   unsynced?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const leader = resolveLeader(t.myLeaderId);
+  const leader = t.myLeaderId ? resolveLeader(t.myLeaderId) : undefined;
   const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);
   const isDraft = t.status === 'draft';
