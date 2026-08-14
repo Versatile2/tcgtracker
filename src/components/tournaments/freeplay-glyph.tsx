@@ -14,7 +14,9 @@ export function FreeplayGlyph({ size = 'md', className }: { size?: keyof typeof 
     <div
       aria-hidden
       className={cn(
-        'flex shrink-0 items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500 text-white',
+        // Semantic tokens, like every other surface in the app — the glyph should
+        // recede beside real card art, and the emoji carries its own colour.
+        'flex shrink-0 items-center justify-center border border-border/60 bg-muted',
         SIZES[size], className,
       )}
     >
