@@ -182,4 +182,36 @@ describe('round service', () => {
     const r = await addRound(db, USER, t.id, { kind: 'bye', notes: null });
     expect(r.myLeaderId).toBeNull();
   });
+
+  it('rejects updating a freeplay swiss round without myLeaderId', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const mine = await leaderId('Roronoa Zoro');
+    const r = await addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: mine,
+    });
+    await expect(updateRound(db, USER, r.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win',
+    })).rejects.toThrow();
+  });
+
+  it('updating a freeplay swiss round with myLeaderId stores it', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const mine = await leaderId('Roronoa Zoro');
+    const other = await leaderId('Sanji');
+    const r = await addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: mine,
+    });
+    const updated = await updateRound(db, USER, r.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: other,
+    });
+    expect(updated.myLeaderId).toBe(other);
+  });
+
+  it('rejects updating a classic round with a myLeaderId', async () => {
+    const { t, opp } = await setup();
+    const r = await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+    await expect(updateRound(db, USER, r.id, {
+      kind: 'swiss', opponentLeaderId: opp, result: 'win', myLeaderId: await leaderId('Sanji'),
+    })).rejects.toThrow();
+  });
 });

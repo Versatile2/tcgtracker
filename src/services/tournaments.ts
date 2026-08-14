@@ -78,12 +78,12 @@ export async function listTournaments(db: DB, ownerId: string): Promise<Tourname
   });
 }
 
-export async function getTournament(db: DB, ownerId: string, id: string): Promise<Tournament & { rounds: Round[] }> {
+export async function getTournament(db: DB, ownerId: string, id: string): Promise<Tournament & { rounds: Round[]; deckCount: number }> {
   const t = await requireOwned(db, ownerId, id);
   const rs = await db.select().from(rounds)
     .where(eq(rounds.tournamentId, id))
     .orderBy(rounds.roundNumber);
-  return { ...t, rounds: rs };
+  return { ...t, rounds: rs, deckCount: computeDeckCount(rs) };
 }
 
 export async function updateTournament(db: DB, ownerId: string, id: string, input: UpdateTournamentInput): Promise<Tournament> {

@@ -30,9 +30,9 @@ import { shareFilename } from '@/lib/share-image';
 function roundToInput(r: RoundDTO): CreateRoundInput {
   switch (r.kind) {
     case 'swiss':
-      return { kind: 'swiss', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, result: r.result, playOrder: r.playOrder, wonDieRoll: r.wonDieRoll, notes: r.notes };
+      return { kind: 'swiss', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, result: r.result, playOrder: r.playOrder, wonDieRoll: r.wonDieRoll, notes: r.notes, myLeaderId: r.myLeaderId };
     case 'top_cut':
-      return { kind: 'top_cut', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, games: r.games ?? [], notes: r.notes };
+      return { kind: 'top_cut', opponentLeaderId: r.opponentLeaderId!, opponentMetaId: r.opponentMetaId, games: r.games ?? [], notes: r.notes, myLeaderId: r.myLeaderId };
     case 'bye':
       return { kind: 'bye', notes: r.notes };
     case 'no_show':

@@ -183,4 +183,16 @@ describe('tournament service', () => {
     const list = await listTournaments(db, USER);
     expect(list.find((x) => x.id === t.id)?.deckCount).toBe(0);
   });
+
+  it('getTournament reports the distinct deck count for a freeplay session', async () => {
+    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const zoro = await leaderId('Roronoa Zoro');
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: zoro });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Sanji'), result: 'loss', myLeaderId: zoro });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: await leaderId('Edward Newgate') });
+
+    const detail = await getTournament(db, USER, t.id);
+    // Two distinct decks across three rounds — a repeat does not double-count.
+    expect(detail.deckCount).toBe(2);
+  });
 });
