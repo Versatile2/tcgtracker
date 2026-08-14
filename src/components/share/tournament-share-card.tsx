@@ -79,6 +79,8 @@ export function TournamentShareCard({
   const leaderById = (id: string): LeaderDTO | undefined => leaders.find((l) => l.id === id);
   const metaById = (id: string): MetaDTO | undefined => metas.find((m) => m.id === id);
 
+  // Freeplay has no session leader (null here) — Task 8 adds its own
+  // presentation for that case; this is just a safe fallback for now.
   const myLeader = tournament.myLeaderId ? leaderById(tournament.myLeaderId) : undefined;
   const record = formatRecord(computeRecord(tournament.rounds));
   const eventName = tournament.name ?? tournamentTypeLabel(tournament.type);

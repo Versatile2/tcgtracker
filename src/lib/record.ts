@@ -15,3 +15,14 @@ export function computeRecord(rounds: { result: 'win' | 'loss' | 'draw' }[]): Re
 export function formatRecord(r: Record): string {
   return r.draws > 0 ? `${r.wins}-${r.losses}-${r.draws}` : `${r.wins}-${r.losses}`;
 }
+
+/**
+ * Distinct decks played across a session's rounds — the count of distinct
+ * non-null round leaders. A repeat deck does not double-count. Classic
+ * tournaments have no round leaders, so theirs is 0. Shared by the server
+ * (`listTournaments`) and the offline optimistic cache so the two
+ * definitions cannot drift.
+ */
+export function computeDeckCount(rounds: { myLeaderId: string | null }[]): number {
+  return new Set(rounds.map((r) => r.myLeaderId).filter(Boolean)).size;
+}

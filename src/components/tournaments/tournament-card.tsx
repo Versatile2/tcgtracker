@@ -27,6 +27,8 @@ export function TournamentCard({
   unsynced?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Freeplay has no session leader (null here) — Task 8 adds its own
+  // presentation for that case; this is just a safe fallback for now.
   const leader = t.myLeaderId ? resolveLeader(t.myLeaderId) : undefined;
   const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);

@@ -2,7 +2,7 @@ import { and, eq, desc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds } from '../db/schema';
-import { computeRecord } from '../lib/record';
+import { computeRecord, computeDeckCount } from '../lib/record';
 import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
 import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/validation/tournament';
 
@@ -74,8 +74,7 @@ export async function listTournaments(db: DB, ownerId: string): Promise<Tourname
   return ts.map((t) => {
     const rs = (byTournament.get(t.id) ?? []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
     const matches: MatchSummary[] = rs.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind }));
-    const deckCount = new Set(rs.map((r) => r.myLeaderId).filter(Boolean)).size;
-    return { ...t, record: computeRecord(rs), matches, deckCount };
+    return { ...t, record: computeRecord(rs), matches, deckCount: computeDeckCount(rs) };
   });
 }
 

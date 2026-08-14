@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { RoundDTO, TournamentDetailDTO, TournamentSummaryDTO } from '@/lib/dto';
 import { keys } from '@/lib/query-keys';
-import { computeRecord } from '@/lib/record';
+import { computeRecord, computeDeckCount } from '@/lib/record';
 
 /**
  * Apply a pending write to the query cache immediately. The cache is persisted
@@ -25,9 +25,15 @@ const summaryOf = (detail: TournamentDetailDTO): TournamentSummaryDTO => {
 const byRecency = (a: TournamentSummaryDTO, b: TournamentSummaryDTO) => b.playedOn.localeCompare(a.playedOn);
 
 function putDetail(qc: QueryClient, detail: TournamentDetailDTO) {
-  qc.setQueryData(keys.tournament(detail.id), detail);
+  // Recomputed fresh from `rounds`, not trusted from the caller: an offline
+  // round added after creation must update the deck count immediately, in
+  // both the detail and list caches, not only once the outbox drains and
+  // the server's value replaces it. Uses the same helper as the server's
+  // `listTournaments` so the two definitions cannot drift.
+  const withDeckCount: TournamentDetailDTO = { ...detail, deckCount: computeDeckCount(detail.rounds) };
+  qc.setQueryData(keys.tournament(withDeckCount.id), withDeckCount);
   qc.setQueryData<TournamentSummaryDTO[]>(keys.tournaments, (list = []) =>
-    [summaryOf(detail), ...list.filter((t) => t.id !== detail.id)].sort(byRecency)
+    [summaryOf(withDeckCount), ...list.filter((t) => t.id !== withDeckCount.id)].sort(byRecency)
   );
 }
 
