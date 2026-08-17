@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { cn } from '@/lib/utils';
 import {
   leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leaderSearchText,
@@ -120,7 +121,7 @@ function SkeletonTile() {
 export function LeaderPicker({
   options, value, onChange, onAddCustom,
   suggested, suggestLabel, suggestionsPending = false,
-  collapsible = true, disabled,
+  selectedLabel, collapsible = true, disabled,
 }: {
   options: Option[];
   value: string | null;
@@ -131,6 +132,9 @@ export function LeaderPicker({
   suggested?: string[];
   /** Names why these leaders are being offered, e.g. "Your decks". */
   suggestLabel?: string;
+  /** Kicker over the chosen leader, e.g. "Playing as". Omit where the surrounding
+   *  form already labels the field. */
+  selectedLabel?: string;
   /**
    * True while the history behind `suggested` is still loading. Without it the
    * picker would open on the full catalog and then swap to the suggest tier when
@@ -220,17 +224,26 @@ export function LeaderPicker({
     }
   }
 
+  // One presentation for a chosen leader, wherever the choice was made: the
+  // compact row the freeplay "Playing as" header used to hand-roll. Selection is
+  // a settled fact, so it reads as a tidy line rather than a card on display.
   if (collapsed && selected) {
     return (
-      <div className="flex items-start gap-3">
-        <div className="w-24 shrink-0">
-          <LeaderCard leader={selected} selected={false} />
+      <div className="flex items-center gap-2.5 rounded-xl border border-primary/35 bg-primary/8 p-2">
+        <LeaderAvatar name={selected.name} colors={selected.colors} setCode={selected.setCode} size="md" />
+        <div className="min-w-0 flex-1">
+          {selectedLabel && (
+            <div className="text-[0.625rem] font-semibold tracking-wide text-muted-foreground uppercase">{selectedLabel}</div>
+          )}
+          <div className="truncate text-sm font-bold">{selected.name}</div>
+          <div className="truncate text-xs text-muted-foreground tabular-nums">{selected.setCode ?? 'Custom'}</div>
         </div>
         <button
           type="button"
           onClick={() => setChanging(true)}
           disabled={disabled}
-          className="min-h-11 rounded-md px-3 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          aria-label={`Change leader, currently ${selected.name}`}
+          className="min-h-11 shrink-0 rounded-md px-3 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
           Change
         </button>

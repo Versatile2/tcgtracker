@@ -7,7 +7,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
-import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { useLeaders, useAddCustomLeader, useStats } from '@/components/query-hooks';
 import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
@@ -202,11 +201,6 @@ function RoundFormBody({
   const [myLeaderId, setMyLeaderId] = useState<string | null>(
     initial ? (initial.myLeaderId ?? null) : defaultMyLeaderId,
   );
-  const [pickingLeader, setPickingLeader] = useState(false);
-  const myLeader = myLeaderId ? leaders?.find((l) => l.id === myLeaderId) : undefined;
-  const myLeaderName = myLeader?.name ?? '—';
-  const myLeaderColors = myLeader?.colors;
-  const myLeaderSetCode = myLeader?.setCode;
   // Defaults apply when adding; editing shows what was recorded. Swiss only —
   // top cut has no die roll and derives its result from the game log.
   const [result, setResult] = useState<WinLoss | null>(
@@ -270,35 +264,15 @@ function RoundFormBody({
   return (
     <>
       {isFreeplay && (
-        <div className="mx-4 mb-3 rounded-xl border border-primary/35 bg-primary/8 p-2">
-          {myLeaderId ? (
-            <div className="flex items-center gap-2.5">
-              <LeaderAvatar name={myLeaderName} colors={myLeaderColors} setCode={myLeaderSetCode} size="md" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Playing as</div>
-                <div className="truncate text-sm font-bold">{myLeaderName}</div>
-              </div>
-              <button type="button" onClick={() => setPickingLeader(true)} aria-label="Switch deck"
-                className="rounded-md px-2 py-1 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                Switch
-              </button>
-            </div>
-          ) : (
-            <p className="px-1 py-0.5 text-sm text-muted-foreground">Pick the deck you’re playing this round.</p>
-          )}
-        </div>
-      )}
-
-      {isFreeplay && (!myLeaderId || pickingLeader) && (
         <div className="mb-3 px-4">
           <LeaderPicker
             suggested={myDeckIds}
             suggestLabel="Your decks"
+            selectedLabel="Playing as"
             suggestionsPending={stats === undefined}
             options={leaders ?? []}
             value={myLeaderId}
-            collapsible={false}
-            onChange={(id) => { setMyLeaderId(id); setPickingLeader(false); }}
+            onChange={setMyLeaderId}
             onAddCustom={addLeaderCustom} />
         </div>
       )}
