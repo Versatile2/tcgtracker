@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NavBar } from '@/components/nav/nav-bar';
-import { LeaderCarousel } from '@/components/leaders/leader-carousel';
+import { LeaderPicker } from '@/components/leaders/leader-picker';
 import { ReferenceCombobox } from './reference-combobox';
-import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useTournamentWrites } from '@/components/query-hooks';
+import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useTournamentWrites, useStats } from '@/components/query-hooks';
 import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
 import { pickDefaultMetaId } from '@/lib/meta-selection';
 import type { TournamentType } from '@/lib/dto';
@@ -19,6 +19,10 @@ const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_gr
 export function NewTournamentForm() {
   const router = useRouter();
   const { data: leaders } = useLeaders();
+  // Decks you have actually played come first; a new account has none and the
+  // picker falls through to the colour-banded catalog.
+  const { data: stats } = useStats();
+  const myDeckIds = (stats?.playedLeaders ?? []).map((l) => l.id);
   const addLeader = useAddCustomLeader();
   const { data: metas } = useMetas();
   const addMeta = useAddCustomMeta();
@@ -78,12 +82,20 @@ export function NewTournamentForm() {
       {!isFreeplay && (
         <div className="space-y-2">
           <span className="text-sm font-medium">Leader</span>
-          <LeaderCarousel
+          <LeaderPicker
+            suggested={myDeckIds}
+            suggestLabel="Your decks"
+            suggestionsPending={stats === undefined}
             options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
             onAddCustom={async (n) => {
               if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
-              const l = await addLeader.mutateAsync({ name: n, colors: [] });
-              return { id: l.id, name: l.name };
+              try {
+                const l = await addLeader.mutateAsync({ name: n, colors: [] });
+                return { id: l.id, name: l.name };
+              } catch {
+                toast.error('Could not add that leader');
+                return null;
+              }
             }} />
         </div>
       )}

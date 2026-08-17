@@ -2,16 +2,18 @@
 import { useState } from 'react';
 import { Dices, Trophy, SkipForward, UserX, ChevronLeft, Trash2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { LeaderCarousel } from '@/components/leaders/leader-carousel';
+import { LeaderPicker } from '@/components/leaders/leader-picker';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
-import { useLeaders, useAddCustomLeader } from '@/components/query-hooks';
+import { useLeaders, useAddCustomLeader, useStats } from '@/components/query-hooks';
 import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
 import { cn } from '@/lib/utils';
 import type { CreateRoundInput } from '@/lib/validation/round';
+import { useOnlineStatus } from '@/lib/use-online-status';
 import type { RoundDTO, RoundKind, GameLog } from '@/lib/dto';
 
 type WinLoss = 'win' | 'loss';
@@ -186,6 +188,12 @@ function RoundFormBody({
   defaultMyLeaderId: string | null;
 }) {
   const { data: leaders } = useLeaders();
+  // Two different notions of "likely": the decks you play, and the decks you
+  // keep running into. Opponent stats already arrive sorted by games played.
+  const online = useOnlineStatus();
+  const { data: stats } = useStats();
+  const myDeckIds = (stats?.playedLeaders ?? []).map((l) => l.id);
+  const oppIds = (stats?.opponents ?? []).map((o) => o.leaderId);
   const addLeader = useAddCustomLeader();
 
   const [oppLeaderId, setOppLeaderId] = useState<string | null>(initial?.opponentLeaderId ?? null);
@@ -221,9 +229,18 @@ function RoundFormBody({
     : Boolean(oppLeaderId && isCompletedBo3(games)))
     && (!isFreeplay || Boolean(myLeaderId));
 
+  // Custom leaders are the one write that cannot be queued offline: the name
+  // uniqueness check happens server-side, so a replayed create could strand the
+  // rounds that reference it.
   const addLeaderCustom = async (n: string) => {
-    const l = await addLeader.mutateAsync({ name: n, colors: [] });
-    return { id: l.id, name: l.name };
+    if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
+    try {
+      const l = await addLeader.mutateAsync({ name: n, colors: [] });
+      return { id: l.id, name: l.name };
+    } catch {
+      toast.error('Could not add that leader');
+      return null;
+    }
   };
   async function save() {
     if (!valid || !oppLeaderId) return;
@@ -274,9 +291,13 @@ function RoundFormBody({
 
       {isFreeplay && (!myLeaderId || pickingLeader) && (
         <div className="mb-3 px-4">
-          <LeaderCarousel
+          <LeaderPicker
+            suggested={myDeckIds}
+            suggestLabel="Your decks"
+            suggestionsPending={stats === undefined}
             options={leaders ?? []}
             value={myLeaderId}
+            collapsible={false}
             onChange={(id) => { setMyLeaderId(id); setPickingLeader(false); }}
             onAddCustom={addLeaderCustom} />
         </div>
@@ -303,7 +324,10 @@ function RoundFormBody({
       <div className="space-y-5 px-4 pb-4">
         <div className="space-y-2">
           <span className="text-sm font-medium">Opponent’s Deck</span>
-          <LeaderCarousel options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId} onAddCustom={addLeaderCustom} />
+          <LeaderPicker
+            options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId}
+            suggested={oppIds} suggestLabel="Decks you've faced"
+            suggestionsPending={stats === undefined} onAddCustom={addLeaderCustom} />
         </div>
 
         {kind === 'swiss' ? (
