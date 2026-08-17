@@ -22,9 +22,11 @@ export function OpponentStats({ rows }: { rows: OpponentLeaderStatDTO[] }) {
               <LeaderAvatar name={r.name} colors={leader?.colors} setCode={leader?.setCode} size="md" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate font-medium">
-                    {r.name}
-                    {leader?.setCode && <span className="font-normal text-muted-foreground"> {leader.setCode}</span>}
+                  <span className="flex min-w-0 items-baseline gap-1 font-medium">
+                    <span className="truncate">{r.name}</span>
+                    {leader?.setCode && (
+                      <span className="shrink-0 font-normal text-muted-foreground">{leader.setCode}</span>
+                    )}
                   </span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">
                     {formatRecord({ wins: r.wins, losses: r.losses, draws: r.draws })} · {pct(r.winRate)} · {r.games} {r.games === 1 ? 'game' : 'games'}

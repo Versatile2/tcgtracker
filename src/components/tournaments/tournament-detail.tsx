@@ -20,6 +20,7 @@ import {
 import { useOutbox, pendingRoundIds } from '@/lib/outbox/use-outbox';
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
+import { formatPlayedOn } from '@/lib/format-date';
 import type { RoundDTO } from '@/lib/dto';
 import type { CreateRoundInput } from '@/lib/validation/round';
 import { ShareDialog } from '@/components/share/share-dialog';
@@ -71,9 +72,12 @@ export function TournamentDetail({ id }: { id: string }) {
   const myLeader = t.myLeaderId ? leaders?.find((l) => l.id === t.myLeaderId) : undefined;
   // Freeplay rounds each record their own deck; classic tournaments fall back
   // to the session leader.
+  // Freeplay records a deck per round, so each row names its own. Every other
+  // type has one leader for the whole event: repeating it on every row costs
+  // height on the densest screen and says nothing the header has not said.
   const leaderForRound = (r: RoundDTO) => {
-    const lid = r.myLeaderId ?? t.myLeaderId;
-    const l = lid ? leaders?.find((x) => x.id === lid) : undefined;
+    if (t.type !== 'freeplay') return undefined;
+    const l = r.myLeaderId ? leaders?.find((x) => x.id === r.myLeaderId) : undefined;
     return l ? { name: l.name, colors: l.colors, setCode: l.setCode } : undefined;
   };
 
@@ -104,7 +108,7 @@ export function TournamentDetail({ id }: { id: string }) {
             <Badge variant={editable ? 'outline' : 'default'}>{editable ? 'Draft' : 'Locked'}</Badge>
           </div>
           <h1 className="mt-1 text-xl font-bold">{t.name ?? tournamentTypeLabel(t.type)}</h1>
-          <p className="text-sm text-muted-foreground">{t.playedOn}</p>
+          <p className="text-sm text-muted-foreground">{formatPlayedOn(t.playedOn)}</p>
           {t.type !== 'freeplay' && (
             <div className="mt-2 max-w-[16rem]">
               {t.myLeaderId ? (

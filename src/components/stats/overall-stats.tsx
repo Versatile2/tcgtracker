@@ -24,7 +24,7 @@ export function OverallStats({ o }: { o: OverallStatsDTO }) {
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <StatCard label="Best meta" value={o.bestMeta ? o.bestMeta.name : '—'} sub={o.bestMeta ? `${pct(o.bestMeta.winRate)} over ${o.bestMeta.games} games` : undefined} />
-        <StatCard label="Most-played leader" value={o.mostPlayedLeader ? o.mostPlayedLeader.name : '—'} sub={o.mostPlayedLeader ? `${o.mostPlayedLeader.tournaments} tournaments` : undefined} />
+        <StatCard label="Most-played leader" value={o.mostPlayedLeader ? o.mostPlayedLeader.name : '—'} sub={o.mostPlayedLeader ? `${o.mostPlayedLeader.tournaments} ${o.mostPlayedLeader.tournaments === 1 ? 'tournament' : 'tournaments'}` : undefined} />
       </div>
     </section>
   );

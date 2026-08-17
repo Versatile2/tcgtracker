@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { FreeplayGlyph } from './freeplay-glyph';
 import { cn } from '@/lib/utils';
+import { formatPlayedOn } from '@/lib/format-date';
 import { formatRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel, deckCountLabel } from '@/lib/labels';
 import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
@@ -57,18 +58,22 @@ export function TournamentCard({
               {unsynced && <CloudOff className="size-3.5 text-muted-foreground" aria-label="Not synced yet" />}
             </div>
             {hasName && <p className="mt-1 truncate font-semibold">{t.name}</p>}
-            <p className={cn('truncate text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
-              {t.type === 'freeplay' ? (
-                <span>{t.playedOn}</span>
-              ) : (
-                <>
-                  <span className="text-foreground">{leaderName}</span>
-                  {leader?.setCode && <span> {leader.setCode}</span>}
-                  <span> · {t.playedOn}</span>
-                </>
+            <div className={cn('flex items-baseline gap-1.5 text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
+              {t.type !== 'freeplay' && (
+                // No set code here, unlike the leader picker and the opponent
+                // breakdown. Those exist to tell 15 same-named printings apart;
+                // this is a list of your own events, where you know which deck you
+                // play and scan by name and date. Keeping all three fields on one
+                // line squeezed the name down to a single letter.
+                <span className="truncate text-foreground">{leaderName}</span>
               )}
-              {t.type === 'freeplay' && t.deckCount > 0 && ` · ${deckCountLabel(t.deckCount)}`}
-            </p>
+              {/* Never truncated: the date is short and was the thing being
+                  silently dropped when everything shared one truncating line. */}
+              <span className="shrink-0">{formatPlayedOn(t.playedOn)}</span>
+              {t.type === 'freeplay' && t.deckCount > 0 && (
+                <span className="shrink-0">· {deckCountLabel(t.deckCount)}</span>
+              )}
+            </div>
           </div>
           <div className="shrink-0 text-2xl font-bold leading-none tabular-nums">{formatRecord(t.record)}</div>
         </Link>

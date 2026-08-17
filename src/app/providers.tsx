@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { ThemeProvider } from 'next-themes';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import { AccentProvider } from '@/components/theme/accent-provider';
@@ -18,15 +18,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new QueryClient({
     defaultOptions: { queries: { staleTime: 30_000, gcTime: WEEK, retry: 1 } },
   }));
+  // One provider on both sides. Branching the tree on `typeof window` meant the
+  // server rendered QueryClientProvider and the client PersistQueryClientProvider
+  // — different components in the same position, which can never hydrate cleanly
+  // and made React discard the server tree on every page load. The persister
+  // simply no-ops without storage, so persistence still only happens in the browser.
   const [persister] = useState(() =>
-    typeof window !== 'undefined'
-      ? createSyncStoragePersister({ storage: window.localStorage, key: 'crewstat-query-cache' })
-      : null
+    createSyncStoragePersister({
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      key: 'crewstat-query-cache',
+    }),
   );
 
-  const query = persister
-    ? <PersistQueryClientProvider client={client} persistOptions={{ persister, maxAge: WEEK, buster: CACHE_BUSTER }}>{children}</PersistQueryClientProvider>
-    : <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const query = (
+    <PersistQueryClientProvider client={client} persistOptions={{ persister, maxAge: WEEK, buster: CACHE_BUSTER }}>
+      {children}
+    </PersistQueryClientProvider>
+  );
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
