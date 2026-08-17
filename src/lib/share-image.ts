@@ -1,7 +1,17 @@
 import { toBlob } from 'html-to-image';
 
 export async function captureNode(node: HTMLElement): Promise<Blob> {
-  const blob = await toBlob(node, { pixelRatio: 2, cacheBust: true });
+  // Size is pinned to the node's own layout box. The share preview scales the
+  // card down via a transform on an ancestor to fit the dialog; offsetWidth /
+  // offsetHeight are layout values and ignore that transform, so passing them
+  // explicitly keeps the exported image at full size no matter how the preview
+  // is scaled — rather than relying on how the library infers dimensions.
+  const blob = await toBlob(node, {
+    pixelRatio: 2,
+    cacheBust: true,
+    width: node.offsetWidth,
+    height: node.offsetHeight,
+  });
   if (!blob) throw new Error('Image capture failed');
   return blob;
 }
