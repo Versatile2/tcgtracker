@@ -64,7 +64,7 @@ function LeaderCard({ leader, selected }: { leader: Option; selected: boolean })
           {leaderInitial(leader.name)}
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/65 to-transparent px-1.5 pt-4 pb-1 text-left">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/90 to-transparent px-1.5 pt-6 pb-1 text-left">
         <div className="truncate text-xs font-semibold leading-tight text-white">{leader.name}</div>
         <div className="truncate text-[0.6875rem] font-medium leading-tight text-white/90 tabular-nums">
           {leader.setCode ?? 'Custom'}
@@ -322,13 +322,13 @@ export function LeaderPicker({
       {/* An empty catalog means the leaders query has not resolved yet — saying
           "no leaders match" there would blame the search for a loading state. */}
       {options.length === 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {Array.from({ length: 6 }, (_, i) => <SkeletonTile key={i} />)}
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+          {Array.from({ length: 9 }, (_, i) => <SkeletonTile key={i} />)}
         </div>
       ) : bands.length === 0 && !canAdd ? (
         <p className="py-8 text-center text-sm text-muted-foreground">No leaders match “{search.trim()}”.</p>
       ) : (
-        <div className="max-h-[22rem] space-y-3 overflow-y-auto overscroll-contain">
+        <div className="max-h-[26rem] space-y-3 overflow-y-auto overscroll-contain">
           {bands.map((band) => (
             <section key={band.key}>
               {/* The band's own colour, mixed toward the surface so it reads as a
@@ -345,7 +345,7 @@ export function LeaderPicker({
                 <h3 className="text-sm font-bold tracking-tight">{band.label}</h3>
                 <span className="text-xs text-muted-foreground tabular-nums">{band.leaders.length}</span>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
                 {band.leaders.map((o) => (
                   <LeaderTile key={o.id} leader={o} selected={value === o.id} disabled={disabled} onSelect={() => choose(o.id)} />
                 ))}
