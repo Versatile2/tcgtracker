@@ -84,7 +84,7 @@ export function NewTournamentForm() {
           <span className="text-sm font-medium">Leader</span>
           <LeaderPicker
             suggested={myDeckIds}
-            suggestLabel="Your decks"
+            recentKey="my-deck"
             suggestionsPending={stats === undefined}
             options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
             onAddCustom={async (n) => {

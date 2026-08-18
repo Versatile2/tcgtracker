@@ -291,7 +291,7 @@ function RoundFormBody({
             <span className="text-sm font-medium">Your Deck</span>
             <LeaderPicker
               suggested={myDeckIds}
-              suggestLabel="Your decks"
+              recentKey="my-deck"
               suggestionsPending={stats === undefined}
               options={leaders ?? []}
               value={myLeaderId}
@@ -304,7 +304,7 @@ function RoundFormBody({
           <span className="text-sm font-medium">Opponent’s Deck</span>
           <LeaderPicker
             options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId}
-            suggested={oppIds} suggestLabel="Decks you've faced"
+            suggested={oppIds} recentKey="opponent"
             suggestionsPending={stats === undefined} onAddCustom={addLeaderCustom} />
         </div>
 

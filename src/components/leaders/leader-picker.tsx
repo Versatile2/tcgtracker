@@ -1,37 +1,45 @@
 'use client';
-import { useMemo, useState } from 'react';
-import { ChevronLeft, Layers, Plus, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Layers, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { useLeaderArt } from '@/components/leaders/leader-art-provider';
 import { cn } from '@/lib/utils';
+import { recentLeaders, pushRecentLeader, RECENT_LIMIT } from '@/lib/recent-leaders';
+import { useIsMounted } from '@/lib/use-is-mounted';
 import {
   leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leaderPrintings, leaderSearchText,
-  leaderColorBand, bandSwatch, bandField, COLOR_BANDS, type ColorBand,
 } from '@/lib/leader-visual';
 
 /*
- * THESIS: a leader is chosen by recognising its card, not by scrolling a shelf of
- * 132 of them. The picker refuses the undifferentiated carousel: it shows the few
- * decks you actually meet, and puts the whole catalog behind one tap, organised by
- * the axis players already think in — colour.
- * OWN-WORLD: the app's own tokens, indigo accent, no new palette. The six OPTCG
- * colours are the only chromatic system: each band is headed by a field of its own
- * colour, mixed toward the surface so it reads in either theme. Cards are framed
- * objects captioned on a scrim.
- * STORY: "the deck I want is probably right here — and if not, it's under its colour."
- * FIRST VIEWPORT: three likely leaders at a size where the art identifies them, over
- * one full-width control that opens the catalog.
- * FORM: two-tier suggest/browse, top of the ordered structure list; browse expands
- * in place rather than in a nested overlay, because this component renders inside a
- * bottom sheet and nesting overlays there is fragile. The expansion is the one
- * authored motion moment.
+ * THESIS: a leader is chosen by recognising its card, and at an event you reach
+ * for the same few all day. So one shelf, in reaching order: what you last
+ * picked, then the whole catalog in the only sequence a player knows by heart —
+ * set code. No tiers, no gate, nothing behind a tap.
+ * OWN-WORLD: the app's own tokens, indigo accent, no new palette. Cards are
+ * framed objects captioned on a scrim.
+ * STORY: "it's probably in the first few — and if not, I know roughly where it is."
+ * FIRST VIEWPORT: the search field, then four cards at a size where the art
+ * identifies them, the first of which is usually the answer.
+ * FORM: a single horizontal strip. It replaced a two-tier suggest/browse split
+ * whose colour-banded grid meant scrolling past Red to reach Yellow; colour was
+ * the wrong axis, because a player looking for a card knows its set, not the
+ * band it was filed under. Search is the escape hatch for distance — it matches
+ * name, set code and starter-deck code — and the run label above the strip says
+ * where a swipe has landed, since 132 card backs look much alike in motion.
+ * NOTE: the strip owns the horizontal gesture. Nothing inside a card may answer
+ * to a horizontal drag; that mistake once put the leader being logged one
+ * misread swipe from changing. Choosing a printing is taps, on the settled
+ * selection, and stays that way.
  */
 
 type Option = { id: string; name: string; colors?: string[]; setCode?: string | null };
 
-/** Kept short on purpose: this tier sits inline inside a bottom sheet, where height is scarce. */
-const SUGGEST_LIMIT = 3;
+/** The head of the strip, before the run of set codes begins. */
+const RECENT_LABEL = 'Recent';
+
+/** "OP09-061" → "OP09": the run of cards a swipe is currently inside. */
+const SET_RUN = /^[A-Z]+\d+/;
 
 /**
  * The card face: art (or a colour field for custom leaders with no card), with the
@@ -164,26 +172,36 @@ function ArtRow({
   );
 }
 
-function LeaderTile({
-  leader, selected, disabled, onSelect,
+/** One card in the strip. Fixed width, because the strip scrolls sideways. */
+const CARD_W = 'w-24';
+
+function StripCard({
+  leader, band, selected, disabled, onSelect,
 }: {
   leader: Option;
+  /** The run this card belongs to — read back off the DOM to label the strip. */
+  band: string;
   selected: boolean;
   disabled?: boolean;
   onSelect: () => void;
 }) {
-  // Reads the chosen printing so the catalog shows the art you settled on, but
-  // offers no way to change it: a tile is for picking a leader, nothing else.
+  // Reads the chosen printing so the strip shows the art you settled on, but
+  // offers no way to change it: a card here is for picking a leader, nothing
+  // else. Choosing the printing belongs to the settled selection.
   const { art } = useLeaderArt();
   return (
     <button
       type="button"
-      aria-pressed={selected}
+      role="option"
+      aria-selected={selected}
+      data-band={band}
+      data-id={leader.id}
       aria-label={`${leader.name}${leader.setCode ? `, ${leader.setCode}` : ''}`}
       onClick={onSelect}
       disabled={disabled}
       className={cn(
-        'rounded-lg outline-none transition-[transform,box-shadow] duration-150 ease-out',
+        CARD_W,
+        'shrink-0 snap-start rounded-lg outline-none transition-[transform,box-shadow] duration-150 ease-out',
         // Focus must not read as selection: both would otherwise be a 2px indigo
         // ring, since --ring and --primary are the same accent.
         'focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background',
@@ -199,7 +217,7 @@ function LeaderTile({
 }
 
 function SkeletonTile() {
-  return <div className="aspect-[5/7] w-full animate-pulse rounded-lg bg-muted" />;
+  return <div className={cn(CARD_W, 'aspect-[5/7] shrink-0 animate-pulse rounded-lg bg-muted')} />;
 }
 
 /**
@@ -213,7 +231,7 @@ function SkeletonTile() {
  */
 export function LeaderPicker({
   options, value, onChange, onAddCustom,
-  suggested, suggestLabel, suggestionsPending = false,
+  suggested, recentKey, suggestionsPending = false,
   selectedLabel, collapsible = true, disabled,
 }: {
   options: Option[];
@@ -223,8 +241,12 @@ export function LeaderPicker({
   onAddCustom?: (name: string) => Promise<{ id: string; name: string } | null>;
   /** Ordered ids to offer first. Unknown ids are ignored. */
   suggested?: string[];
-  /** Names why these leaders are being offered, e.g. "Your decks". */
-  suggestLabel?: string;
+  /**
+   * Scopes the remembered "last picked" list, e.g. 'my-deck' / 'opponent'. Two
+   * pickers share a screen, and choosing an opponent must not reorder your own
+   * decks. Omit to remember nothing.
+   */
+  recentKey?: string;
   /** Kicker over the chosen leader, e.g. "Playing as". Omit where the surrounding
    *  form already labels the field. */
   selectedLabel?: string;
@@ -244,11 +266,50 @@ export function LeaderPicker({
   collapsible?: boolean;
   disabled?: boolean;
 }) {
-  const [browsing, setBrowsing] = useState(false);
   const [changing, setChanging] = useState(false);
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
   const [artOpen, setArtOpen] = useState(false);
+  // Empty until hydration has matched the server HTML, then the stored list —
+  // the app's existing rule for anything read out of localStorage. Memoised
+  // rather than read every render, because this sits inside a sheet that
+  // re-renders on every keystroke in the search box; `bump` re-reads it after a
+  // pick without reaching for an effect.
+  const mounted = useIsMounted();
+  const [bump, setBump] = useState(0);
+  const recentIds = useMemo(
+    () => (mounted ? recentLeaders(recentKey) : []),
+    // `bump` is the re-read token, not an input: localStorage is outside React,
+    // so nothing else tells this memo the list changed. Removing it — which is
+    // what the rule suggests — freezes the head at whatever it was on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mounted, recentKey, bump],
+  );
+
+  /** Which run of set codes the strip is currently showing, e.g. "OP09". */
+  const [marker, setMarker] = useState<string | null>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const tick = useRef(0);
+
+  /**
+   * Open the strip where the current leader is, not at EB01. Tapping "Change"
+   * on an OP09 deck and landing eleven sets away would be worse than the grid
+   * this replaced.
+   *
+   * Sets scrollLeft directly rather than calling scrollIntoView, which walks up
+   * and scrolls every ancestor — here that means the bottom sheet and the page
+   * behind it.
+   */
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el || !value) return;
+    const card = (Array.from(el.children) as HTMLElement[]).find((c) => c.dataset.id === value);
+    if (!card) return;
+    el.scrollLeft = Math.max(0, card.offsetLeft - (el.clientWidth - card.offsetWidth) / 2);
+    onStripScroll();
+    // Only when the strip is (re)opened, never while the player is scrolling it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [changing, collapsible]);
 
   const selected = options.find((o) => o.id === value);
   const collapsed = collapsible && Boolean(selected) && !changing;
@@ -271,42 +332,45 @@ export function LeaderPicker({
 
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
 
-  /**
-   * The current selection always leads. A leader picked out of the catalog is by
-   * definition not in your history, so without this the suggest tier would show
-   * three unringed cards while something else was selected — and the ring is the
-   * whole state language.
-   */
-  const suggestions = useMemo(() => {
-    const ids = [...(value ? [value] : []), ...(suggested ?? [])];
-    const seen = new Set<string>();
-    const out: Option[] = [];
-    for (const id of ids) {
-      if (seen.has(id)) continue;
-      seen.add(id);
-      const o = byId.get(id);
-      if (o) out.push(o);
-      if (out.length === SUGGEST_LIMIT) break;
-    }
-    return out;
-  }, [value, suggested, byId]);
-
   const matches = useMemo(
     () => (q ? options.filter((o) => leaderSearchText(o.name, o.setCode).includes(q)) : options),
     [options, q],
   );
 
-  /** Grouped for the catalog; a search still groups, so a hit's colour stays legible. */
-  const bands = useMemo(() => {
-    const groups = new Map<ColorBand, Option[]>();
-    for (const o of matches) {
-      const band = leaderColorBand(o.colors);
-      const list = groups.get(band) ?? [];
-      list.push(o);
-      groups.set(band, list);
+  /**
+   * The strip, in the order a player reaches for: the leaders they last picked,
+   * then the whole catalog by set code.
+   *
+   * Recency is the head because it is where nearly every pick lands — you are on
+   * one deck all day at an event, and facing the same few decks. Set code orders
+   * the tail because it is the only ordering a player already knows by heart;
+   * name order puts three unrelated Luffys together and hides which set they are
+   * from.
+   *
+   * A search replaces the whole thing with its hits: asking for "op09" is a
+   * statement about where you want to be, so a recents head would only push the
+   * answer off-screen.
+   */
+  const strip = useMemo(() => {
+    const byCode = [...matches].sort((a, b) => {
+      // Custom leaders have no set code and no place in the run; they trail it.
+      if (!a.setCode || !b.setCode) return Number(Boolean(b.setCode)) - Number(Boolean(a.setCode)) || a.name.localeCompare(b.name);
+      return a.setCode.localeCompare(b.setCode);
+    });
+    if (q) return { recent: [] as Option[], rest: byCode };
+    const seen = new Set<string>();
+    const recent: Option[] = [];
+    // Local recency first, then most-played from history to fill the head out —
+    // a player on their first round has no recents but does have a deck list.
+    for (const id of [...recentIds, ...(suggested ?? [])]) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const o = byId.get(id);
+      if (o) recent.push(o);
+      if (recent.length === RECENT_LIMIT) break;
     }
-    return COLOR_BANDS.map((b) => ({ ...b, leaders: groups.get(b.key) ?? [] })).filter((b) => b.leaders.length > 0);
-  }, [matches]);
+    return { recent, rest: byCode.filter((o) => !seen.has(o.id)) };
+  }, [matches, q, recentIds, suggested, byId]);
 
   // Only offered once the catalog has nothing to give: otherwise typing "Luffy"
   // would offer to create a custom leader above 15 genuine matches.
@@ -314,12 +378,37 @@ export function LeaderPicker({
 
   function choose(id: string) {
     onChange(id);
-    setBrowsing(false);
     setChanging(false);
     setSearch('');
     // The open row belonged to the leader being replaced, and the new one may
     // have a different number of printings — or none.
     setArtOpen(false);
+    pushRecentLeader(recentKey, id);
+    setBump((n) => n + 1);
+  }
+
+  /**
+   * Names the run of set codes at the left edge of the strip, so a swipe through
+   * 132 near-identical card backs still tells you where you are. Read off the
+   * DOM rather than computed from scrollLeft: the head holds a variable number
+   * of recents and a divider, so there is no single item width to divide by.
+   *
+   * Throttled to one read per frame — the handler fires on every scroll event.
+   */
+  function onStripScroll() {
+    if (tick.current) return;
+    tick.current = requestAnimationFrame(() => {
+      tick.current = 0;
+      const el = stripRef.current;
+      if (!el) return;
+      const edge = el.scrollLeft;
+      for (const child of Array.from(el.children) as HTMLElement[]) {
+        if (child.offsetLeft + child.offsetWidth > edge && child.dataset.band) {
+          setMarker(child.dataset.band);
+          return;
+        }
+      }
+    });
   }
 
   async function add() {
@@ -385,61 +474,23 @@ export function LeaderPicker({
     );
   }
 
-  // Hold the suggest-shaped layout while history loads, rather than showing the
-  // catalog and then rearranging under the user.
-  if (!browsing && (suggestionsPending || suggestions.length > 0)) {
-    return (
-      <div className="space-y-2">
-        {suggestLabel && (
-          <p className="text-xs font-medium text-muted-foreground">{suggestLabel}</p>
-        )}
-        <div className="grid grid-cols-3 gap-2">
-          {suggestionsPending && suggestions.length === 0
-            ? Array.from({ length: SUGGEST_LIMIT }, (_, i) => <SkeletonTile key={i} />)
-            : suggestions.map((o) => (
-              <LeaderTile key={o.id} leader={o} selected={value === o.id} disabled={disabled} onSelect={() => choose(o.id)} />
-            ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setBrowsing(true)}
-          disabled={disabled}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border/70 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-        >
-          <Search className="size-4" />
-          Browse all {options.length || ''} leaders
-        </button>
-      </div>
-    );
-  }
+  const empty = strip.recent.length === 0 && strip.rest.length === 0;
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 space-y-3 duration-200 ease-out">
-      <div className="flex items-center gap-2">
-        {(suggestions.length > 0 || suggestionsPending) && (
-          <button
-            type="button"
-            onClick={() => { setBrowsing(false); setSearch(''); }}
-            aria-label="Back to suggested leaders"
-            className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/70 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-        )}
-        <Input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name or set code…"
-          aria-label="Search leaders by name or set code"
-          enterKeyHint="search"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          className="h-11 text-base"
-          disabled={disabled}
-        />
-      </div>
+    <div className="space-y-2 duration-200 ease-out animate-in fade-in">
+      <Input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search name or set code…"
+        aria-label="Search leaders by name or set code"
+        enterKeyHint="search"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        className="h-11 text-base"
+        disabled={disabled}
+      />
 
       {canAdd && (
         <button
@@ -456,37 +507,48 @@ export function LeaderPicker({
       {/* An empty catalog means the leaders query has not resolved yet — saying
           "no leaders match" there would blame the search for a loading state. */}
       {options.length === 0 ? (
-        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-          {Array.from({ length: 9 }, (_, i) => <SkeletonTile key={i} />)}
+        <div className="flex gap-2 overflow-hidden">
+          {Array.from({ length: 5 }, (_, i) => <SkeletonTile key={i} />)}
         </div>
-      ) : bands.length === 0 && !canAdd ? (
+      ) : empty && !canAdd ? (
         <p className="py-8 text-center text-sm text-muted-foreground">No leaders match “{search.trim()}”.</p>
       ) : (
-        <div className="max-h-[26rem] space-y-3 overflow-y-auto overscroll-contain">
-          {bands.map((band) => (
-            <section key={band.key}>
-              {/* The band's own colour, mixed toward the surface so it reads as a
-                  field in either theme while the label stays plain foreground text. */}
-              <div
-                className="sticky top-0 z-10 flex items-center gap-2 rounded-lg px-2.5 py-2 backdrop-blur-sm"
-                style={{ background: bandField(band.key) }}
-              >
-                <span
-                  aria-hidden
-                  className="size-4 shrink-0 rounded-full ring-1 ring-inset ring-border"
-                  style={{ background: bandSwatch(band.key) }}
-                />
-                <h3 className="text-sm font-bold tracking-tight">{band.label}</h3>
-                <span className="text-xs text-muted-foreground tabular-nums">{band.leaders.length}</span>
-              </div>
-              <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-                {band.leaders.map((o) => (
-                  <LeaderTile key={o.id} leader={o} selected={value === o.id} disabled={disabled} onSelect={() => choose(o.id)} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <>
+          <div className="flex items-baseline justify-between px-0.5">
+            <span className="text-xs font-bold tracking-tight tabular-nums">
+              {marker ?? (strip.recent.length > 0 ? RECENT_LABEL : (strip.rest[0]?.setCode?.match(SET_RUN)?.[0] ?? ''))}
+            </span>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {strip.recent.length + strip.rest.length}
+            </span>
+          </div>
+          <div
+            ref={stripRef}
+            onScroll={onStripScroll}
+            role="listbox"
+            aria-label="Leaders"
+            className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-2"
+          >
+            {strip.recent.map((o) => (
+              <StripCard key={o.id} leader={o} band={RECENT_LABEL} selected={value === o.id}
+                disabled={disabled} onSelect={() => choose(o.id)} />
+            ))}
+            {/* Marks where recency stops and the run of set codes begins, so the
+                head does not read as the start of OP01. */}
+            {strip.recent.length > 0 && strip.rest.length > 0 && (
+              <div aria-hidden className="my-1 w-px shrink-0 self-stretch bg-border" />
+            )}
+            {strip.rest.map((o) => (
+              <StripCard key={o.id} leader={o} band={o.setCode?.match(SET_RUN)?.[0] ?? 'Custom'}
+                selected={value === o.id} disabled={disabled} onSelect={() => choose(o.id)} />
+            ))}
+            {/* Held open while history loads, so recents arriving late widen the
+                head instead of shoving the run of set codes sideways. */}
+            {suggestionsPending && strip.recent.length === 0 && !q && (
+              <SkeletonTile />
+            )}
+          </div>
+        </>
       )}
     </div>
   );

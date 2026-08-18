@@ -13,23 +13,96 @@ vi.mock('./leader-art-provider', () => ({
 }));
 
 import { LeaderPicker } from './leader-picker';
+import { recentLeaders, pushRecentLeader } from '@/lib/recent-leaders';
 
 // OP06-022 has four printings, ST01-001 exactly one.
 const YAMATO = { id: 'y', name: 'Yamato', colors: ['green'], setCode: 'OP06-022' };
 const LUFFY = { id: 'l', name: 'Monkey D. Luffy', colors: ['red'], setCode: 'ST01-001' };
 const HOMEBREW = { id: 'h', name: 'Homebrew', colors: ['red'], setCode: null };
+const ZORO = { id: 'z', name: 'Roronoa Zoro', colors: ['red'], setCode: 'OP01-001' };
 
-const OPTIONS = [YAMATO, LUFFY, HOMEBREW];
+const OPTIONS = [YAMATO, LUFFY, HOMEBREW, ZORO];
 
-function renderPicker(value: string) {
-  return render(<LeaderPicker options={OPTIONS} value={value} onChange={() => {}} />);
+function renderPicker(value: string | null, props: Record<string, unknown> = {}) {
+  return render(<LeaderPicker options={OPTIONS} value={value} onChange={() => {}} {...props} />);
 }
+
+/** The strip's cards, in the order they are laid out. */
+const cards = () => screen.queryAllByRole('option').map((b) => b.getAttribute('aria-label'));
 
 const trigger = () => screen.queryByRole('button', { name: /Artwork for/ });
 const thumbnails = () => screen.queryAllByRole('button', { name: /^Artwork \d+ of \d+$/ });
 
-beforeEach(() => { ctx.art = {}; ctx.choose.mockClear(); });
+beforeEach(() => { ctx.art = {}; ctx.choose.mockClear(); window.localStorage.clear(); });
 afterEach(cleanup);
+
+describe('the strip', () => {
+  it('lists every leader by set code, customs last', () => {
+    renderPicker(null);
+    expect(cards()).toEqual([
+      'Roronoa Zoro, OP01-001',
+      'Yamato, OP06-022',
+      'Monkey D. Luffy, ST01-001',
+      'Homebrew',
+    ]);
+  });
+
+  it('leads with what was last picked', () => {
+    pushRecentLeader('my-deck', 'l');
+    pushRecentLeader('my-deck', 'y');
+    renderPicker(null, { recentKey: 'my-deck' });
+    // Most recent first, then the rest of the run by set code without repeats.
+    expect(cards()).toEqual([
+      'Yamato, OP06-022',
+      'Monkey D. Luffy, ST01-001',
+      'Roronoa Zoro, OP01-001',
+      'Homebrew',
+    ]);
+  });
+
+  it('falls back to play history when there is nothing recent yet', () => {
+    renderPicker(null, { recentKey: 'my-deck', suggested: ['h'] });
+    expect(cards()[0]).toBe('Homebrew');
+  });
+
+  it('remembers a pick, scoped to its own role', () => {
+    const onChange = vi.fn();
+    renderPicker(null, { recentKey: 'opponent', onChange });
+    fireEvent.click(screen.getByRole('option', { name: 'Yamato, OP06-022' }));
+    expect(onChange).toHaveBeenCalledWith('y');
+    expect(recentLeaders('opponent')).toEqual(['y']);
+    expect(recentLeaders('my-deck')).toEqual([]);
+  });
+
+  it('drops the recents head while searching, so hits are not pushed off-screen', () => {
+    pushRecentLeader('my-deck', 'y');
+    renderPicker(null, { recentKey: 'my-deck' });
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zoro' } });
+    expect(cards()).toEqual(['Roronoa Zoro, OP01-001']);
+  });
+
+  it('searches on set code and starter-deck code, not just the name', () => {
+    renderPicker(null);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'st28' } });
+    // ST-28 reprints Yamato under his original OP06-022 code.
+    expect(cards()).toEqual(['Yamato, OP06-022']);
+  });
+
+  it('says so when nothing matches', () => {
+    renderPicker(null);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zzzz' } });
+    expect(cards()).toEqual([]);
+    expect(screen.getByText(/No leaders match/)).toBeTruthy();
+  });
+
+  it('marks the chosen leader', () => {
+    // collapsible=false keeps the strip on screen alongside a selection; with
+    // the default the picker collapses onto the chosen leader instead.
+    renderPicker(YAMATO.id, { collapsible: false });
+    const picked = screen.getAllByRole('option').filter((b) => b.getAttribute('aria-selected') === 'true');
+    expect(picked.map((b) => b.getAttribute('aria-label'))).toEqual(['Yamato, OP06-022']);
+  });
+});
 
 describe('the printing picker on the settled leader', () => {
   it('offers nothing for a card printed only once', () => {
