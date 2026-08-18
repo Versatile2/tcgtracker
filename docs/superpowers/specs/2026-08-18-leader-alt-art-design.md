@@ -19,14 +19,15 @@ Three separate asks, only two of which turned out to need work.
 
 Measured against optcgapi on 2026-08-18, with rows scraped 2026-08-17:
 
-- **293 leader rows, 286 distinct images, 132 distinct set codes.** So there are
-  **154 alternate printings** the app currently discards. Image-id suffix
-  distribution: 133 base, 116 `_p1`, 33 `_p2`, 3 `_p3`, 1 `_p4`. One row has no
-  `card_image` at all.
-- 118 of the 132 leaders have at least two printings; 14 have exactly one.
-- At the current 240px WebP encoding (~23 KB each) the alternates add **~3.5 MB**
-  to `public/leaders/`, taking it from 3.0 MB to ~6.5 MB. Static files, not the
-  JS bundle.
+- **293 leader rows over 132 distinct set codes.** Six rows carry no
+  `card_image_id` and no art, leaving **285 bundleable printings** — so there are
+  **153 alternates** the app currently discards.
+- 116 of the 132 leaders have at least two printings; 16 have exactly one. The
+  distribution is 16 leaders with one printing, 82 with two, 31 with three and 3
+  with four.
+- At the current 240px WebP encoding the alternates add **~4 MB** to
+  `public/leaders/`, taking it from 3.0 MB to 7.1 MB — the foil and textured
+  alternates compress worse than base scans. Static files, not the JS bundle.
 - **The seeded catalog is already identical to optcgapi's**: same 132 codes, no
   additions, no removals. Newest booster OP16, newest starter ST30. The catalog
   is not stale; OP-17 simply has not shipped yet.
@@ -51,8 +52,8 @@ instead groups **every** printing under its set code.
 - Each printing downloads to `public/leaders/<card_image_id>.webp`. Base
   printings already use exactly that name (`OP01-001.webp`), so the 132 files on
   disk are untouched and only the 154 alternates are fetched.
-- Rows with no `card_image` are skipped. Duplicate image ids within one set code
-  are deduped.
+- The six rows with no `card_image_id` are skipped, as are duplicate image ids
+  within one set code.
 - The grouping is extracted as a pure exported function alongside
   `cleanLeaderName`, so it can be unit-tested without hitting the network.
 
@@ -116,8 +117,8 @@ site.
 
 `LeaderPicker` tiles keep one slot each. Beneath the caption sits a row of dots,
 one per printing; the art changes by tapping a dot or swiping the card
-horizontally. Leaders with a single printing show no dots and behave exactly as
-today.
+horizontally. The 16 leaders with a single printing show no dots, but the row is
+still held open so cards stay on a common baseline across a grid row.
 
 The dots are their **own controls, outside the select button**. The whole tile is
 currently one `<button>` that picks the leader
@@ -146,8 +147,8 @@ a connection, and reverts with a toast if it fails.
   `git status --porcelain` is non-empty. No third-party actions.
 - Most days nothing changes and the job ends silently — no PR, no noise.
 
-**Sequencing:** Part 1 lands and commits its 154 images *before* this workflow is
-enabled. Reversed, the first PR would be a 3.5 MB wall of binaries to review.
+**Sequencing:** Part 1 lands and commits its 153 images *before* this workflow is
+enabled. Reversed, the first PR would be a 4 MB wall of binaries to review.
 
 ### Reaching production
 

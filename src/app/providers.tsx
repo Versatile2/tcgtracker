@@ -5,6 +5,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import { AccentProvider } from '@/components/theme/accent-provider';
+import { LeaderArtProvider } from '@/components/leaders/leader-art-provider';
 
 const WEEK = 1000 * 60 * 60 * 24 * 7;
 
@@ -32,7 +33,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const query = (
     <PersistQueryClientProvider client={client} persistOptions={{ persister, maxAge: WEEK, buster: CACHE_BUSTER }}>
-      {children}
+      {/* Inside the query provider: it reads the chosen leader art from cache. */}
+      <LeaderArtProvider>{children}</LeaderArtProvider>
     </PersistQueryClientProvider>
   );
 

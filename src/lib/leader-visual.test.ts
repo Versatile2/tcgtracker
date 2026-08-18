@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getLeaderImage, leaderSearchText } from './leader-visual';
+import { getLeaderImage, leaderPrintings, leaderSearchText } from './leader-visual';
 
 describe('getLeaderImage', () => {
   it('resolves bundled art by set code', () => {
@@ -10,6 +10,36 @@ describe('getLeaderImage', () => {
     expect(getLeaderImage(null)).toBeNull();
     expect(getLeaderImage(undefined)).toBeNull();
     expect(getLeaderImage('NOPE-001')).toBeNull();
+  });
+
+  it('resolves a chosen printing', () => {
+    expect(getLeaderImage('OP01-003', 'OP01-003_p1')).toBe('/leaders/OP01-003_p1.webp');
+  });
+
+  it('falls back to the base printing when no art is chosen', () => {
+    expect(getLeaderImage('OP01-003', null)).toBe('/leaders/OP01-003.webp');
+    expect(getLeaderImage('OP01-003', undefined)).toBe('/leaders/OP01-003.webp');
+  });
+
+  it('falls back to the base printing for art belonging to another card', () => {
+    // A preference stored against a set code that was later renumbered must
+    // degrade to that card's own art rather than render a broken image.
+    expect(getLeaderImage('OP01-003', 'OP06-022_p2')).toBe('/leaders/OP01-003.webp');
+    expect(getLeaderImage('OP01-003', 'nonsense')).toBe('/leaders/OP01-003.webp');
+  });
+});
+
+describe('leaderPrintings', () => {
+  it('lists every bundled printing with the base first', () => {
+    const printings = leaderPrintings('OP01-003');
+    expect(printings.length).toBeGreaterThan(1);
+    expect(printings[0]).toBe('OP01-003');
+    expect(printings.every((p) => p.startsWith('OP01-003'))).toBe(true);
+  });
+
+  it('is empty for custom leaders and unknown codes', () => {
+    expect(leaderPrintings(null)).toEqual([]);
+    expect(leaderPrintings('NOPE-001')).toEqual([]);
   });
 });
 

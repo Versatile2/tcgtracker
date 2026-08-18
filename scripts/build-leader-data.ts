@@ -8,8 +8,8 @@
  * callers not to hammer the API). Everything it produces is committed:
  *
  *   src/db/seed-data.ts      leaders (name/colors/setCode) + metas
- *   src/lib/leader-images.ts the set of codes that have bundled art
- *   public/leaders/*.webp    240px-wide card thumbnails
+ *   src/lib/leader-images.ts every printing of every leader, keyed by set code
+ *   public/leaders/*.webp    240px-wide card thumbnails, one per printing
  *
  * Note: every public source of OPTCG card art — optcgapi, Limitless, and
  * Bandai's own card list — serves the same SAMPLE-watermarked promotional
@@ -25,12 +25,14 @@ const IMAGE_DIR = path.join(ROOT, 'public/leaders');
 const IMAGE_WIDTH = 240;
 
 /** The subset of an optcgapi card row this script relies on. */
-type ApiCard = {
+export type ApiCard = {
   card_set_id: string;
   card_name: string;
   card_color: string;
   card_type: string;
-  card_image: string;
+  /** Null on a handful of rows, which have no art to bundle and are dropped. */
+  card_image: string | null;
+  card_image_id: string | null;
 };
 type ApiSet = { set_id: string; set_name: string };
 type ApiDeck = { structure_deck_id: string; structure_deck_name: string };
@@ -41,8 +43,41 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Parallels and alternate arts reprint an existing card_set_id — prefer the base printing. */
-const isVariant = (c: ApiCard) => /\((?:Parallel|Alternate Art)\)/.test(c.card_name);
+/**
+ * Every printing of every leader, keyed by set code and ordered base-first.
+ *
+ * A leader is usually printed more than once — a base card, a Parallel or an
+ * Alternate Art, sometimes an SPR. All of them share one card_set_id, so the
+ * set code alone cannot tell them apart; what separates them is card_image_id
+ * ("OP06-022", "OP06-022_p1", "OP06-022_p2"…), which is also the filename each
+ * one is bundled under.
+ *
+ * The base printing — the one whose image id is the set code itself — must
+ * lead, because LEADER_ART[code][0] is what the app draws for a player who has
+ * expressed no preference. Everything else follows in image-id order, which
+ * puts _p1 before _p2 and keeps the output stable between runs.
+ *
+ * Rows with no art are dropped (the API carries a few whose card_image_id is
+ * null), as are repeats of an image id already taken.
+ */
+export function groupPrintings(cards: ApiCard[]): Map<string, ApiCard[]> {
+  const byCode = new Map<string, ApiCard[]>();
+  const taken = new Set<string>();
+  for (const c of cards) {
+    if (c.card_type !== 'Leader') continue;
+    if (!c.card_image_id || !c.card_image) continue;
+    if (taken.has(c.card_image_id)) continue;
+    taken.add(c.card_image_id);
+    const list = byCode.get(c.card_set_id) ?? [];
+    list.push(c);
+    byCode.set(c.card_set_id, list);
+  }
+  for (const [code, list] of byCode) {
+    const isBase = (c: ApiCard) => (c.card_image_id === code ? 0 : 1);
+    list.sort((a, b) => isBase(a) - isBase(b) || a.card_image_id!.localeCompare(b.card_image_id!));
+  }
+  return new Map([...byCode].sort(([a], [b]) => a.localeCompare(b)));
+}
 
 /**
  * Bandai's card_name carries a trailing disambiguator and packs initials against
@@ -77,11 +112,18 @@ async function exists(p: string) {
   try { await access(p); return true; } catch { return false; }
 }
 
-/** Downloads a card image and writes a width-constrained WebP. Skips work already done. */
+/**
+ * Downloads one printing's image and writes a width-constrained WebP, named for
+ * the printing rather than the card: several printings share a set code, but
+ * card_image_id is unique. The base printing's image id *is* the set code, so
+ * the files already on disk keep their names and are not re-fetched.
+ *
+ * Skips work already done, which is what makes a failed run resumable.
+ */
 async function fetchImage(card: ApiCard): Promise<boolean> {
-  const out = path.join(IMAGE_DIR, `${card.card_set_id}.webp`);
+  const out = path.join(IMAGE_DIR, `${card.card_image_id}.webp`);
   if (await exists(out)) return false;
-  const res = await fetch(card.card_image);
+  const res = await fetch(card.card_image!);
   if (!res.ok) throw new Error(`image ${card.card_set_id} → ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   await sharp(buf).resize({ width: IMAGE_WIDTH }).webp({ quality: 78 }).toFile(out);
@@ -99,25 +141,23 @@ async function main() {
     getJson<ApiSet[]>(`${API}/allSets/`),
   ]);
 
-  // One row per printed leader card, keyed by its set code.
-  const byCode = new Map<string, ApiCard>();
-  for (const c of [...setCards, ...stCards]) {
-    if (c.card_type !== 'Leader') continue;
-    const prev = byCode.get(c.card_set_id);
-    if (!prev || (isVariant(prev) && !isVariant(c))) byCode.set(c.card_set_id, c);
-  }
-  const cards = [...byCode.values()].sort((a, b) => a.card_set_id.localeCompare(b.card_set_id));
-  console.log(`  ${cards.length} unique leaders`);
+  // Every printing, grouped under its set code and ordered base-first.
+  const printings = groupPrintings([...setCards, ...stCards]);
+  // The base printing carries the name and colours for the seeded leader row:
+  // it is the one printing guaranteed not to be titled "… (Parallel)".
+  const cards = [...printings.values()].map((list) => list[0]);
+  const all = [...printings.values()].flat();
+  console.log(`  ${cards.length} leaders, ${all.length} printings`);
 
   await mkdir(IMAGE_DIR, { recursive: true });
   let downloaded = 0;
-  for (const c of cards) {
+  for (const c of all) {
     if (await fetchImage(c)) {
       downloaded += 1;
       process.stdout.write(`\r  images: ${downloaded} new`);
     }
   }
-  console.log(`\r  images: ${downloaded} new, ${cards.length - downloaded} cached`);
+  console.log(`\r  images: ${downloaded} new, ${all.length - downloaded} cached`);
 
   // Metas are the format-defining boosters OP01–OP16. The API reports OP-14 and
   // OP-15 under merged ids ("OP14-EB04"), so match on the leading OPnn.
@@ -169,10 +209,18 @@ async function main() {
   await writeFile(
     path.join(ROOT, 'src/lib/leader-images.ts'),
     BANNER('scripts/build-leader-data.ts') +
-      '\n/** Leader set codes with bundled art in public/leaders/. */\n' +
-      'export const LEADER_IMAGE_CODES: ReadonlySet<string> = new Set([\n' +
-      cards.map((c) => `  '${c.card_set_id}',`).join('\n') +
-      '\n]);\n\n' +
+      '\n/**\n' +
+      ' * Every bundled printing of every leader, keyed by set code. Each entry names\n' +
+      ' * a file in public/leaders/, and the first entry is the base printing — the\n' +
+      ' * art shown to a player who has chosen none.\n' +
+      ' */\n' +
+      'export const LEADER_ART: Readonly<Record<string, readonly string[]>> = {\n' +
+      [...printings.entries()]
+        .map(([code, list]) => `  '${code}': [${list.map((c) => `'${c.card_image_id}'`).join(', ')}],`)
+        .join('\n') +
+      '\n};\n\n' +
+      '/** Leader set codes with bundled art in public/leaders/. */\n' +
+      'export const LEADER_IMAGE_CODES: ReadonlySet<string> = new Set(Object.keys(LEADER_ART));\n\n' +
       '/**\n' +
       ' * Starter decks that reprint a leader under a different set code, so the\n' +
       " * picker can find OP01-060 when a player searches for their \"ST17\" deck.\n" +
@@ -188,4 +236,8 @@ async function main() {
   console.log('Wrote src/db/seed-data.ts, src/lib/leader-images.ts, public/leaders/');
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+// Only when run as a script. Its pure helpers are imported by tests, which must
+// not touch the network — the same guard seed.ts uses.
+if (process.argv[1]?.endsWith('build-leader-data.ts')) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}

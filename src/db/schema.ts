@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, primaryKey } from 'drizzle-orm/pg-core';
 import type { GameLog } from '../lib/dto';
 
 export const tournamentType = pgEnum('tournament_type', [
@@ -18,6 +18,28 @@ export const leaders = pgTable('leaders', {
   ownerId: text('owner_id'), // null = global seed
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Which printing of a leader this player wants to look at. Most leaders are
+ * printed several times — a base card, a Parallel or Alternate Art, sometimes an
+ * SPR — and this records the one they picked.
+ *
+ * Keyed on the card's set code rather than a leaders.id, for the same reason
+ * getLeaderImage is: row ids are reassigned by a reseed, set codes are not. It
+ * carries no foreign key for that reason, and custom leaders — which have no
+ * card art at all — never appear here.
+ *
+ * A missing row means the base printing, so the table only ever holds genuine
+ * deviations from the default. Purely presentational: nothing in the statistics
+ * reads it, and a leader is one leader however it is drawn.
+ */
+export const leaderArt = pgTable('leader_art', {
+  ownerId: text('owner_id').notNull(),
+  setCode: text('set_code').notNull(),
+  /** A card_image_id from LEADER_ART[setCode], e.g. 'OP06-022_p2'. */
+  art: text('art').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.ownerId, t.setCode] })]);
 
 export const metas = pgTable('metas', {
   id: uuid('id').primaryKey().defaultRandom(),

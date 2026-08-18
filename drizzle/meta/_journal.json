@@ -36,6 +36,13 @@
       "when": 1786706358379,
       "tag": "0004_red_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787039832350,
+      "tag": "0005_milky_frightful_four",
+      "breakpoints": true
     }
   ]
 }
