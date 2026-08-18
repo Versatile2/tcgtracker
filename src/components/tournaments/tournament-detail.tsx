@@ -55,7 +55,9 @@ export function TournamentDetail({ id }: { id: string }) {
   const [editing, setEditing] = useState<RoundDTO | undefined>();
   const [shareOpen, setShareOpen] = useState(false);
 
-  const backToList = () => router.push('/');
+  // Back to the segment this came from, not always Tournaments — a freeplay
+  // session lives under its own tab now.
+  const backToList = () => router.push(t?.type === 'freeplay' ? '/?tab=freeplay' : '/');
 
   if (isLoading) return <><NavBar backLabel="Tournaments" onBack={backToList} /><main className="mx-auto max-w-xl p-4"><Skeleton className="h-24 w-full" /></main></>;
   if (isError || !t) return <><NavBar backLabel="Tournaments" onBack={backToList} /><main className="mx-auto max-w-xl p-4"><p className="text-destructive">Couldn&apos;t load this tournament.</p></main></>;
@@ -95,7 +97,7 @@ export function TournamentDetail({ id }: { id: string }) {
 
   return (
     <>
-    <NavBar backLabel="Tournaments" onBack={backToList} />
+    <NavBar backLabel={t.type === 'freeplay' ? 'Freeplay' : 'Tournaments'} onBack={backToList} />
     <main className="mx-auto max-w-xl p-4 pb-28">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">

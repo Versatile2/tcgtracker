@@ -129,3 +129,26 @@ everything else on the logging path. Tapping a match reopens the same form.
 Adding an enum value is a schema change, so it runs against production **before**
 the deploy — the rule established by the freeplay work and followed for
 `leader_art`.
+
+## Addendum, same day: freeplay gets its own segment
+
+Freeplay stops being a tournament *type* you pick and becomes a segment of its
+own, alongside Tournaments and Matches.
+
+- It is removed from the type chips on the home list and from the Type dropdown
+  in the New Tournament form. It is reachable only through its own tab and the
+  `+` chooser, which now offers three things.
+- `/freeplay/new` renders the tournament form with `kind="freeplay"`: no type to
+  choose, no leader picker, and the same optional Name that tournaments already
+  had. One form rather than a near-duplicate, because they differ in exactly two
+  fields.
+- Statistics are unchanged. The difference between a tournament and a freeplay
+  session remains what it always was: freeplay sits outside the competitive
+  record, and it records the leader per round instead of per session.
+- Leaving a freeplay session returns to its own segment rather than to
+  Tournaments, and the back label reads "Freeplay".
+
+The three-concepts note above still stands, and is now sharper: freeplay and
+matches are adjacent enough that a match is a freeplay session with one round.
+They are kept apart because they are logged and browsed differently, not because
+the data differs.

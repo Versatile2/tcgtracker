@@ -15,10 +15,20 @@ import { MATCH_TYPE } from '@/lib/tournament-kinds';
 import { cn } from '@/lib/utils';
 import type { TournamentType } from '@/lib/dto';
 
-// Matches are excluded: they are the other segment, not a filter within this one.
-const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay'];
+// Freeplay and match are segments of their own, not filters within this one.
+const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
 
-type Segment = 'tournaments' | 'matches';
+type Segment = 'tournaments' | 'freeplay' | 'matches';
+
+/**
+ * The three kinds of thing you can log, and what each segment says about itself.
+ * Tournaments is the catch-all: anything that is not freeplay or a match.
+ */
+const SEGMENTS: { key: Segment; noun: string; plural: string; add: string; href: string }[] = [
+  { key: 'tournaments', noun: 'tournament', plural: 'tournaments', add: 'New Tournament', href: '/tournaments/new' },
+  { key: 'freeplay', noun: 'session', plural: 'sessions', add: 'New Freeplay', href: '/freeplay/new' },
+  { key: 'matches', noun: 'match', plural: 'matches', add: 'New Match', href: '/matches/new' },
+];
 
 export function TournamentList() {
   const { data, isLoading, isError } = useTournaments();
@@ -27,23 +37,33 @@ export function TournamentList() {
   const { entries } = useOutbox();
   const unsynced = pendingTournamentIds(entries);
 
-  // Logging a match returns here; without this it would land on Tournaments and
-  // the thing just logged would be nowhere in sight.
+  // Logging returns here with ?tab set; without it you would land on Tournaments
+  // and the thing you just logged would be nowhere in sight.
   const params = useSearchParams();
-  const [segment, setSegment] = useState<Segment>(params?.get('tab') === 'matches' ? 'matches' : 'tournaments');
+  const tab = params?.get('tab');
+  const [segment, setSegment] = useState<Segment>(
+    tab === 'matches' ? 'matches' : tab === 'freeplay' ? 'freeplay' : 'tournaments',
+  );
   const onMatches = segment === 'matches';
+  const current = SEGMENTS.find((s) => s.key === segment)!;
 
   const resolveLeader = (id: string) => leaders?.find((l) => l.id === id);
 
-  const inSegment = data?.filter((t) => (t.type === MATCH_TYPE) === onMatches) ?? [];
-  const shown = onMatches ? inSegment : inSegment.filter((t) => filter === 'all' || t.type === filter);
+  const belongs = (t: { type: TournamentType }) =>
+    segment === 'matches' ? t.type === MATCH_TYPE
+      : segment === 'freeplay' ? t.type === 'freeplay'
+      : t.type !== MATCH_TYPE && t.type !== 'freeplay';
+  const inSegment = data?.filter(belongs) ?? [];
+  // Only tournaments have a type worth filtering within.
+  const shown = segment === 'tournaments'
+    ? inSegment.filter((t) => filter === 'all' || t.type === filter)
+    : inSegment;
   const totals = shown.reduce(
     (a, t) => ({ wins: a.wins + t.record.wins, losses: a.losses + t.record.losses, draws: a.draws + t.record.draws }),
     { wins: 0, losses: 0, draws: 0 },
   );
 
-  const noun = onMatches ? 'match' : 'tournament';
-  const plural = onMatches ? 'matches' : 'tournaments';
+  const { noun, plural } = current;
 
   return (
     <LargeTitleScreen title="Grand Line TCG">
@@ -53,22 +73,22 @@ export function TournamentList() {
         </p>
       )}
 
-      {/* Two kinds of thing, not two filters — hence a segmented control rather
-          than another chip alongside the types. */}
+      {/* Three kinds of thing, not three filters — hence a segmented control
+          rather than more chips alongside the tournament types. */}
       <div className="mt-4 flex rounded-xl bg-muted p-1" role="tablist" aria-label="Show">
-        {(['tournaments', 'matches'] as Segment[]).map((s) => (
+        {SEGMENTS.map((s) => (
           <button
-            key={s}
+            key={s.key}
             type="button"
             role="tab"
-            aria-selected={segment === s}
-            onClick={() => setSegment(s)}
+            aria-selected={segment === s.key}
+            onClick={() => setSegment(s.key)}
             className={cn(
               'h-10 flex-1 rounded-lg text-sm font-semibold capitalize transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              segment === s ? 'bg-background shadow-sm' : 'text-muted-foreground',
+              segment === s.key ? 'bg-background shadow-sm' : 'text-muted-foreground',
             )}
           >
-            {s}
+            {s.key}
           </button>
         ))}
       </div>
@@ -76,15 +96,15 @@ export function TournamentList() {
       {/* The segment already states the intent, so this names one thing and goes
           straight there. The nav's + stays the route in from anywhere else. */}
       <Link
-        href={onMatches ? '/matches/new' : '/tournaments/new'}
+        href={current.href}
         className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 text-sm font-semibold outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Plus className="size-4" />
-        New {onMatches ? 'Match' : 'Tournament'}
+        {current.add}
       </Link>
 
-      {/* Type chips filter tournament types; a match has none of them. */}
-      {!onMatches && (
+      {/* Type chips filter tournament types; freeplay and matches have none. */}
+      {segment === 'tournaments' && (
         <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
           <button onClick={() => setFilter('all')}
             className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === 'all' ? 'bg-primary text-primary-foreground' : 'border border-border/50 bg-card/60 supports-backdrop-filter:backdrop-blur-md'}`}>All</button>
@@ -114,7 +134,7 @@ export function TournamentList() {
           <div className="rounded-2xl border border-dashed p-10 text-center">
             <p className="font-medium">No {plural} yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Tap <span className="font-semibold text-primary">New {onMatches ? 'Match' : 'Tournament'}</span> above to log your first one.
+              Tap <span className="font-semibold text-primary">{current.add}</span> above to log your first one.
             </p>
           </div>
         )}

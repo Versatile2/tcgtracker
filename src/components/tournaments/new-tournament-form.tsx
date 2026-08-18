@@ -16,9 +16,22 @@ import { useIsMounted } from '@/lib/use-is-mounted';
 import type { TournamentType } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
-const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay'];
+// Freeplay and match are reached through their own tabs, not chosen here: a
+// freeplay session has no leader of its own and a match is a single game, so
+// neither fits the fields this form shows.
+const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
 
-export function NewTournamentForm() {
+/**
+ * Creates a tournament, or a freeplay session — the same fields either way bar
+ * two, so one form rather than a near-duplicate that drifts.
+ *
+ * Freeplay differs in exactly what the product says it differs in: it records
+ * the leader per round instead of per session, so it has no leader picker and
+ * no type to choose. The name, meta and date are shared, and both are named the
+ * same way.
+ */
+export function NewTournamentForm({ kind = 'tournament' }: { kind?: 'tournament' | 'freeplay' }) {
+  const isFreeplay = kind === 'freeplay';
   const router = useRouter();
   const { data: leaders } = useLeaders();
   // Decks you have actually played head the strip; a new account has none and it
@@ -31,12 +44,11 @@ export function NewTournamentForm() {
   const tournaments = useTournamentWrites();
   const online = useOnlineStatus();
 
-  const [type, setType] = useState<TournamentType>('local');
+  const [type, setType] = useState<TournamentType>(isFreeplay ? 'freeplay' : 'local');
   const [pickedLeaderId, setPickedLeaderId] = useState<string | null>(null);
   const [metaId, setMetaId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [playedOn, setPlayedOn] = useState(() => new Date().toISOString().slice(0, 10));
-  const isFreeplay = type === 'freeplay';
 
   // Metas load asynchronously, so the default is applied on arrival. The ref
   // makes it fire exactly once: a refetch must never overwrite a choice the
@@ -86,22 +98,24 @@ export function NewTournamentForm() {
     <>
     <NavBar backLabel="Back" onBack={() => router.back()} />
     <main className="mx-auto max-w-xl space-y-5 p-4 pb-6">
-      <h1 className="text-3xl font-bold tracking-tight">New Tournament</h1>
+      <h1 className="text-3xl font-bold tracking-tight">{isFreeplay ? 'New Freeplay Session' : 'New Tournament'}</h1>
 
       <div className="space-y-2">
         <label htmlFor="nt-name" className="text-sm font-medium">Name (optional)</label>
-        <Input id="nt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Spring Regional" className="h-12 text-base" />
+        <Input id="nt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={isFreeplay ? 'e.g. Thursday testing' : 'e.g. Spring Regional'} className="h-12 text-base" />
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="nt-type" className="text-sm font-medium">Type</label>
-        <Select value={type} onValueChange={(v) => setType(v as TournamentType)}>
-          <SelectTrigger id="nt-type" className="h-12 w-full text-base"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {TYPES.map((ty) => <SelectItem key={ty} value={ty}>{tournamentTypeLabel(ty)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+      {!isFreeplay && (
+        <div className="space-y-2">
+          <label htmlFor="nt-type" className="text-sm font-medium">Type</label>
+          <Select value={type} onValueChange={(v) => setType(v as TournamentType)}>
+            <SelectTrigger id="nt-type" className="h-12 w-full text-base"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {TYPES.map((ty) => <SelectItem key={ty} value={ty}>{tournamentTypeLabel(ty)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {!isFreeplay && (
         <div className="space-y-2">

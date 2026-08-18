@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Trophy, BarChart3, Medal, Settings, Plus, Swords } from 'lucide-react';
+import { Trophy, BarChart3, Medal, Settings, Plus, Swords, Shuffle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ const TABS: Tab[] = [
 /** What the centre button can start. Order is by how often it is reached for. */
 const LOGGABLE = [
   { href: '/tournaments/new', icon: Trophy, label: 'New Tournament', hint: 'An event you play several rounds of' },
+  { href: '/freeplay/new', icon: Shuffle, label: 'New Freeplay', hint: 'Several games, changing deck as you go' },
   { href: '/matches/new', icon: Swords, label: 'New Match', hint: 'A single game, on its own' },
 ];
 
