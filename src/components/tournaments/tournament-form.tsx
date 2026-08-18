@@ -14,6 +14,7 @@ import { pickDefaultMetaId } from '@/lib/meta-selection';
 import { recentLeaders } from '@/lib/recent-leaders';
 import { lastTournamentType, rememberTournamentType, orderTypes } from '@/lib/last-tournament-type';
 import { useIsMounted } from '@/lib/use-is-mounted';
+import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import type { TournamentType, TournamentDetailDTO } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   const { data: metas } = useMetas();
   const addMeta = useAddCustomMeta();
   const tournaments = useTournamentWrites();
+  const logCelebration = useLogCelebration();
   const online = useOnlineStatus();
 
   const [pickedType, setPickedType] = useState<TournamentType | null>(initial?.type ?? null);
@@ -120,14 +122,22 @@ export function TournamentForm({ kind = 'tournament', initial }: {
     // Editing deliberately does not move the remembered type: changing an
     // event's type after the fact says nothing about what will be logged next.
     if (!isFreeplay) rememberTournamentType(type);
-    const id = tournaments.create({
-      type,
-      myLeaderId: isFreeplay ? undefined : myLeaderId!,
-      metaId: metaId ?? undefined,
-      name: name.trim() || undefined,
-      notes: notes.trim() || undefined,
-      playedOn,
-    });
+    // Starting an event is a logging act too, and it can cross a milestone —
+    // "Log your first tournament" is earned here, not by the first round. Left
+    // uncelebrated, a brand-new player's very first act would pass in silence,
+    // which is the exact failure this layer exists to fix.
+    const id = crypto.randomUUID();
+    logCelebration(() => {
+      tournaments.create({
+        id,
+        type,
+        myLeaderId: isFreeplay ? undefined : myLeaderId!,
+        metaId: metaId ?? undefined,
+        name: name.trim() || undefined,
+        notes: notes.trim() || undefined,
+        playedOn,
+      });
+    }, { result: null, myLeaderId: isFreeplay ? null : myLeaderId, opponentLeaderId: null });
     router.push(`/tournaments/${id}`);
   }
 

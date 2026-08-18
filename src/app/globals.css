@@ -219,3 +219,50 @@ input[type="date"]::-webkit-date-and-time-value {
   min-width: 0;
   margin: 0;
 }
+
+/* ── The reward moment ──────────────────────────────────────────────
+   With no sound, and the Vibration API absent on iOS, motion is the entire
+   reward channel. It is also the only place this otherwise-neutral app is
+   allowed to be loud — and only for the instant a game is logged.
+
+   Every animation sits inside the no-preference guard. The base styles below
+   are the *settled* state, so a visitor who has asked for less movement gets
+   the same card, the same numbers, and none of the theatre. */
+
+.celebrate-scene { perspective: 1200px; }
+.celebrate-card { transform-style: preserve-3d; }
+.celebrate-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.celebrate-face-back { transform: rotateY(180deg); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The last life card turning over — the gesture that ends a real match. */
+  @keyframes celebrate-flip {
+    0%   { transform: rotateY(-180deg) scale(0.84); }
+    58%  { transform: rotateY(-10deg) scale(1.06); }
+    78%  { transform: rotateY(5deg) scale(0.99); }
+    100% { transform: rotateY(0deg) scale(1); }
+  }
+  /* Accent light behind a win. Never fired on a loss. */
+  @keyframes celebrate-bloom {
+    0%   { opacity: 0; transform: scale(0.55); }
+    45%  { opacity: 0.7; }
+    100% { opacity: 0; transform: scale(1.85); }
+  }
+  @keyframes celebrate-rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes celebrate-veil {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .celebrate-card { animation: celebrate-flip 760ms cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+  .celebrate-bloom { animation: celebrate-bloom 1000ms ease-out both; }
+  .celebrate-veil { animation: celebrate-veil 220ms ease-out both; }
+  /* Staggered so the deltas read one at a time rather than as a wall. */
+  .celebrate-rise { animation: celebrate-rise 400ms cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+  .celebrate-rise-1 { animation-delay: 380ms; }
+  .celebrate-rise-2 { animation-delay: 500ms; }
+  .celebrate-rise-3 { animation-delay: 620ms; }
+}

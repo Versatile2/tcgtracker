@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Dices, Trophy, SkipForward, UserX, ChevronLeft, Trash2 } from 'lucide-react';
+import { Dices, Trophy, SkipForward, UserX, ChevronLeft, Trash2, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
 import { useLeaders, useAddCustomLeader, useStats } from '@/components/query-hooks';
+import { useProgress } from '@/components/progress/use-progress';
 import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
 import { cn } from '@/lib/utils';
@@ -164,6 +165,7 @@ function RoundFormBody({
   // keep running into. Opponent stats already arrive sorted by games played.
   const online = useOnlineStatus();
   const { data: stats } = useStats();
+  const { payoff } = useProgress();
   const myDeckIds = (stats?.playedLeaders ?? []).map((l) => l.id);
   const oppIds = (stats?.opponents ?? []).map((o) => o.leaderId);
   const addLeader = useAddCustomLeader();
@@ -327,6 +329,16 @@ function RoundFormBody({
           <label htmlFor="rf-notes" className="text-sm font-medium">Note (optional)</label>
           <Textarea id="rf-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Add a note about this round…" />
         </div>
+
+        {/* Anticipation, which is the half of a reward loop that makes someone
+            look forward to the next match rather than merely enjoy the last
+            one. Shown right above the button that pays it out. */}
+        {payoff && (
+          <p className="flex items-center justify-center gap-1.5 pt-1 text-sm text-muted-foreground">
+            <Target className="size-4 text-primary" aria-hidden />
+            <span><span className="font-semibold text-foreground">{payoff.remaining}</span> from {payoff.name}</span>
+          </p>
+        )}
 
         <div className="flex gap-3 pt-1">
           <Button variant="outline" className="h-12 flex-1" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>

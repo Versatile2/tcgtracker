@@ -17,6 +17,8 @@ import {
   useTournament, useLeaders, useMetas, useTournamentWrites, useRoundWrites,
 } from '@/components/query-hooks';
 import { useOutbox, pendingRoundIds } from '@/lib/outbox/use-outbox';
+import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
+import { matchResultFromGames } from '@/lib/validation/round';
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatPlayedOn } from '@/lib/format-date';
@@ -48,6 +50,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const tournamentWrites = useTournamentWrites();
   const roundWrites = useRoundWrites(id);
   const { entries } = useOutbox();
+  const logCelebration = useLogCelebration();
   const unsyncedRounds = pendingRoundIds(entries);
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -184,8 +187,16 @@ export function TournamentDetail({ id }: { id: string }) {
         defaultMyLeaderId={t.rounds.length > 0 ? (t.rounds[t.rounds.length - 1].myLeaderId ?? null) : null}
         onDelete={editing ? () => handleDeleteRound(editing) : undefined}
         onSubmit={async (data) => {
-          if (editing) roundWrites.update(editing.id, data);
-          else roundWrites.add(data);
+          if (editing) { roundWrites.update(editing.id, data); return; }
+          // Only a new round is celebrated. Correcting an existing one is
+          // bookkeeping, and a fanfare for fixing a typo would cheapen the real
+          // ones — byes and no-shows are not games and pay nothing either.
+          if (data.kind === 'bye' || data.kind === 'no_show') { roundWrites.add(data); return; }
+          logCelebration(() => roundWrites.add(data), {
+            result: data.kind === 'top_cut' ? matchResultFromGames(data.games) : data.result,
+            myLeaderId: t.type === 'freeplay' ? (data.myLeaderId ?? null) : t.myLeaderId,
+            opponentLeaderId: data.opponentLeaderId,
+          });
         }} />
 
       <ShareDialog

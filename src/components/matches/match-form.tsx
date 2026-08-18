@@ -13,6 +13,7 @@ import {
   useLeaders, useAddCustomLeader, useStats, useTournamentWrites, useRoundWrites,
 } from '@/components/query-hooks';
 import { recentLeaders } from '@/lib/recent-leaders';
+import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
   const [matchId] = useState(() => initial?.id ?? crypto.randomUUID());
   const tournaments = useTournamentWrites();
   const rounds = useRoundWrites(matchId);
+  const logCelebration = useLogCelebration();
 
   const round = initial?.rounds[0];
 
@@ -97,8 +99,12 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
       // renders this form once the match has loaded.
       rounds.update(round!.id, roundInput);
     } else {
-      tournaments.create({ id: matchId, type: 'match', myLeaderId: myLeaderId!, playedOn });
-      rounds.add(roundInput);
+      // Both writes inside one celebration window: the match and its single
+      // round are one act, and the reward belongs to the act.
+      logCelebration(() => {
+        tournaments.create({ id: matchId, type: 'match', myLeaderId: myLeaderId!, playedOn });
+        rounds.add(roundInput);
+      }, { result, myLeaderId, opponentLeaderId: oppLeaderId });
     }
     router.push('/?tab=matches');
   }

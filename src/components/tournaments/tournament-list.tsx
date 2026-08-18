@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Flame } from 'lucide-react';
 import { LargeTitleScreen } from '@/components/nav/large-title-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTournaments, useLeaders } from '@/components/query-hooks';
@@ -12,6 +12,7 @@ import { MatchCard } from '@/components/matches/match-card';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatRecord } from '@/lib/record';
 import { MATCH_TYPE } from '@/lib/tournament-kinds';
+import { useProgress } from '@/components/progress/use-progress';
 import { cn } from '@/lib/utils';
 import type { TournamentType } from '@/lib/dto';
 
@@ -35,6 +36,7 @@ export function TournamentList() {
   const { data: leaders } = useLeaders();
   const [filter, setFilter] = useState<TournamentType | 'all'>('all');
   const { entries } = useOutbox();
+  const { streak } = useProgress();
   const unsynced = pendingTournamentIds(entries);
 
   // Logging returns here with ?tab set; without it you would land on Tournaments
@@ -70,6 +72,19 @@ export function TournamentList() {
       {data && shown.length > 0 && (
         <p className="mt-1 text-sm text-muted-foreground">
           {shown.length} {shown.length === 1 ? noun : plural} · <span className="tabular-nums">{formatRecord(totals)}</span>
+        </p>
+      )}
+
+      {/* The one place the habit is nudged, and only when there is a real
+          streak to lose. A prompt shown to someone with nothing at stake is
+          nagging; shown to someone six weeks in, it is the reason they log. */}
+      {streak.atRisk && streak.weeks > 0 && (
+        <p className="mt-3 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/8 px-3 py-2 text-sm">
+          <Flame className="size-4 shrink-0 text-primary" aria-hidden />
+          <span>
+            <span className="font-semibold tabular-nums">{streak.weeks} week{streak.weeks === 1 ? '' : 's'}</span>
+            {' '}running — log a game this week to keep it.
+          </span>
         </p>
       )}
 

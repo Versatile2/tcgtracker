@@ -9,7 +9,7 @@ import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/valida
 type DB = NodePgDatabase<typeof schema>;
 export type Tournament = typeof tournaments.$inferSelect;
 export type Round = typeof rounds.$inferSelect;
-type MatchSummary = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: Round['kind'] };
+type MatchSummary = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: Round['kind']; playOrder: Round['playOrder'] };
 export type TournamentSummary = Tournament & {
   record: ReturnType<typeof computeRecord>;
   matches: MatchSummary[];
@@ -74,7 +74,7 @@ export async function listTournaments(db: DB, ownerId: string): Promise<Tourname
   }
   return ts.map((t) => {
     const rs = (byTournament.get(t.id) ?? []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
-    const matches: MatchSummary[] = rs.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind }));
+    const matches: MatchSummary[] = rs.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind, playOrder: r.playOrder }));
     return { ...t, record: computeRecord(rs), matches, deckCount: computeDeckCount(rs) };
   });
 }

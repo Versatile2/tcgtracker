@@ -12,7 +12,9 @@ type Tab = { href: string; label: string; icon: LucideIcon; match: (p: string) =
 const TABS: Tab[] = [
   { href: '/', label: 'Tournaments', icon: Trophy, match: (p) => p === '/' || p.startsWith('/tournaments') },
   { href: '/stats', label: 'Stats', icon: BarChart3, match: (p) => p.startsWith('/stats') },
-  { href: '/achievements', label: 'Achievements', icon: Medal, match: (p) => p.startsWith('/achievements') },
+  // Achievements live inside Profile now: they are identity, not a separate
+  // destination, and the bar stays at four items rather than five.
+  { href: '/profile', label: 'Profile', icon: Medal, match: (p) => p.startsWith('/profile') || p.startsWith('/achievements') },
   { href: '/settings', label: 'Settings', icon: Settings, match: (p) => p.startsWith('/settings') },
 ];
 

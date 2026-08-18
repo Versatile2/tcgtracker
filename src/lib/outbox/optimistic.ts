@@ -17,7 +17,10 @@ const summaryOf = (detail: TournamentDetailDTO): TournamentSummaryDTO => {
   return {
     ...rest,
     record: computeRecord(rounds),
-    matches: rounds.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind })),
+    // playOrder included deliberately: the client evaluates achievements from
+    // this cache the moment a round is logged, and without it a round that has
+    // not yet reached the server would be invisible to the Underdog rule.
+    matches: rounds.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind, playOrder: r.playOrder })),
   };
 };
 
