@@ -1,5 +1,5 @@
-import { NewTournamentForm } from '@/components/tournaments/new-tournament-form';
+import { TournamentForm } from '@/components/tournaments/tournament-form';
 
 export default function NewFreeplayPage() {
-  return <NewTournamentForm kind="freeplay" />;
+  return <TournamentForm kind="freeplay" />;
 }

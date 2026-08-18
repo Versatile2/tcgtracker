@@ -62,6 +62,9 @@ export const tournaments = pgTable('tournaments', {
   myLeaderId: uuid('my_leader_id').references(() => leaders.id),
   metaId: uuid('meta_id').references(() => metas.id),
   name: text('name'),
+  // About the event as a whole — the venue, who you went with, how it went.
+  // Rounds carry their own notes about the game that was played.
+  notes: text('notes'),
   playedOn: date('played_on').notNull(),
   status: tournamentStatus('status').notNull().default('draft'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

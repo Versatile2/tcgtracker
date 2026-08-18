@@ -104,3 +104,36 @@ describe('a match and the competitive record', () => {
     expect(matchups.opponents.find((o) => o.name === 'Monkey D. Luffy')?.games).toBe(1);
   });
 });
+
+describe('a tournament note', () => {
+  it('is null until one is written', async () => {
+    const t = await createTournament(db, USER, {
+      type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: '2026-08-18',
+    });
+    expect(t.notes).toBeNull();
+  });
+
+  it('can be set at creation and changed later', async () => {
+    const t = await createTournament(db, USER, {
+      type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: '2026-08-18',
+      notes: 'Went with Ben',
+    });
+    expect(t.notes).toBe('Went with Ben');
+    const edited = await updateTournament(db, USER, t.id, { notes: 'Went with Ben, top 8' });
+    expect(edited.notes).toBe('Went with Ben, top 8');
+  });
+
+  it('can be cleared', async () => {
+    const t = await createTournament(db, USER, {
+      type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: '2026-08-18', notes: 'x',
+    });
+    expect((await updateTournament(db, USER, t.id, { notes: null })).notes).toBeNull();
+  });
+
+  it('is left alone by an edit that does not mention it', async () => {
+    const t = await createTournament(db, USER, {
+      type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: '2026-08-18', notes: 'keep me',
+    });
+    expect((await updateTournament(db, USER, t.id, { name: 'Locals' })).notes).toBe('keep me');
+  });
+});

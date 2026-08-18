@@ -47,6 +47,7 @@ export function useTournamentWrites() {
         myLeaderId: input.myLeaderId ?? null,
         metaId: input.metaId ?? null,
         name: input.name ?? null,
+        notes: input.notes ?? null,
         playedOn: input.playedOn,
         status: 'draft',
         matches: [],

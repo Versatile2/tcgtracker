@@ -50,6 +50,13 @@
       "when": 1787052623997,
       "tag": "0006_supreme_shen",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787057714957,
+      "tag": "0007_nasty_zombie",
+      "breakpoints": true
     }
   ]
 }

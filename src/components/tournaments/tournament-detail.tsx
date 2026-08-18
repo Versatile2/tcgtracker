@@ -11,7 +11,6 @@ import {
 import { NavBar } from '@/components/nav/nav-bar';
 import { RoundFormSheet } from './round-form-sheet';
 import { RoundItem } from './round-item';
-import { ReferenceCombobox } from './reference-combobox';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { FreeplayGlyph } from './freeplay-glyph';
 import {
@@ -64,12 +63,6 @@ export function TournamentDetail({ id }: { id: string }) {
 
   const editable = t.status === 'draft';
   const leaderName = (lid: string) => leaders?.find((l) => l.id === lid)?.name ?? '—';
-  // Leader names are not unique across printings, so the picker labels each with
-  // its set code — that is also what the combobox searches on.
-  const leaderOptions = (leaders ?? []).map((l) => ({
-    id: l.id,
-    name: l.setCode ? `${l.name} ${l.setCode}` : l.name,
-  }));
   const record = computeRecord(t.rounds);
   const myLeader = t.myLeaderId ? leaders?.find((l) => l.id === t.myLeaderId) : undefined;
   // Freeplay rounds each record their own deck; classic tournaments fall back
@@ -111,21 +104,12 @@ export function TournamentDetail({ id }: { id: string }) {
           </div>
           <h1 className="mt-1 text-xl font-bold">{t.name ?? tournamentTypeLabel(t.type)}</h1>
           <p className="text-sm text-muted-foreground">{formatPlayedOn(t.playedOn)}</p>
-          {t.type !== 'freeplay' && (
-            <div className="mt-2 max-w-[16rem]">
-              {t.myLeaderId ? (
-                editable ? (
-                  <ReferenceCombobox
-                    options={leaderOptions}
-                    value={t.myLeaderId}
-                    onChange={(lid) => { if (lid && lid !== t.myLeaderId) tournamentWrites.update(id, { myLeaderId: lid }); }}
-                    onAddCustom={async () => ({ id: t.myLeaderId!, name: leaderName(t.myLeaderId!) })}
-                    placeholder="Leader" />
-                ) : (
-                  <p className="text-sm">Leader: <span className="font-medium">{leaderName(t.myLeaderId)}</span></p>
-                )
-              ) : null}
-            </div>
+          {/* Text, never a control. The leader is what every statistic for this
+              event hangs off, and it used to be an inline combobox sitting in
+              the header — the one field you could change by accident while
+              reading the page. It is changed on the edit screen now. */}
+          {t.type !== 'freeplay' && t.myLeaderId && (
+            <p className="mt-2 text-sm">Leader: <span className="font-medium">{leaderName(t.myLeaderId)}</span></p>
           )}
           </div>
         </div>
@@ -148,7 +132,18 @@ export function TournamentDetail({ id }: { id: string }) {
         ))}
       </div>
 
+      {t.notes && (
+        <p className="mt-5 rounded-xl border border-border/60 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
+          {t.notes}
+        </p>
+      )}
+
       <div className="mt-6 flex gap-2">
+        {editable && (
+          <Button variant="outline" className="h-12 flex-1" onClick={() => router.push(`/tournaments/${id}/edit`)}>
+            Edit
+          </Button>
+        )}
         {editable ? (
           <Dialog>
             <DialogTrigger render={<Button variant="outline" className="h-12 flex-1">Finish</Button>} />

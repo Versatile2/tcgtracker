@@ -25,6 +25,7 @@ export const createTournamentSchema = z.object({
   myLeaderId: z.uuid().optional(),
   metaId: z.uuid().optional(),
   name: z.string().trim().max(120).optional(),
+  notes: z.string().trim().max(2000).optional(),
   playedOn: dateString,
 }).superRefine((v, ctx) => {
   if (v.type === 'freeplay' && v.myLeaderId !== undefined) {
@@ -40,6 +41,7 @@ export const updateTournamentSchema = z.object({
   myLeaderId: z.uuid().optional(),
   metaId: z.uuid().nullable().optional(),
   name: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
   playedOn: dateString.optional(),
 });
 
