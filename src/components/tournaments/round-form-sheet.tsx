@@ -263,20 +263,6 @@ function RoundFormBody({
 
   return (
     <>
-      {isFreeplay && (
-        <div className="mb-3 px-4">
-          <LeaderPicker
-            suggested={myDeckIds}
-            suggestLabel="Your decks"
-            selectedLabel="Playing as"
-            suggestionsPending={stats === undefined}
-            options={leaders ?? []}
-            value={myLeaderId}
-            onChange={setMyLeaderId}
-            onAddCustom={addLeaderCustom} />
-        </div>
-      )}
-
       <SheetHeader>
         <div className="flex items-center justify-between gap-2">
           <SheetTitle className="text-2xl font-bold">{initial ? 'Edit Round' : `Add ${roundKindLabel(kind)} Round`}</SheetTitle>
@@ -296,6 +282,24 @@ function RoundFormBody({
       </SheetHeader>
 
       <div className="space-y-5 px-4 pb-4">
+        {isFreeplay && (
+          // Sits inside the form beside its twin rather than above the sheet's
+          // own heading, where it used to live as a session-level banner. Now
+          // that it is a titled field, the two decks read as a pair: yours, then
+          // theirs, in the order the round is described.
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Your Deck</span>
+            <LeaderPicker
+              suggested={myDeckIds}
+              suggestLabel="Your decks"
+              suggestionsPending={stats === undefined}
+              options={leaders ?? []}
+              value={myLeaderId}
+              onChange={setMyLeaderId}
+              onAddCustom={addLeaderCustom} />
+          </div>
+        )}
+
         <div className="space-y-2">
           <span className="text-sm font-medium">Opponent’s Deck</span>
           <LeaderPicker
