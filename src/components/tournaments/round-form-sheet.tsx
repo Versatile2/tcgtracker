@@ -11,6 +11,7 @@ import { useLeaders, useAddCustomLeader, useStats } from '@/components/query-hoo
 import { roundKindLabel, ROUND_KIND_SUBTITLES } from '@/lib/labels';
 import { isCompletedBo3, matchResultFromGames } from '@/lib/validation/round';
 import { cn } from '@/lib/utils';
+import { Segmented } from '@/components/ui/segmented';
 import type { CreateRoundInput } from '@/lib/validation/round';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import type { RoundDTO, RoundKind, GameLog } from '@/lib/dto';
@@ -146,34 +147,6 @@ function TypeCard({ icon: Icon, kind, onPick, disabled }: { icon: LucideIcon; ki
 /* ── Step 2: opponent + result (Swiss) or best-of-3 (Top Cut) ──── */
 
 /** Two mutually exclusive options, both always visible. `null` renders neither as active. */
-function Segmented<T extends string | boolean>({
-  value, options, onChange, activeClass = 'bg-primary text-primary-foreground',
-}: {
-  value: T | null;
-  options: { value: T; label: string; activeClass?: string }[];
-  onChange: (v: T) => void;
-  activeClass?: string;
-}) {
-  return (
-    <div className="flex gap-1">
-      {options.map((o) => (
-        <button
-          key={String(o.value)}
-          type="button"
-          aria-pressed={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            'h-9 flex-1 rounded-lg px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring',
-            value === o.value ? (o.activeClass ?? activeClass) : 'text-muted-foreground',
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function RoundFormBody({
   kind, onBack, onOpenChange, initial, onSubmit, onDelete, isFreeplay, defaultMyLeaderId,
 }: {

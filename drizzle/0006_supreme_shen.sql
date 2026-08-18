@@ -1,0 +1,1 @@
+ALTER TYPE "public"."tournament_type" ADD VALUE 'match';

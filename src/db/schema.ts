@@ -1,8 +1,11 @@
 import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, primaryKey } from 'drizzle-orm/pg-core';
 import type { GameLog } from '../lib/dto';
 
+// 'match' is a single game with no event around it: a tournament row holding
+// exactly one round, so it inherits the leader invariant, the outbox and every
+// stats query rather than needing a table of its own.
 export const tournamentType = pgEnum('tournament_type', [
-  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay',
+  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay', 'match',
 ]);
 export const tournamentStatus = pgEnum('tournament_status', ['draft', 'locked']);
 export const roundResult = pgEnum('round_result', ['win', 'loss', 'draw']);

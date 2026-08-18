@@ -94,6 +94,12 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
   if (input.type !== undefined && (input.type === 'freeplay') !== (current.type === 'freeplay')) {
     throw new ValidationError('A session cannot be changed into or out of freeplay.');
   }
+  // Same shape, different invariant: a match holds exactly one round, so a
+  // five-round tournament cannot become one without silently orphaning four —
+  // and a match becoming a tournament would claim an event that never happened.
+  if (input.type !== undefined && (input.type === 'match') !== (current.type === 'match')) {
+    throw new ValidationError('A match cannot be changed into a tournament, or a tournament into a match.');
+  }
   // Also guard the type-omitted case: a patch that only touches myLeaderId
   // still has to respect an already-freeplay tournament having no leader of
   // its own — this is the same one-leader-per-session rule, just reached

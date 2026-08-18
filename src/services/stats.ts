@@ -1,7 +1,8 @@
-import { and, eq, desc, sql } from 'drizzle-orm';
+import { and, eq, ne, desc, notInArray, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds, leaders, metas } from '../db/schema';
+import { CASUAL_TYPES, MATCH_TYPE } from '../lib/tournament-kinds';
 
 type DB = NodePgDatabase<typeof schema>;
 
@@ -48,7 +49,11 @@ async function aggregateByMeta(db: DB, ownerId: string, opts: { includeFreeplay:
     .where(and(
       eq(tournaments.ownerId, ownerId),
       sql`${rounds.kind} not in ('bye', 'no_show')`,
-      ...(opts.includeFreeplay ? [] : [sql`${tournaments.type} <> 'freeplay'`]),
+      // Matches record no meta, so they would all pile into a "No meta" bucket —
+      // excluded whichever way the freeplay switch is set, unlike everywhere else
+      // where the two casual types are treated alike.
+      ne(tournaments.type, MATCH_TYPE),
+      ...(opts.includeFreeplay ? [] : [ne(tournaments.type, 'freeplay')]),
     ))
     .groupBy(tournaments.metaId, metas.name, metas.code);
   return rows.map((r) => {
@@ -92,7 +97,7 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
   const [{ count: totalTournaments }] = await db
     .select({ count: sql<number>`count(*)` })
     .from(tournaments)
-    .where(and(eq(tournaments.ownerId, ownerId), sql`${tournaments.type} <> 'freeplay'`));
+    .where(and(eq(tournaments.ownerId, ownerId), notInArray(tournaments.type, CASUAL_TYPES)));
 
   // best meta: highest win rate among metas with at least one game
   const withGames = byMeta.filter((r) => r.games > 0);
@@ -108,7 +113,7 @@ export async function getOverallStats(db: DB, ownerId: string): Promise<OverallS
     })
     .from(tournaments)
     .innerJoin(leaders, eq(tournaments.myLeaderId, leaders.id))
-    .where(and(eq(tournaments.ownerId, ownerId), sql`${tournaments.type} <> 'freeplay'`))
+    .where(and(eq(tournaments.ownerId, ownerId), notInArray(tournaments.type, CASUAL_TYPES)))
     .groupBy(tournaments.myLeaderId, leaders.name)
     .orderBy(desc(sql`count(*)`), leaders.name)
     .limit(1);

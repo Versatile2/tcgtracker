@@ -43,6 +43,13 @@
       "when": 1787039832350,
       "tag": "0005_milky_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787052623997,
+      "tag": "0006_supreme_shen",
+      "breakpoints": true
     }
   ]
 }

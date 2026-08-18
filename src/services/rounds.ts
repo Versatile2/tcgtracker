@@ -65,6 +65,12 @@ export async function addRound(db: DB, ownerId: string, tournamentId: string, in
   assertLeaderInvariant(tournament, input);
   const [{ max }] = await db.select({ max: sql<number>`coalesce(max(${rounds.roundNumber}), 0)` })
     .from(rounds).where(eq(rounds.tournamentId, tournamentId));
+  // A match is one game. Without this it would quietly become a session while
+  // the Matches list went on presenting it as a single game — and the replay of
+  // an already-applied create is exempt, since it returns above.
+  if (tournament.type === 'match' && Number(max) > 0) {
+    throw new ConflictError('A match holds a single game.');
+  }
   const [row] = await db.insert(rounds).values({
     ...(input.id ? { id: input.id } : {}),
     tournamentId,

@@ -1,8 +1,10 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Trophy, BarChart3, Medal, Settings, Plus } from 'lucide-react';
+import { Trophy, BarChart3, Medal, Settings, Plus, Swords } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 type Tab = { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean };
@@ -14,8 +16,15 @@ const TABS: Tab[] = [
   { href: '/settings', label: 'Settings', icon: Settings, match: (p) => p.startsWith('/settings') },
 ];
 
+/** What the centre button can start. Order is by how often it is reached for. */
+const LOGGABLE = [
+  { href: '/tournaments/new', icon: Trophy, label: 'New Tournament', hint: 'An event you play several rounds of' },
+  { href: '/matches/new', icon: Swords, label: 'New Match', hint: 'A single game, on its own' },
+];
+
 export function BottomNav() {
   const pathname = usePathname() ?? '/';
+  const [choosing, setChoosing] = useState(false);
   if (pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')) return null;
 
   // The prominent center action ("+") sits between Stats and Achievements.
@@ -31,17 +40,46 @@ export function BottomNav() {
         {left.map((t) => <TabLink key={t.href} tab={t} active={t.match(pathname)} />)}
 
         <div className="flex flex-1 items-center justify-center">
-          <Link
-            href="/tournaments/new"
-            aria-label="Add tournament"
+          {/* Asks rather than assuming: this button is reachable from Stats and
+              Achievements too, where there is no list segment to follow. */}
+          <button
+            type="button"
+            onClick={() => setChoosing(true)}
+            aria-label="Log a game"
+            aria-haspopup="dialog"
             className="flex size-11 -translate-y-1.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95"
           >
             <Plus className="size-6" strokeWidth={2.5} />
-          </Link>
+          </button>
         </div>
 
         {right.map((t) => <TabLink key={t.href} tab={t} active={t.match(pathname)} />)}
       </div>
+
+      <Sheet open={choosing} onOpenChange={setChoosing}>
+        <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
+          <div className="mx-auto mt-1 mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
+          <SheetHeader><SheetTitle className="text-2xl font-bold">Log a game</SheetTitle></SheetHeader>
+          <div className="space-y-2 px-4 pt-2 pb-6">
+            {LOGGABLE.map(({ href, icon: Icon, label, hint }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setChoosing(false)}
+                className="flex items-center gap-3 rounded-xl border border-border/70 p-3 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                  <Icon className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{label}</span>
+                  <span className="block text-xs text-muted-foreground">{hint}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </nav>
   );
 }
