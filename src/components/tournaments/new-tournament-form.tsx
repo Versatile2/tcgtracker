@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NavBar } from '@/components/nav/nav-bar';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
 import { ReferenceCombobox } from './reference-combobox';
@@ -12,9 +11,11 @@ import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useTourname
 import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
 import { pickDefaultMetaId } from '@/lib/meta-selection';
 import { recentLeaders } from '@/lib/recent-leaders';
+import { lastTournamentType, rememberTournamentType, orderTypes } from '@/lib/last-tournament-type';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import type { TournamentType } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
+import { cn } from '@/lib/utils';
 
 // Freeplay and match are reached through their own tabs, not chosen here: a
 // freeplay session has no leader of its own and a match is a single game, so
@@ -44,7 +45,7 @@ export function NewTournamentForm({ kind = 'tournament' }: { kind?: 'tournament'
   const tournaments = useTournamentWrites();
   const online = useOnlineStatus();
 
-  const [type, setType] = useState<TournamentType>(isFreeplay ? 'freeplay' : 'local');
+  const [pickedType, setPickedType] = useState<TournamentType | null>(null);
   const [pickedLeaderId, setPickedLeaderId] = useState<string | null>(null);
   const [metaId, setMetaId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -76,6 +77,16 @@ export function NewTournamentForm({ kind = 'tournament' }: { kind?: 'tournament'
    * tournament the server will reject.
    */
   const mounted = useIsMounted();
+
+  /*
+   * Open on the type you last created, and lead the strip with it. Same rule as
+   * the leader default: derived, not stored, so a pick simply takes precedence
+   * and there is no effect to sequence against.
+   */
+  const lastType = useMemo(() => (mounted ? lastTournamentType() : null), [mounted]);
+  const orderedTypes = useMemo(() => orderTypes(TYPES, lastType), [lastType]);
+  const type: TournamentType = isFreeplay ? 'freeplay' : (pickedType ?? orderedTypes[0]);
+
   const defaultLeaderId = useMemo(() => {
     if (!mounted || !leaders?.length) return null;
     return recentLeaders('my-deck').find((id) => leaders.some((l) => l.id === id)) ?? null;
@@ -86,6 +97,7 @@ export function NewTournamentForm({ kind = 'tournament' }: { kind?: 'tournament'
     if (!isFreeplay && !myLeaderId) { toast.error('Choose your leader first'); return; }
     // The id is generated here, so logging can start immediately whether or not
     // the venue has signal — the outbox delivers the tournament when it can.
+    if (!isFreeplay) rememberTournamentType(type);
     const id = tournaments.create({
       type,
       myLeaderId: isFreeplay ? undefined : myLeaderId!,
@@ -107,13 +119,29 @@ export function NewTournamentForm({ kind = 'tournament' }: { kind?: 'tournament'
 
       {!isFreeplay && (
         <div className="space-y-2">
-          <label htmlFor="nt-type" className="text-sm font-medium">Type</label>
-          <Select value={type} onValueChange={(v) => setType(v as TournamentType)}>
-            <SelectTrigger id="nt-type" className="h-12 w-full text-base"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TYPES.map((ty) => <SelectItem key={ty} value={ty}>{tournamentTypeLabel(ty)}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <span className="text-sm font-medium">Type</span>
+          {/* A strip rather than a dropdown: six choices, all of them short, and
+              the one you want is almost always the one you used last — which
+              leads it. A dropdown hid every option behind a tap to show six. */}
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Type">
+            {orderedTypes.map((ty) => (
+              <button
+                key={ty}
+                type="button"
+                role="radio"
+                aria-checked={type === ty}
+                onClick={() => setPickedType(ty)}
+                className={cn(
+                  'inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  type === ty
+                    ? 'bg-primary font-semibold text-primary-foreground'
+                    : 'border border-border/50 bg-card/60 supports-backdrop-filter:backdrop-blur-md',
+                )}
+              >
+                {tournamentTypeLabel(ty)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
