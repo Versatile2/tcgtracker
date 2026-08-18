@@ -198,3 +198,24 @@
 [data-accent="purple"] { --primary: #7c3aed; --primary-foreground: #ffffff; --ring: #7c3aed; }
 [data-accent="blue"]   { --primary: #2563eb; --primary-foreground: #ffffff; --ring: #2563eb; }
 [data-accent="slate"]  { --primary: #475569; --primary-foreground: #ffffff; --ring: #475569; }
+/*
+ * iOS Safari sizes input[type="date"] from its own native control rather than
+ * from the box you gave it, so the field can push past its container — and the
+ * page with it — even at width:100%. Chromium does not do this, which is why it
+ * does not reproduce on desktop or in headless runs.
+ *
+ * `appearance: none` hands sizing back to the layout; the pseudo-element rules
+ * stop WebKit centring and padding the value into extra intrinsic width. The
+ * calendar indicator is left alone so the picker affordance survives.
+ */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+  margin: 0;
+}
