@@ -115,21 +115,23 @@ site.
 
 ### Picker interaction
 
-`LeaderPicker` tiles keep one slot each. Beneath the caption sits a row of dots,
-one per printing; the art changes by tapping a dot or swiping the card
-horizontally. The 16 leaders with a single printing show no dots, but the row is
-still held open so cards stay on a common baseline across a grid row.
+**Pick the leader first, dress it second.** The catalog tiles are untouched:
+still one `<button>` each that selects a leader and nothing else. They render
+whichever printing you settled on, but offer no way to change it.
 
-The dots are their **own controls, outside the select button**. The whole tile is
-currently one `<button>` that picks the leader
-(`leader-picker.tsx:85-105`); if a swipe were ever misread as a tap it would
-silently change the leader on the tournament being logged. So the art keeps the
-select button, and the dots sit in a separate 44px-tall row below it — reachable
-in their own right, and the fallback when a swipe does not take.
+The dots appear only on the collapsed selected-leader row, under the set code,
+and only for cards printed more than once. Taps, not a swipe.
 
-The swipe reuses the axis-lock idiom already in `swipe-row.tsx:26-49`: a 6px
-threshold, a horizontal-vs-vertical decision made once per gesture, and
-`touch-action: pan-y` so the catalog still scrolls.
+An earlier revision put a dot strip and a horizontal swipe on every catalog tile.
+Both were wrong for the same reason: **horizontal is already the browsing
+gesture here**, so a card that answered to horizontal drags took that gesture
+away, and left the leader you were logging one misread swipe from changing.
+Moving the control onto the settled choice keeps one intent per control and hands
+the axis back.
+
+The dots are 32x24px — under the 44px comfort target, the deliberate trade for a
+row inside a compact card, but above the 24px WCAG 2.5.8 minimum. Nothing there
+is destructive and every dot undoes the last.
 
 Flipping writes the preference optimistically. Like custom leaders — the app's
 existing exception to offline-first (`query-hooks.ts:140-149`) — the write needs
