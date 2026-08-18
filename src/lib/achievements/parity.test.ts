@@ -94,6 +94,33 @@ describe('the client reaches the same verdict as the server', () => {
     expect(client.find((a) => a.key === 'first_blood')?.progress?.current).toBe(1);
   });
 
+  it('on recorded placements, which only some events have', async () => {
+    // Placement is optional, so the two builders must agree about events that
+    // have one, events that have only a placement, and events that have none.
+    const rows: [string, number | null, number | null][] = [
+      ['2026-08-01', 1, 24],    // won it
+      ['2026-08-08', 3, 12],    // podium
+      ['2026-08-15', 8, 32],    // top cut
+      ['2026-08-16', 8, 8],     // last of eight — not a cut
+      ['2026-08-17', 2, null],  // placed, field size never learned
+      ['2026-08-18', null, null],
+    ];
+    for (const [day, placement, fieldSize] of rows) {
+      const t = await createTournament(db, USER, {
+        type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: day,
+        ...(placement !== null ? { placement } : {}),
+        ...(fieldSize !== null ? { fieldSize } : {}),
+      });
+      await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Kaido'), result: 'win', playOrder: 'first' });
+    }
+    const { server, client } = await bothWays();
+    expect(client).toEqual(server);
+    expect(client.find((a) => a.key === 'champion')?.unlocked).toBe(true);
+    expect(client.find((a) => a.key === 'top_cut')?.unlocked).toBe(true);
+    // Three podiums recorded (1st, 3rd, 2nd), five needed.
+    expect(client.find((a) => a.key === 'podium')?.progress).toEqual({ current: 3, target: 5 });
+  });
+
   it('across several events, where the tournament win streak is ordered', async () => {
     for (const [day, results] of [
       ['2026-08-01', ['win', 'win']],

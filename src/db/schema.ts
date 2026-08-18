@@ -65,6 +65,11 @@ export const tournaments = pgTable('tournaments', {
   // About the event as a whole — the venue, who you went with, how it went.
   // Rounds carry their own notes about the game that was played.
   notes: text('notes'),
+  // Where you finished, and out of how many. Both optional and independent of
+  // each other: standings are often posted after you leave, and "2nd" is worth
+  // recording even when you never learn the field size.
+  placement: integer('placement'),
+  fieldSize: integer('field_size'),
   playedOn: date('played_on').notNull(),
   status: tournamentStatus('status').notNull().default('draft'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

@@ -44,7 +44,10 @@ export function useProgress(): Progress {
       streak: mounted ? weekStreak(ts, today) : { weeks: 0, atRisk: false },
       achievements,
       payoff: nextPayoff(achievements),
-      ready: tournaments !== undefined,
+      // Same reason the streak is gated: the persisted cache restores
+      // synchronously, so claiming readiness before mount would render a
+      // different first pass than the server did.
+      ready: mounted && tournaments !== undefined,
     };
   }, [tournaments, leaders, mounted]);
 }

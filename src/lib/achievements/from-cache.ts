@@ -41,6 +41,8 @@ export function ctxFromCache(tournaments: TournamentSummaryDTO[], leaders: Leade
     id: t.id,
     metaId: t.metaId,
     playedOn: t.playedOn,
+    placement: t.placement,
+    fieldSize: t.fieldSize,
     // The list is already ordered by playedOn then createdAt, and createdAt is
     // not in the DTO; index preserves that order as the tiebreaker the streak
     // sort needs. Reversed because the list arrives newest-first.

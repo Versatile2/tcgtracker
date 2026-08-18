@@ -55,6 +55,7 @@ export async function createTournament(db: DB, ownerId: string, input: CreateTou
       myLeaderId: input.myLeaderId ?? null,
       metaId: input.metaId ?? null,
       name: input.name ?? null, notes: input.notes ?? null,
+      placement: input.placement ?? null, fieldSize: input.fieldSize ?? null,
       playedOn: input.playedOn, status: 'draft',
     })
     .returning();
@@ -115,6 +116,8 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
   if (input.metaId !== undefined) patch.metaId = input.metaId;
   if (input.name !== undefined) patch.name = input.name;
   if (input.notes !== undefined) patch.notes = input.notes;
+  if (input.placement !== undefined) patch.placement = input.placement;
+  if (input.fieldSize !== undefined) patch.fieldSize = input.fieldSize;
   if (input.playedOn !== undefined) patch.playedOn = input.playedOn;
   const [row] = await db.update(tournaments).set(patch).where(owned(id, ownerId)).returning();
   return row;

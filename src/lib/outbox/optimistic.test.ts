@@ -16,6 +16,8 @@ const freeplayDetail: TournamentDetailDTO = {
   metaId: null,
   name: null,
   notes: null,
+  placement: null,
+  fieldSize: null,
   playedOn: '2026-08-14',
   status: 'draft',
   matches: [],

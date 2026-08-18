@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { formatPlayedOn } from '@/lib/format-date';
 import { formatRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel, deckCountLabel } from '@/lib/labels';
+import { placementLabel } from '@/lib/placement';
 import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
 
 const resultPill: Record<'win' | 'loss' | 'draw', { label: string; className: string }> = {
@@ -58,6 +59,9 @@ export function TournamentCard({
               {unsynced && <CloudOff className="size-3.5 text-muted-foreground" aria-label="Not synced yet" />}
             </div>
             {hasName && <p className="mt-1 truncate font-semibold">{t.name}</p>}
+            {placementLabel(t.placement, t.fieldSize) && (
+              <p className="mt-0.5 text-xs font-semibold text-primary">{placementLabel(t.placement, t.fieldSize)}</p>
+            )}
             <div className={cn('flex items-baseline gap-1.5 text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
               {t.type !== 'freeplay' && (
                 // No set code here, unlike the leader picker and the opponent

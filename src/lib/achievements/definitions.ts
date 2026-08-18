@@ -8,6 +8,8 @@
  * would drift within a release, so there is one, and a parity test holds the
  * two `Ctx` builders to the same answer.
  */
+import { isWin, isPodium, isTopCut } from '../placement';
+
 export type AchievementProgress = { current: number; target: number };
 export type Achievement = {
   key: string; name: string; description: string;
@@ -20,6 +22,8 @@ export type Ctx = {
   wins: number; losses: number; draws: number; winRate: number;
   hasPerfectRun: boolean; maxLeaderTournaments: number; hasMetaDominator: boolean;
   secondWins: number; colorsBeaten: number; maxWinStreak: number; distinctMetas: number;
+  /** Events won outright, podiums, and cuts made — all from recorded placements. */
+  eventsWon: number; podiums: number; topCuts: number;
 };
 
 const COLORS = ['red', 'green', 'blue', 'purple', 'black', 'yellow'];
@@ -48,10 +52,19 @@ export const ACHIEVEMENTS: Def[] = [
   { key: 'rainbow', name: 'Rainbow Crusher', description: 'Beat opponents of all 6 colors.', evaluate: (c) => count(c.colorsBeaten, 6) },
   { key: 'on_fire', name: 'On Fire', description: 'Win 3 tournaments in a row.', evaluate: (c) => count(c.maxWinStreak, 3) },
   { key: 'well_traveled', name: 'Well Traveled', description: 'Play in 5 different metas.', evaluate: (c) => count(c.distinctMetas, 5) },
+  // These three need a recorded placement, which is optional — so they simply
+  // stay at zero for a player who never fills it in, rather than being
+  // unreachable in a way the progress bar cannot express.
+  { key: 'champion', name: 'Champion', description: 'Win a tournament outright.', evaluate: (c) => count(c.eventsWon, 1) },
+  { key: 'podium', name: 'Podium', description: 'Finish top 3 at five tournaments.', evaluate: (c) => count(c.podiums, 5) },
+  { key: 'top_cut', name: 'Top Cut', description: 'Make the top 8 of a 16+ player event.', evaluate: (c) => count(c.topCuts, 1) },
 ];
 
 export type RoundRow = { tournamentId: string; metaId: string | null; myLeaderId: string; result: Result; playOrder: 'first' | 'second' | null; opponentColors: string[] };
-export type TourneyRow = { id: string; metaId: string | null; playedOn: string; createdAt: Date };
+export type TourneyRow = {
+  id: string; metaId: string | null; playedOn: string; createdAt: Date;
+  placement: number | null; fieldSize: number | null;
+};
 
 export function computeCtx(roundRows: RoundRow[], tourneyRows: TourneyRow[]): Ctx {
   let wins = 0, losses = 0, draws = 0, secondWins = 0;
@@ -100,11 +113,19 @@ export function computeCtx(roundRows: RoundRow[], tourneyRows: TourneyRow[]): Ct
     if (pt && pt.wins > pt.losses) { cur++; maxWinStreak = Math.max(maxWinStreak, cur); } else cur = 0;
   }
 
+  let eventsWon = 0, podiums = 0, topCuts = 0;
+  for (const t of tourneyRows) {
+    if (isWin(t.placement)) eventsWon++;
+    if (isPodium(t.placement)) podiums++;
+    if (isTopCut(t.placement, t.fieldSize)) topCuts++;
+  }
+
   return {
     totalTournaments: tourneyRows.length, totalRounds,
     wins, losses, draws, winRate,
     hasPerfectRun, maxLeaderTournaments, hasMetaDominator,
     secondWins, colorsBeaten: colorsBeaten.size, maxWinStreak, distinctMetas: distinctMetas.size,
+    eventsWon, podiums, topCuts,
   };
 }
 

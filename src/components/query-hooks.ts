@@ -48,6 +48,8 @@ export function useTournamentWrites() {
         metaId: input.metaId ?? null,
         name: input.name ?? null,
         notes: input.notes ?? null,
+        placement: input.placement ?? null,
+        fieldSize: input.fieldSize ?? null,
         playedOn: input.playedOn,
         status: 'draft',
         matches: [],

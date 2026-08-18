@@ -31,7 +31,10 @@ export async function getAchievements(db: DB, ownerId: string): Promise<Achievem
     .where(and(eq(tournaments.ownerId, ownerId), notInArray(tournaments.type, CASUAL_TYPES)));
 
   const tourneyRows = await db
-    .select({ id: tournaments.id, metaId: tournaments.metaId, playedOn: tournaments.playedOn, createdAt: tournaments.createdAt })
+    .select({
+      id: tournaments.id, metaId: tournaments.metaId, playedOn: tournaments.playedOn,
+      createdAt: tournaments.createdAt, placement: tournaments.placement, fieldSize: tournaments.fieldSize,
+    })
     .from(tournaments)
     .where(and(eq(tournaments.ownerId, ownerId), notInArray(tournaments.type, CASUAL_TYPES)));
 

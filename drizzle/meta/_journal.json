@@ -57,6 +57,13 @@
       "when": 1787057714957,
       "tag": "0007_nasty_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787062578960,
+      "tag": "0008_brown_mattie_franklin",
+      "breakpoints": true
     }
   ]
 }

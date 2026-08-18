@@ -13,7 +13,7 @@ afterAll(closeTestDb);
 type R = Parameters<typeof computeCtx>[0][number];
 type T = Parameters<typeof computeCtx>[1][number];
 const round = (o: Partial<R>): R => ({ tournamentId: 't1', metaId: 's1', myLeaderId: 'L1', result: 'win', playOrder: null, opponentColors: [], ...o });
-const tourney = (o: Partial<T>): T => ({ id: 't1', metaId: 's1', playedOn: '2026-07-20', createdAt: new Date(), ...o });
+const tourney = (o: Partial<T>): T => ({ id: 't1', metaId: 's1', playedOn: '2026-07-20', createdAt: new Date(), placement: null, fieldSize: null, ...o });
 
 describe('computeCtx', () => {
   it('counts totals and win rate', () => {

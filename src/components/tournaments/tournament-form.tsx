@@ -58,6 +58,8 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   const [metaId, setMetaId] = useState<string | null>(initial?.metaId ?? null);
   const [name, setName] = useState(initial?.name ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  // Kept as a string so the field can be genuinely empty rather than 0.
+  const [players, setPlayers] = useState(initial?.fieldSize != null ? String(initial.fieldSize) : '');
   const [playedOn, setPlayedOn] = useState(initial?.playedOn ?? new Date().toISOString().slice(0, 10));
 
   // Metas load asynchronously, so the default is applied on arrival. The ref
@@ -102,6 +104,9 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   }, [editing, mounted, leaders]);
   const myLeaderId = pickedLeaderId ?? defaultLeaderId;
 
+  // Empty means unknown, not zero — turnout is often only clear on the day.
+  const playerCount = players.trim() === '' ? null : Math.max(1, Number.parseInt(players, 10) || 1);
+
   function submit() {
     if (!isFreeplay && !myLeaderId) { toast.error('Choose your leader first'); return; }
     if (editing) {
@@ -112,6 +117,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
         metaId: metaId ?? null,
         name: name.trim() || null,
         notes: notes.trim() || null,
+        fieldSize: playerCount,
         playedOn,
       });
       router.push(`/tournaments/${initial!.id}`);
@@ -135,6 +141,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
         metaId: metaId ?? undefined,
         name: name.trim() || undefined,
         notes: notes.trim() || undefined,
+        ...(playerCount != null ? { fieldSize: playerCount } : {}),
         playedOn,
       });
     }, { result: null, myLeaderId: isFreeplay ? null : myLeaderId, opponentLeaderId: null });
@@ -223,6 +230,22 @@ export function TournamentForm({ kind = 'tournament', initial }: {
             return { id: m.id, name: m.name };
           }}
           placeholder="e.g. OP16" />
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="nt-players" className="text-sm font-medium">Players (optional)</label>
+        {/* Captured here because the turnout is known on the day. Finishing then
+            asks only where you placed, instead of two numbers at the moment you
+            are packing up to leave. */}
+        <Input
+          id="nt-players"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          value={players}
+          onChange={(e) => setPlayers(e.target.value)}
+          placeholder="e.g. 24"
+          className="h-12 text-base" />
       </div>
 
       <div className="space-y-2">

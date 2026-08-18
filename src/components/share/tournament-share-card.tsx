@@ -4,6 +4,7 @@ import { FreeplayGlyph } from '@/components/tournaments/freeplay-glyph';
 import { cn } from '@/lib/utils';
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel, metaLabel, deckCountLabel } from '@/lib/labels';
+import { placementLabel } from '@/lib/placement';
 import type { TournamentDetailDTO, RoundDTO, LeaderDTO, MetaDTO } from '@/lib/dto';
 
 // Rows tint by result; the badge uses the stronger fill. Both read in light and dark.
@@ -104,6 +105,12 @@ export function TournamentShareCard({
           </p>
           {myLeader?.setCode && <p className="text-xs text-muted-foreground">{myLeader.setCode}</p>}
           <p className="mt-1 text-3xl font-bold leading-none tabular-nums">{record}</p>
+          {/* The line people actually screenshot for. */}
+          {placementLabel(tournament.placement, tournament.fieldSize) && (
+            <p className="mt-1 text-sm font-bold text-primary">
+              {placementLabel(tournament.placement, tournament.fieldSize)}
+            </p>
+          )}
         </div>
         <div className="min-w-0 shrink-0 text-right">
           <p className="truncate text-sm font-semibold">{eventName}</p>

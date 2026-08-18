@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Medal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { NavBar } from '@/components/nav/nav-bar';
 import { RoundFormSheet } from './round-form-sheet';
+import { FinishDialog } from './finish-dialog';
 import { RoundItem } from './round-item';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { FreeplayGlyph } from './freeplay-glyph';
@@ -22,6 +24,7 @@ import { matchResultFromGames } from '@/lib/validation/round';
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatPlayedOn } from '@/lib/format-date';
+import { placementLabel } from '@/lib/placement';
 import type { RoundDTO } from '@/lib/dto';
 import type { CreateRoundInput } from '@/lib/validation/round';
 import { ShareDialog } from '@/components/share/share-dialog';
@@ -107,6 +110,13 @@ export function TournamentDetail({ id }: { id: string }) {
           </div>
           <h1 className="mt-1 text-xl font-bold">{t.name ?? tournamentTypeLabel(t.type)}</h1>
           <p className="text-sm text-muted-foreground">{formatPlayedOn(t.playedOn)}</p>
+          {/* The most quotable fact about an event, so it sits with the name. */}
+          {placementLabel(t.placement, t.fieldSize) && (
+            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
+              <Medal className="size-3.5" aria-hidden />
+              {placementLabel(t.placement, t.fieldSize)}
+            </p>
+          )}
           {/* Text, never a control. The leader is what every statistic for this
               event hangs off, and it used to be an inline combobox sitting in
               the header — the one field you could change by accident while
@@ -148,16 +158,20 @@ export function TournamentDetail({ id }: { id: string }) {
           </Button>
         )}
         {editable ? (
-          <Dialog>
-            <DialogTrigger render={<Button variant="outline" className="h-12 flex-1">Finish</Button>} />
-            <DialogContent>
-              <DialogHeader><DialogTitle>Finish tournament?</DialogTitle></DialogHeader>
-              <p className="text-sm text-muted-foreground">This locks the tournament. You can reopen it later to make changes.</p>
-              <DialogFooter>
-                <Button onClick={() => tournamentWrites.finish(id)}>Finish &amp; Lock</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <FinishDialog
+            tournament={t}
+            onFinish={(placement, fieldSize) => {
+              // Both writes go *inside* the celebration window, or the before
+              // and after snapshots are identical and winning the event passes
+              // in silence. Two queued writes rather than a new endpoint: the
+              // update carries the result, the existing finish op locks it.
+              logCelebration(() => {
+                if (placement !== null || fieldSize !== t.fieldSize) {
+                  tournamentWrites.update(id, { placement, fieldSize });
+                }
+                tournamentWrites.finish(id);
+              }, { result: null, myLeaderId: t.myLeaderId, opponentLeaderId: null });
+            }} />
         ) : (
           <Button variant="outline" className="h-12 flex-1" onClick={() => tournamentWrites.reopen(id)}>Reopen</Button>
         )}

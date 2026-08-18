@@ -13,6 +13,7 @@ import { tournamentTypeLabel } from '@/lib/labels';
 import { formatRecord } from '@/lib/record';
 import { MATCH_TYPE } from '@/lib/tournament-kinds';
 import { useProgress } from '@/components/progress/use-progress';
+import { useIsMounted } from '@/lib/use-is-mounted';
 import { cn } from '@/lib/utils';
 import type { TournamentType } from '@/lib/dto';
 
@@ -32,7 +33,21 @@ const SEGMENTS: { key: Segment; noun: string; plural: string; add: string; href:
 ];
 
 export function TournamentList() {
-  const { data, isLoading, isError } = useTournaments();
+  /*
+   * The query cache is persisted to localStorage and restores synchronously, so
+   * on any load with a warm cache the client's first render already has
+   * tournaments while the server rendered none — and React throws the whole
+   * tree away and rebuilds it.
+   *
+   * Holding the data back until mounted makes that first render match the
+   * server. Nothing is lost visually: the server HTML never contained the list
+   * either, so this only stops the mismatch, one tick earlier than the paint.
+   */
+  const mounted = useIsMounted();
+  const query = useTournaments();
+  const data = mounted ? query.data : undefined;
+  const isLoading = mounted ? query.isLoading : true;
+  const isError = mounted ? query.isError : false;
   const { data: leaders } = useLeaders();
   const [filter, setFilter] = useState<TournamentType | 'all'>('all');
   const { entries } = useOutbox();
