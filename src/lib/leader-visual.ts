@@ -1,7 +1,7 @@
 // Visual helpers for leader avatars. Real card art is bundled in public/leaders/
 // (see getLeaderImage); custom user-created leaders have no card art and fall
 // back to a color-tinted initial derived from their OPTCG colors.
-import { LEADER_IMAGE_CODES, LEADER_DECK_CODES } from './leader-images';
+import { LEADER_ART, LEADER_DECK_CODES } from './leader-images';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
@@ -38,10 +38,24 @@ export function leaderInitial(name: string): string {
  * are stable across DB reseeds where row ids are not. Returns null for custom
  * leaders, which have no card and fall back to the initial placeholder.
  *
+ * `art` names one printing of that card — a Parallel, an Alternate Art, an SPR.
+ * It is checked against the card's own printings rather than trusted, so a
+ * preference left behind by a renumbered set code degrades to the base art
+ * instead of a broken image.
+ *
  * Refresh the files with `npm run data:leaders`.
  */
-export function getLeaderImage(setCode: string | null | undefined): string | null {
-  return setCode && LEADER_IMAGE_CODES.has(setCode) ? `/leaders/${setCode}.webp` : null;
+export function getLeaderImage(setCode: string | null | undefined, art?: string | null): string | null {
+  if (!setCode) return null;
+  const printings = LEADER_ART[setCode];
+  if (!printings) return null;
+  const chosen = art && printings.includes(art) ? art : printings[0];
+  return `/leaders/${chosen}.webp`;
+}
+
+/** Every bundled printing of a card, base first. Empty for custom leaders. */
+export function leaderPrintings(setCode: string | null | undefined): readonly string[] {
+  return (setCode && LEADER_ART[setCode]) || [];
 }
 
 /**

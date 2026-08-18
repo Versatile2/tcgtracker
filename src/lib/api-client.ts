@@ -1,7 +1,8 @@
 import type {
-  LeaderDTO, MetaDTO, RoundDTO, TournamentSummaryDTO, TournamentDetailDTO,
+  LeaderDTO, MetaDTO, LeaderArtMapDTO, RoundDTO, TournamentSummaryDTO, TournamentDetailDTO,
   StatsDTO, MatchupStatsDTO, AchievementsResponseDTO,
 } from './dto';
+import type { LeaderArtInput } from './validation/leader-art';
 import type { CreateTournamentInput, UpdateTournamentInput } from './validation/tournament';
 import type { CreateRoundInput, UpdateRoundInput } from './validation/round';
 import type { CustomLeaderInput, CustomMetaInput } from './validation/reference';
@@ -26,6 +27,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export const apiClient = {
   listLeaders: () => request<LeaderDTO[]>('/api/leaders'),
   addLeader: (b: CustomLeaderInput) => request<LeaderDTO>('/api/leaders', { method: 'POST', body: JSON.stringify(b) }),
+  getLeaderArt: () => request<LeaderArtMapDTO>('/api/leader-art'),
+  setLeaderArt: (b: LeaderArtInput) => request<LeaderArtMapDTO>('/api/leader-art', { method: 'PUT', body: JSON.stringify(b) }),
   listMetas: () => request<MetaDTO[]>('/api/metas'),
   addMeta: (b: CustomMetaInput) => request<MetaDTO>('/api/metas', { method: 'POST', body: JSON.stringify(b) }),
 

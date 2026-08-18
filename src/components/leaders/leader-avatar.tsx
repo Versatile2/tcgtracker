@@ -1,5 +1,7 @@
+'use client';
 import { cn } from '@/lib/utils';
 import { leaderBackground, leaderTextColor, leaderInitial, getLeaderImage } from '@/lib/leader-visual';
+import { useLeaderArt } from './leader-art-provider';
 
 // Card aspect (the source art is 600x838, ~5:7), so the whole card is visible
 // rather than cropped — the art is Bandai's SAMPLE-watermarked promotional scan.
@@ -13,6 +15,10 @@ const SIZES = {
  * Leader artwork thumbnail. Shows the bundled card art when available, otherwise
  * a color-tinted initial placeholder. Decorative (aria-hidden) — the leader's
  * name is always shown as text alongside it.
+ *
+ * The printing comes from the player's own choice, read from context rather than
+ * passed in: this renders in a dozen places and the alternative is threading the
+ * same preference through every one of them.
  */
 export function LeaderAvatar({
   name,
@@ -27,7 +33,8 @@ export function LeaderAvatar({
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
-  const src = getLeaderImage(setCode);
+  const { art } = useLeaderArt();
+  const src = getLeaderImage(setCode, setCode ? art[setCode] : null);
   return (
     <div
       aria-hidden

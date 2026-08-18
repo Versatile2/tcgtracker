@@ -1,5 +1,7 @@
 export type LeaderDTO = { id: string; name: string; colors: string[]; setCode: string | null; isCustom: boolean; ownerId: string | null };
 export type MetaDTO = { id: string; name: string; code: string | null; isCustom: boolean; ownerId: string | null };
+/** Set code → the leader printing this player chose. A missing key means the base printing. */
+export type LeaderArtMapDTO = Record<string, string>;
 export type RoundKind = 'swiss' | 'top_cut' | 'bye' | 'no_show';
 export type GameLog = { result: 'win' | 'loss'; playOrder: 'first' | 'second' | null };
 export type RoundDTO = {

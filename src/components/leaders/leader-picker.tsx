@@ -1,11 +1,12 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type PointerEvent } from 'react';
 import { ChevronLeft, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
+import { useLeaderArt } from '@/components/leaders/leader-art-provider';
 import { cn } from '@/lib/utils';
 import {
-  leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leaderSearchText,
+  leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leaderPrintings, leaderSearchText,
   leaderColorBand, bandSwatch, bandField, COLOR_BANDS, type ColorBand,
 } from '@/lib/leader-visual';
 
@@ -43,8 +44,8 @@ const SUGGEST_LIMIT = 3;
  * Set code carries real weight because names are not unique: there are 15 Monkey D.
  * Luffy printings and the code is the only thing separating them.
  */
-function LeaderCard({ leader, selected }: { leader: Option; selected: boolean }) {
-  const src = getLeaderImage(leader.setCode);
+function LeaderCard({ leader, selected, art }: { leader: Option; selected: boolean; art?: string | null }) {
+  const src = getLeaderImage(leader.setCode, art);
   return (
     <div
       className={cn(
@@ -74,6 +75,57 @@ function LeaderCard({ leader, selected }: { leader: Option; selected: boolean })
   );
 }
 
+/** How far a horizontal drag must travel before it counts as a flip, in px. */
+const SWIPE_DISTANCE = 28;
+
+/**
+ * The printing selector: one dot per bundled art, under the card.
+ *
+ * These are deliberately their own buttons rather than part of the tile. The
+ * tile's job is choosing a leader for a tournament you are logging, and a swipe
+ * misread as a tap would change that silently — so the two intents never share
+ * a control. The dots are also the accessible route to a flip, which a swipe
+ * alone would not be.
+ *
+ * 32x24px each: under the 44px comfort target, which is the deliberate trade for
+ * keeping tiles dense in a bottom sheet, but at or above the 24px WCAG 2.5.8
+ * minimum. The card above remains the large target, and nothing here is
+ * destructive or hard to undo.
+ */
+function ArtDots({
+  count, index, name, disabled, onPick,
+}: {
+  count: number;
+  index: number;
+  name: string;
+  disabled?: boolean;
+  onPick: (i: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center" role="group" aria-label={`Artwork for ${name}`}>
+      {Array.from({ length: count }, (_, i) => (
+        <button
+          key={i}
+          type="button"
+          aria-label={`Artwork ${i + 1} of ${count}`}
+          aria-pressed={i === index}
+          disabled={disabled}
+          onClick={() => onPick(i)}
+          className="flex h-8 w-6 items-center justify-center rounded outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'size-1.5 rounded-full transition-colors',
+              i === index ? 'bg-foreground' : 'bg-muted-foreground/40',
+            )}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function LeaderTile({
   leader, selected, disabled, onSelect,
 }: {
@@ -82,26 +134,78 @@ function LeaderTile({
   disabled?: boolean;
   onSelect: () => void;
 }) {
+  const { art, choose } = useLeaderArt();
+  const printings = leaderPrintings(leader.setCode);
+  const current = leader.setCode ? art[leader.setCode] : undefined;
+  // Falls back to 0 when the stored art is not a printing of this card, which is
+  // the same forgiving rule getLeaderImage applies to the image itself.
+  const index = Math.max(0, printings.indexOf(current ?? ''));
+
+  const pick = (i: number) => {
+    if (!leader.setCode || printings.length < 2) return;
+    choose(leader.setCode, printings[(i + printings.length) % printings.length]);
+  };
+
+  // Axis-locked drag, the same shape as SwipeRow: undecided until the pointer
+  // has moved 6px, then committed to one axis for the rest of the gesture, so a
+  // vertical scroll through the catalog is never stolen by a card.
+  const g = useRef({ x: 0, y: 0, decided: false, horiz: false });
+  const flipped = useRef(false);
+
+  function onDown(e: PointerEvent<HTMLButtonElement>) {
+    g.current = { x: e.clientX, y: e.clientY, decided: false, horiz: false };
+    flipped.current = false;
+  }
+
+  function onMove(e: PointerEvent<HTMLButtonElement>) {
+    if (printings.length < 2 || disabled || flipped.current) return;
+    if (e.pointerType === 'mouse' && e.buttons === 0) return;
+    const dx = e.clientX - g.current.x;
+    const dy = e.clientY - g.current.y;
+    if (!g.current.decided) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      g.current.decided = true;
+      g.current.horiz = Math.abs(dx) > Math.abs(dy);
+    }
+    if (!g.current.horiz || Math.abs(dx) < SWIPE_DISTANCE) return;
+    // One flip per gesture: a long drag should not race through every printing.
+    flipped.current = true;
+    pick(index + (dx < 0 ? 1 : -1));
+  }
+
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      aria-label={`${leader.name}${leader.setCode ? `, ${leader.setCode}` : ''}`}
-      onClick={onSelect}
-      disabled={disabled}
-      className={cn(
-        'rounded-lg outline-none transition-[transform,box-shadow] duration-150 ease-out',
-        // Focus must not read as selection: both would otherwise be a 2px indigo
-        // ring, since --ring and --primary are the same accent.
-        'focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        'disabled:opacity-50',
-        selected
-          ? '-translate-y-0.5 shadow-[0_6px_16px_-6px_rgb(0_0_0/0.45)] ring-2 ring-primary'
-          : 'hover:-translate-y-px hover:shadow-[0_3px_10px_-5px_rgb(0_0_0/0.35)] active:scale-[0.97]',
-      )}
-    >
-      <LeaderCard leader={leader} selected={selected} />
-    </button>
+    <div>
+      <button
+        type="button"
+        aria-pressed={selected}
+        aria-label={`${leader.name}${leader.setCode ? `, ${leader.setCode}` : ''}`}
+        // A gesture that flipped the art was never a request to pick this
+        // leader, so it must not fall through to selection on pointer-up.
+        onClick={() => { if (!flipped.current) onSelect(); }}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        disabled={disabled}
+        style={{ touchAction: 'pan-y' }}
+        className={cn(
+          'w-full rounded-lg outline-none transition-[transform,box-shadow] duration-150 ease-out',
+          // Focus must not read as selection: both would otherwise be a 2px indigo
+          // ring, since --ring and --primary are the same accent.
+          'focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          'disabled:opacity-50',
+          selected
+            ? '-translate-y-0.5 shadow-[0_6px_16px_-6px_rgb(0_0_0/0.45)] ring-2 ring-primary'
+            : 'hover:-translate-y-px hover:shadow-[0_3px_10px_-5px_rgb(0_0_0/0.35)] active:scale-[0.97]',
+        )}
+      >
+        <LeaderCard leader={leader} selected={selected} art={current} />
+      </button>
+      {/* The row is held open even for the 14 single-printing leaders and for
+          custom ones, so cards stay on a common baseline across a grid row
+          instead of stepping up and down with whichever card has alternates. */}
+      {printings.length > 1
+        ? <ArtDots count={printings.length} index={index} name={leader.name} disabled={disabled} onPick={pick} />
+        : <div className="h-8" />}
+    </div>
   );
 }
 
