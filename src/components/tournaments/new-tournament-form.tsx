@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { ReferenceCombobox } from './reference-combobox';
 import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useTournamentWrites, useStats } from '@/components/query-hooks';
 import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
 import { pickDefaultMetaId } from '@/lib/meta-selection';
+import { recentLeaders } from '@/lib/recent-leaders';
+import { useIsMounted } from '@/lib/use-is-mounted';
 import type { TournamentType } from '@/lib/dto';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
@@ -19,8 +21,8 @@ const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_gr
 export function NewTournamentForm() {
   const router = useRouter();
   const { data: leaders } = useLeaders();
-  // Decks you have actually played come first; a new account has none and the
-  // picker falls through to the colour-banded catalog.
+  // Decks you have actually played head the strip; a new account has none and it
+  // opens on the run of set codes instead.
   const { data: stats } = useStats();
   const myDeckIds = (stats?.playedLeaders ?? []).map((l) => l.id);
   const addLeader = useAddCustomLeader();
@@ -30,7 +32,7 @@ export function NewTournamentForm() {
   const online = useOnlineStatus();
 
   const [type, setType] = useState<TournamentType>('local');
-  const [myLeaderId, setMyLeaderId] = useState<string | null>(null);
+  const [pickedLeaderId, setPickedLeaderId] = useState<string | null>(null);
   const [metaId, setMetaId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [playedOn, setPlayedOn] = useState(() => new Date().toISOString().slice(0, 10));
@@ -45,6 +47,28 @@ export function NewTournamentForm() {
     defaultApplied.current = true;
     setMetaId((current) => current ?? pickDefaultMetaId(metas));
   }, [metas]);
+
+  /*
+   * Open on the deck you last played. Players arrive at an event on one deck and
+   * log several tournaments with it, so the common case should cost no taps —
+   * and the leader is the only field that blocks the submit button.
+   *
+   * Derived rather than stored: the default is a fact about history, not a
+   * decision, so there is nothing to copy into state and no ordering hazard
+   * between the leaders query landing and the player choosing. A pick simply
+   * takes precedence over it.
+   *
+   * Behind `useIsMounted` because localStorage is client-only and this page is
+   * prerendered. Checked against the catalog before use: a leader can be
+   * deleted, and defaulting to a dead id would arm the submit button with a
+   * tournament the server will reject.
+   */
+  const mounted = useIsMounted();
+  const defaultLeaderId = useMemo(() => {
+    if (!mounted || !leaders?.length) return null;
+    return recentLeaders('my-deck').find((id) => leaders.some((l) => l.id === id)) ?? null;
+  }, [mounted, leaders]);
+  const myLeaderId = pickedLeaderId ?? defaultLeaderId;
 
   function submit() {
     if (!isFreeplay && !myLeaderId) { toast.error('Choose your leader first'); return; }
@@ -86,7 +110,7 @@ export function NewTournamentForm() {
             suggested={myDeckIds}
             recentKey="my-deck"
             suggestionsPending={stats === undefined}
-            options={leaders ?? []} value={myLeaderId} onChange={setMyLeaderId}
+            options={leaders ?? []} value={myLeaderId} onChange={setPickedLeaderId}
             onAddCustom={async (n) => {
               if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
               try {
