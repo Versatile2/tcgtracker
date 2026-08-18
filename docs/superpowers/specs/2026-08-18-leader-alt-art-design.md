@@ -119,19 +119,31 @@ site.
 still one `<button>` each that selects a leader and nothing else. They render
 whichever printing you settled on, but offer no way to change it.
 
-The dots appear only on the collapsed selected-leader row, under the set code,
-and only for cards printed more than once. Taps, not a swipe.
+The control lives on the collapsed selected-leader row, and only for cards
+printed more than once. Its thumbnail is a button; tapping it expands the
+printings as thumbnails inside the same bordered card, and tapping one sets it
+and collapses the row again.
 
-An earlier revision put a dot strip and a horizontal swipe on every catalog tile.
-Both were wrong for the same reason: **horizontal is already the browsing
-gesture here**, so a card that answered to horizontal drags took that gesture
-away, and left the leader you were logging one misread swipe from changing.
-Moving the control onto the settled choice keeps one intent per control and hands
-the axis back.
+They are shown at the picker's existing `md` thumbnail size, 44x62px — large
+enough to tell a base scan from a full-art parallel, which is the entire point.
+The current printing carries the same 2px primary ring the catalog tiles use for
+selection, so there is no second visual language.
 
-The dots are 32x24px — under the 44px comfort target, the deliberate trade for a
-row inside a compact card, but above the 24px WCAG 2.5.8 minimum. Nothing there
-is destructive and every dot undoes the last.
+A bare thumbnail advertises nothing, so it carries a small stacked-card marker in
+its **top** corner — the bottom corner collides with the first printing when the
+row opens.
+
+Two earlier revisions were wrong, both worth recording:
+
+1. **A dot strip and a horizontal swipe on every catalog tile.** Horizontal is
+   already the browsing gesture here, so a card that answered to horizontal drags
+   took that gesture away, and left the leader being logged one misread swipe
+   from changing.
+2. **Dots on the settled selection.** Better, but you chose an art you could not
+   see until after choosing it — on a four-printing leader you tapped through
+   until the right one appeared.
+
+Both are fixed by the same move: show the arts.
 
 Flipping writes the preference optimistically. Like custom leaders — the app's
 existing exception to offline-first (`query-hooks.ts:140-149`) — the write needs
@@ -200,6 +212,10 @@ migration lands.
 - `PUT /api/leader-art` validation, beside `reference.route.test.ts`.
 - `LeaderAvatar` renders the preferred art when the provider supplies one, and
   the base art when it does not.
+- The printing picker: absent for a single-printing card and for a custom leader;
+  closed until asked; one thumbnail per printing, each showing its own art; the
+  right one marked current, including when the stored art belongs to another
+  card; choosing records that printing and closes the row.
 - The workflow is proved with one `workflow_dispatch` run, not a unit test.
 
 ## Deliberately not doing

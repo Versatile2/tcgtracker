@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { ChevronLeft, Plus, Search } from 'lucide-react';
+import { ChevronLeft, Layers, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { useLeaderArt } from '@/components/leaders/leader-art-provider';
@@ -76,49 +76,90 @@ function LeaderCard({ leader, selected, art }: { leader: Option; selected: boole
 }
 
 /**
- * The printing selector: one dot per bundled art of the leader already chosen.
+ * Opens the printing picker: the chosen leader's own thumbnail, made tappable.
  *
- * It lives with the settled choice rather than on the catalog tiles, and it is
- * taps rather than a swipe. Both for the same reason: browsing is a horizontal
- * gesture here, and a card that also answered to horizontal drags took that
- * gesture away and put the leader you were logging one misread swipe from
- * changing. Picking the leader first and dressing it second keeps one intent
- * per control.
- *
- * 32x24px each: under the 44px comfort target, the deliberate trade for a row
- * that sits inside a compact card, but above the 24px WCAG 2.5.8 minimum.
- * Nothing here is destructive and every dot undoes the last.
+ * Rendered only for a card that was actually printed more than once. A bare
+ * thumbnail says nothing about being tappable, so it carries a small stacked-
+ * card marker — the one piece of furniture that turns "tap things and find out"
+ * into "there is something here", at no cost in layout.
  */
-function ArtDots({
-  count, index, name, disabled, onPick,
+function ArtTrigger({
+  leader, count, open, disabled, onToggle,
 }: {
+  leader: Option;
   count: number;
-  index: number;
-  name: string;
+  open: boolean;
   disabled?: boolean;
-  onPick: (i: number) => void;
+  onToggle: () => void;
 }) {
   return (
-    <div className="-ml-1.5 flex items-center" role="group" aria-label={`Artwork for ${name}`}>
-      {Array.from({ length: count }, (_, i) => (
-        <button
-          key={i}
-          type="button"
-          aria-label={`Artwork ${i + 1} of ${count}`}
-          aria-pressed={i === index}
-          disabled={disabled}
-          onClick={() => onPick(i)}
-          className="flex h-8 w-6 items-center justify-center rounded outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-        >
-          <span
-            aria-hidden
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-expanded={open}
+      aria-label={`Artwork for ${leader.name}, ${count} available`}
+      className="relative shrink-0 rounded-[0.35rem] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50"
+    >
+      <LeaderAvatar name={leader.name} colors={leader.colors} setCode={leader.setCode} size="md" />
+      <span
+        aria-hidden
+        // Top corner, not bottom: the printings open directly beneath this
+        // thumbnail, and a marker down there collides with the first of them.
+        className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-background text-foreground ring-1 ring-border"
+      >
+        <Layers className="size-2.5" />
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The printings themselves, at the size the picker already uses for a leader
+ * thumbnail — big enough to tell a base scan from a full-art parallel, which is
+ * the whole reason this replaced a row of dots. Cycling through dots meant
+ * choosing an art you could not see until you had already chosen it.
+ *
+ * The current printing carries the same 2px primary ring the catalog tiles use
+ * for selection, so there is no second visual language to learn.
+ */
+function ArtRow({
+  leader, printings, current, disabled, onPick,
+}: {
+  leader: Option;
+  printings: readonly string[];
+  current: string;
+  disabled?: boolean;
+  onPick: (art: string) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={`Artwork for ${leader.name}`}
+      className="mt-2 flex flex-wrap gap-2 duration-200 ease-out animate-in fade-in slide-in-from-top-1"
+    >
+      {printings.map((art, i) => {
+        const isCurrent = art === current;
+        return (
+          <button
+            key={art}
+            type="button"
+            onClick={() => onPick(art)}
+            disabled={disabled}
+            aria-pressed={isCurrent}
+            aria-label={`Artwork ${i + 1} of ${printings.length}`}
             className={cn(
-              'size-1.5 rounded-full transition-colors',
-              i === index ? 'bg-primary' : 'bg-muted-foreground/40',
+              'overflow-hidden rounded-[0.35rem] outline-none transition-[transform,box-shadow] duration-150 ease-out',
+              'focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'disabled:opacity-50',
+              isCurrent ? 'ring-2 ring-primary' : 'ring-1 ring-border/70 hover:-translate-y-px',
             )}
-          />
-        </button>
-      ))}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={getLeaderImage(leader.setCode, art) ?? ''} alt="" loading="lazy" className="h-[3.85rem] w-11 object-cover" />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -207,6 +248,7 @@ export function LeaderPicker({
   const [changing, setChanging] = useState(false);
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
+  const [artOpen, setArtOpen] = useState(false);
 
   const selected = options.find((o) => o.id === value);
   const collapsed = collapsible && Boolean(selected) && !changing;
@@ -221,8 +263,10 @@ export function LeaderPicker({
   // Falls back to the base printing when the stored art is not one of this
   // card's — the same forgiving rule getLeaderImage applies to the image.
   const selectedArtIndex = Math.max(0, selectedPrintings.indexOf((selected?.setCode && art[selected.setCode]) || ''));
-  const pickArt = (i: number) => {
-    if (selected?.setCode) chooseArt(selected.setCode, selectedPrintings[i]);
+  const pickArt = (nextArt: string) => {
+    if (selected?.setCode) chooseArt(selected.setCode, nextArt);
+    // The row answered the question it was opened to ask.
+    setArtOpen(false);
   };
 
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
@@ -273,6 +317,9 @@ export function LeaderPicker({
     setBrowsing(false);
     setChanging(false);
     setSearch('');
+    // The open row belonged to the leader being replaced, and the new one may
+    // have a different number of printings — or none.
+    setArtOpen(false);
   }
 
   async function add() {
@@ -293,35 +340,47 @@ export function LeaderPicker({
   // compact row the freeplay "Playing as" header used to hand-roll. Selection is
   // a settled fact, so it reads as a tidy line rather than a card on display.
   if (collapsed && selected) {
+    // Only a card printed more than once has anything to choose between; every
+    // other leader, custom ones included, keeps the plain thumbnail.
+    const hasAlternates = selectedPrintings.length > 1;
     return (
-      <div className="flex items-center gap-2.5 rounded-xl border border-primary/35 bg-primary/8 p-2">
-        <LeaderAvatar name={selected.name} colors={selected.colors} setCode={selected.setCode} size="md" />
-        <div className="min-w-0 flex-1">
-          {selectedLabel && (
-            <div className="text-[0.625rem] font-semibold tracking-wide text-muted-foreground uppercase">{selectedLabel}</div>
-          )}
-          <div className="truncate text-sm font-bold">{selected.name}</div>
-          <div className="truncate text-xs text-muted-foreground tabular-nums">{selected.setCode ?? 'Custom'}</div>
-          {/* Only once the leader is settled, and only for cards that were
-              actually printed more than once. */}
-          {selectedPrintings.length > 1 && (
-            <ArtDots
+      <div className="rounded-xl border border-primary/35 bg-primary/8 p-2">
+        <div className="flex items-center gap-2.5">
+          {hasAlternates ? (
+            <ArtTrigger
+              leader={selected}
               count={selectedPrintings.length}
-              index={selectedArtIndex}
-              name={selected.name}
+              open={artOpen}
               disabled={disabled}
-              onPick={pickArt} />
+              onToggle={() => setArtOpen((o) => !o)} />
+          ) : (
+            <LeaderAvatar name={selected.name} colors={selected.colors} setCode={selected.setCode} size="md" />
           )}
+          <div className="min-w-0 flex-1">
+            {selectedLabel && (
+              <div className="text-[0.625rem] font-semibold tracking-wide text-muted-foreground uppercase">{selectedLabel}</div>
+            )}
+            <div className="truncate text-sm font-bold">{selected.name}</div>
+            <div className="truncate text-xs text-muted-foreground tabular-nums">{selected.setCode ?? 'Custom'}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setChanging(true)}
+            disabled={disabled}
+            aria-label={`Change leader, currently ${selected.name}`}
+            className="min-h-11 shrink-0 rounded-md px-3 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            Change
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setChanging(true)}
-          disabled={disabled}
-          aria-label={`Change leader, currently ${selected.name}`}
-          className="min-h-11 shrink-0 rounded-md px-3 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-        >
-          Change
-        </button>
+        {hasAlternates && artOpen && (
+          <ArtRow
+            leader={selected}
+            printings={selectedPrintings}
+            current={selectedPrintings[selectedArtIndex]}
+            disabled={disabled}
+            onPick={pickArt} />
+        )}
       </div>
     );
   }
