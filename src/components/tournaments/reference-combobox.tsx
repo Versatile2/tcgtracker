@@ -1,6 +1,6 @@
 'use client';
 import { useState, type ReactNode } from 'react';
-import { Check, Plus } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -9,14 +9,12 @@ import { cn } from '@/lib/utils';
 type Option = { id: string; name: string; code?: string | null };
 
 export function ReferenceCombobox({
-  id, options, value, onChange, onAddCustom, placeholder, disabled, getIcon, getLabel,
+  id, options, value, onChange, placeholder, disabled, getIcon, getLabel,
 }: {
   id?: string;
   options: Option[];
   value: string | null;
   onChange: (id: string) => void;
-  /** Resolves to null when the option could not be created (e.g. offline). */
-  onAddCustom: (name: string) => Promise<Option | null>;
   placeholder: string;
   disabled?: boolean;
   getIcon?: (id: string) => ReactNode;
@@ -31,18 +29,6 @@ export function ReferenceCombobox({
   const [search, setSearch] = useState('');
   const selected = options.find((o) => o.id === value);
   const label = (o: Option) => (getLabel ? getLabel(o) : o.name);
-
-  async function handleAdd() {
-    const created = await onAddCustom(search.trim());
-    if (!created) return;
-    onChange(created.id);
-    setSearch('');
-    setOpen(false);
-  }
-
-  const query = search.trim().toLowerCase();
-  const showAdd = query.length > 0 &&
-    !options.some((o) => o.name.toLowerCase() === query || label(o).toLowerCase() === query);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -74,11 +60,6 @@ export function ReferenceCombobox({
                   <span className="truncate">{label(o)}</span>
                 </CommandItem>
               ))}
-              {showAdd && (
-                <CommandItem value={`__add__${search}`} onSelect={handleAdd}>
-                  <Plus className="mr-2 h-4 w-4" /> Add “{search.trim()}”
-                </CommandItem>
-              )}
             </CommandGroup>
           </CommandList>
         </Command>

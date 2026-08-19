@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { NavBar } from '@/components/nav/nav-bar';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
 import { ReferenceCombobox } from './reference-combobox';
-import { useLeaders, useAddCustomLeader, useMetas, useAddCustomMeta, useTournamentWrites, useStats } from '@/components/query-hooks';
+import { useLeaders, useMetas, useTournamentWrites, useStats } from '@/components/query-hooks';
 import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
 import { pickDefaultMetaId } from '@/lib/meta-selection';
 import { recentLeaders } from '@/lib/recent-leaders';
@@ -16,7 +16,6 @@ import { lastTournamentType, rememberTournamentType, orderTypes } from '@/lib/la
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import type { TournamentType, TournamentDetailDTO } from '@/lib/dto';
-import { useOnlineStatus } from '@/lib/use-online-status';
 import { cn } from '@/lib/utils';
 
 // Freeplay and match are reached through their own tabs, not chosen here: a
@@ -46,12 +45,9 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   // opens on the run of set codes instead.
   const { data: stats } = useStats();
   const myDeckIds = (stats?.playedLeaders ?? []).map((l) => l.id);
-  const addLeader = useAddCustomLeader();
   const { data: metas } = useMetas();
-  const addMeta = useAddCustomMeta();
   const tournaments = useTournamentWrites();
   const logCelebration = useLogCelebration();
-  const online = useOnlineStatus();
 
   const [pickedType, setPickedType] = useState<TournamentType | null>(initial?.type ?? null);
   const [pickedLeaderId, setPickedLeaderId] = useState<string | null>(initial?.myLeaderId ?? null);
@@ -198,17 +194,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
             suggested={myDeckIds}
             recentKey="my-deck"
             suggestionsPending={stats === undefined}
-            options={leaders ?? []} value={myLeaderId} onChange={setPickedLeaderId}
-            onAddCustom={async (n) => {
-              if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
-              try {
-                const l = await addLeader.mutateAsync({ name: n, colors: [] });
-                return { id: l.id, name: l.name };
-              } catch {
-                toast.error('Could not add that leader');
-                return null;
-              }
-            }} />
+            options={leaders ?? []} value={myLeaderId} onChange={setPickedLeaderId} />
         </div>
       )}
 
@@ -224,11 +210,6 @@ export function TournamentForm({ kind = 'tournament', initial }: {
           id="nt-meta"
           options={metas ?? []} value={metaId} onChange={setMetaId}
           getLabel={metaLabel}
-          onAddCustom={async (n) => {
-            if (!online) { toast.error('Adding a meta needs a connection — pick one from the list for now'); return null; }
-            const m = await addMeta.mutateAsync({ name: n });
-            return { id: m.id, name: m.name };
-          }}
           placeholder="e.g. OP16" />
       </div>
 

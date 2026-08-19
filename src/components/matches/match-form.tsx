@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { Dices, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,15 +10,13 @@ import { NavBar } from '@/components/nav/nav-bar';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
 import { ReferenceCombobox } from '@/components/tournaments/reference-combobox';
 import {
-  useLeaders, useAddCustomLeader, useStats, useTournamentWrites, useRoundWrites,
-  useMetas, useAddCustomMeta,
+  useLeaders, useStats, useTournamentWrites, useRoundWrites, useMetas,
 } from '@/components/query-hooks';
 import { metaLabel } from '@/lib/labels';
 import { pickDefaultMetaId } from '@/lib/meta-selection';
 import { recentLeaders } from '@/lib/recent-leaders';
 import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import { useIsMounted } from '@/lib/use-is-mounted';
-import { useOnlineStatus } from '@/lib/use-online-status';
 import { cn } from '@/lib/utils';
 import type { TournamentDetailDTO } from '@/lib/dto';
 
@@ -43,10 +40,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
   const router = useRouter();
   const { data: leaders } = useLeaders();
   const { data: stats } = useStats();
-  const addLeader = useAddCustomLeader();
   const { data: metas } = useMetas();
-  const addMeta = useAddCustomMeta();
-  const online = useOnlineStatus();
   const mounted = useIsMounted();
 
   const editing = Boolean(initial);
@@ -87,16 +81,6 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
     setMetaId((current) => current ?? pickDefaultMetaId(metas));
   }, [editing, metas]);
 
-  const addLeaderCustom = async (name: string) => {
-    if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
-    try {
-      const l = await addLeader.mutateAsync({ name, colors: [] });
-      return { id: l.id, name: l.name };
-    } catch {
-      toast.error('Could not add that leader');
-      return null;
-    }
-  };
 
   const valid = Boolean(myLeaderId && oppLeaderId);
 
@@ -150,7 +134,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
           <LeaderPicker
             options={leaders ?? []} value={myLeaderId} onChange={setPickedMine}
             suggested={myDeckIds} recentKey="my-deck"
-            suggestionsPending={stats === undefined} onAddCustom={addLeaderCustom} />
+            suggestionsPending={stats === undefined} />
         </div>
 
         <div className="space-y-2">
@@ -158,7 +142,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
           <LeaderPicker
             options={leaders ?? []} value={oppLeaderId} onChange={setOppLeaderId}
             suggested={oppIds} recentKey="opponent"
-            suggestionsPending={stats === undefined} onAddCustom={addLeaderCustom} />
+            suggestionsPending={stats === undefined} />
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -204,11 +188,6 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
             id="mf-meta"
             options={metas ?? []} value={metaId} onChange={setMetaId}
             getLabel={metaLabel}
-            onAddCustom={async (n) => {
-              if (!online) { toast.error('Adding a meta needs a connection — pick one from the list for now'); return null; }
-              const m = await addMeta.mutateAsync({ name: n });
-              return { id: m.id, name: m.name };
-            }}
             placeholder="e.g. OP16" />
         </div>
 

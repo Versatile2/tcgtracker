@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Layers, Plus } from 'lucide-react';
+import { Layers } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { useLeaderArt } from '@/components/leaders/leader-art-provider';
@@ -230,15 +230,13 @@ function SkeletonTile() {
  * rather than showing a hole.
  */
 export function LeaderPicker({
-  options, value, onChange, onAddCustom,
+  options, value, onChange,
   suggested, recentKey, suggestionsPending = false,
   selectedLabel, collapsible = true, disabled,
 }: {
   options: Option[];
   value: string | null;
   onChange: (id: string) => void;
-  /** Resolves to null when the leader could not be created (e.g. offline). */
-  onAddCustom?: (name: string) => Promise<{ id: string; name: string } | null>;
   /** Ordered ids to offer first. Unknown ids are ignored. */
   suggested?: string[];
   /**
@@ -268,7 +266,6 @@ export function LeaderPicker({
 }) {
   const [changing, setChanging] = useState(false);
   const [search, setSearch] = useState('');
-  const [adding, setAdding] = useState(false);
   const [artOpen, setArtOpen] = useState(false);
   // Empty until hydration has matched the server HTML, then the stored list —
   // the app's existing rule for anything read out of localStorage. Memoised
@@ -372,9 +369,6 @@ export function LeaderPicker({
     return { recent, rest: byCode.filter((o) => !seen.has(o.id)) };
   }, [matches, q, recentIds, suggested, byId]);
 
-  // Only offered once the catalog has nothing to give: otherwise typing "Luffy"
-  // would offer to create a custom leader above 15 genuine matches.
-  const canAdd = Boolean(onAddCustom) && q.length > 0 && matches.length === 0;
 
   function choose(id: string) {
     onChange(id);
@@ -409,20 +403,6 @@ export function LeaderPicker({
         }
       }
     });
-  }
-
-  async function add() {
-    if (!onAddCustom || adding) return;
-    setAdding(true);
-    try {
-      const created = await onAddCustom(search.trim());
-      if (created) choose(created.id);
-    } catch {
-      // The caller owns user-facing feedback; swallowing here only stops an
-      // unhandled rejection escaping a click handler.
-    } finally {
-      setAdding(false);
-    }
   }
 
   // One presentation for a chosen leader, wherever the choice was made: the
@@ -492,25 +472,13 @@ export function LeaderPicker({
         disabled={disabled}
       />
 
-      {canAdd && (
-        <button
-          type="button"
-          onClick={add}
-          disabled={disabled || adding}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-        >
-          <Plus className="size-4" />
-          {adding ? 'Adding…' : `Add “${search.trim()}” as a custom leader`}
-        </button>
-      )}
-
       {/* An empty catalog means the leaders query has not resolved yet — saying
           "no leaders match" there would blame the search for a loading state. */}
       {options.length === 0 ? (
         <div className="flex gap-2 overflow-hidden">
           {Array.from({ length: 5 }, (_, i) => <SkeletonTile key={i} />)}
         </div>
-      ) : empty && !canAdd ? (
+      ) : empty ? (
         <p className="py-8 text-center text-sm text-muted-foreground">No leaders match “{search.trim()}”.</p>
       ) : (
         <>

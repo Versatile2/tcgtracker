@@ -1,7 +1,6 @@
 import { db } from '@/db/client';
 import { requireUserId, errorToResponse, json } from '@/lib/api/handler';
-import { listLeaders, addCustomLeader } from '@/services/reference';
-import { customLeaderSchema } from '@/lib/validation/reference';
+import { listLeaders } from '@/services/reference';
 
 export const runtime = 'nodejs';
 
@@ -14,12 +13,3 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
-  try {
-    const userId = await requireUserId();
-    const input = customLeaderSchema.parse(await req.json());
-    return json(await addCustomLeader(db, userId, input), { status: 201 });
-  } catch (err) {
-    return errorToResponse(err);
-  }
-}

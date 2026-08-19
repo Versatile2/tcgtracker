@@ -1,66 +1,67 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
-import { listLeaders, addCustomLeader, listMetas, addCustomMeta } from './reference';
+import { leaders, metas } from '../db/schema';
+import { listLeaders, listMetas } from './reference';
 
 const db = getTestDb();
 const USER = 'user_123';
 
+/*
+ * Custom leaders and metas can no longer be created — the catalog ships the real
+ * 132 leaders and OP01–OP16, and the daily refresh adds new sets as they
+ * release, so a hand-typed row was a duplicate waiting to split someone's
+ * statistics.
+ *
+ * What these tests hold is the other half of that decision: rows already
+ * recorded stay visible and keep working. The games logged against them are
+ * real games, and hiding them would silently rewrite a player's history.
+ */
 describe('reference service', () => {
   beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
   afterAll(closeTestDb);
 
-  it('lists global leaders plus the user custom ones', async () => {
-    await addCustomLeader(db, USER, { name: 'My Homebrew', colors: ['red'] });
+  /** A custom row as one already in the database looks. */
+  async function existingCustomLeader(ownerId: string, name: string) {
+    const [row] = await db.insert(leaders)
+      .values({ name, colors: [], setCode: null, isCustom: true, ownerId })
+      .returning();
+    return row;
+  }
+
+  it('lists the seeded catalog', async () => {
     const list = await listLeaders(db, USER);
     expect(list.some((l) => l.name === 'Roronoa Zoro' && l.ownerId === null)).toBe(true);
+    expect(list.length).toBeGreaterThan(100);
+  });
+
+  it('still shows a custom leader recorded before they were withdrawn', async () => {
+    await existingCustomLeader(USER, 'My Homebrew');
+    const list = await listLeaders(db, USER);
     expect(list.some((l) => l.name === 'My Homebrew' && l.ownerId === USER)).toBe(true);
   });
 
   it('does not show another user custom leaders', async () => {
-    await addCustomLeader(db, 'other_user', { name: 'Secret Deck', colors: [] });
+    await existingCustomLeader('other_user', 'Secret Deck');
     const list = await listLeaders(db, USER);
     expect(list.some((l) => l.name === 'Secret Deck')).toBe(false);
   });
 
-  it('reuses the user own custom leader on duplicate custom-add (case-insensitive)', async () => {
-    const first = await addCustomLeader(db, USER, { name: 'My Homebrew', colors: [] });
-    const second = await addCustomLeader(db, USER, { name: 'my homebrew', colors: [] });
-    expect(second.id).toBe(first.id);
-    const list = await listLeaders(db, USER);
-    expect(list.filter((l) => l.name.toLowerCase() === 'my homebrew').length).toBe(1);
-  });
-
-  it('does not collapse a custom leader onto a real card with the same name', async () => {
-    // "Roronoa Zoro" is a real card, but it names two distinct printings — so a
-    // custom add must create the user's own row rather than pick one of them.
-    const custom = await addCustomLeader(db, USER, { name: 'roronoa zoro', colors: [] });
-    expect(custom.ownerId).toBe(USER);
-    expect(custom.isCustom).toBe(true);
-  });
-
-  it('adds and dedupes custom metas', async () => {
-    const a = await addCustomMeta(db, USER, { name: 'Local Promo Pack' });
-    const b = await addCustomMeta(db, USER, { name: 'local promo pack' });
-    expect(b.id).toBe(a.id);
-    const metas = await listMetas(db, USER);
-    expect(metas.filter((m) => m.name.toLowerCase() === 'local promo pack').length).toBe(1);
-    expect(metas.some((m) => m.code === 'OP16')).toBe(true);
-  });
-
-  it('lists official metas newest-first, with custom ones after', async () => {
-    await addCustomMeta(db, USER, { name: 'Zoro locals' });
+  it('lists global metas newest first', async () => {
     const list = await listMetas(db, USER);
+    expect(list[0]?.code).toBe('OP16');
+    expect(list.every((m) => m.ownerId === null)).toBe(true);
+  });
 
-    const officialCodes = list.filter((m) => !m.isCustom).map((m) => m.code);
-    expect(officialCodes[0]).toBe('OP16');
-    expect(officialCodes.at(-1)).toBe('OP01');
-    expect([...officialCodes].sort().reverse()).toEqual(officialCodes);
+  it('still shows a custom meta recorded before they were withdrawn', async () => {
+    await db.insert(metas).values({ name: 'Local Promo Pack', isCustom: true, ownerId: USER });
+    const list = await listMetas(db, USER);
+    expect(list.some((m) => m.name === 'Local Promo Pack' && m.ownerId === USER)).toBe(true);
+  });
 
-    // "Zoro locals" sorts above "OP16" lexically, so a flat DESC sort by name
-    // would put it first and it would become the form's default.
-    const customIndex = list.findIndex((m) => m.name === 'Zoro locals');
-    const lastOfficialIndex = list.map((m) => m.isCustom).lastIndexOf(false);
-    expect(customIndex).toBeGreaterThan(lastOfficialIndex);
+  it('offers no way to create either', async () => {
+    const mod = await import('./reference');
+    expect('addCustomLeader' in mod).toBe(false);
+    expect('addCustomMeta' in mod).toBe(false);
   });
 });

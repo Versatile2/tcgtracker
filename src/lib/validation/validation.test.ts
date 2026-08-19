@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createTournamentSchema } from './tournament';
 import { createRoundSchema } from './round';
-import { customLeaderSchema } from './reference';
 
 const VALID_UUID = '00000000-0000-0000-0000-000000000000';
 
@@ -82,13 +81,7 @@ describe('validation', () => {
     expect(createRoundSchema.parse({ kind: 'no_show' }).kind).toBe('no_show');
   });
 
-  it('defaults custom leader colors to empty array', () => {
-    expect(customLeaderSchema.parse({ name: 'Test' }).colors).toEqual([]);
-  });
 
-  it('accepts a setCode on a custom leader', () => {
-    expect(customLeaderSchema.parse({ name: 'Test', setCode: 'OP16' }).setCode).toBe('OP16');
-  });
 
   it('accepts wonDieRoll on a swiss round', () => {
     const p = createRoundSchema.parse({ kind: 'swiss', opponentLeaderId: '00000000-0000-0000-0000-000000000000', result: 'win', wonDieRoll: true });

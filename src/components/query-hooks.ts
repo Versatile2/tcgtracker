@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { keys } from '@/lib/query-keys';
 import { roundFieldsFromInput } from '@/lib/round-values';
@@ -140,17 +140,3 @@ export function useRoundWrites(tournamentId: string) {
   return useMemo(() => ({ add, update, remove }), [add, update, remove]);
 }
 
-/*
- * Custom leaders and metas stay online-only. A round takes a foreign key on the
- * leader id, and the server enforces a uniqueness rule on the name, so a queued
- * custom leader that collided at replay time would strand every round pointing
- * at it. The seeded OP01–OP16 list covers venue logging; see the slice 3b spec.
- */
-export function useAddCustomLeader() {
-  const qc = useQueryClient();
-  return useMutation({ mutationFn: apiClient.addLeader, onSuccess: () => qc.invalidateQueries({ queryKey: keys.leaders }) });
-}
-export function useAddCustomMeta() {
-  const qc = useQueryClient();
-  return useMutation({ mutationFn: apiClient.addMeta, onSuccess: () => qc.invalidateQueries({ queryKey: keys.metas }) });
-}
