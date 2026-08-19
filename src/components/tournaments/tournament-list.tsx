@@ -2,20 +2,22 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Plus, Flame } from 'lucide-react';
+import { Plus, Flame, Hand } from 'lucide-react';
 import { LargeTitleScreen } from '@/components/nav/large-title-screen';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTournaments, useLeaders } from '@/components/query-hooks';
 import { useOutbox, pendingTournamentIds } from '@/lib/outbox/use-outbox';
 import { TournamentCard } from './tournament-card';
 import { MatchCard } from '@/components/matches/match-card';
+import { CardActionsSheet } from './card-actions-sheet';
+import { hintSeen, markHintSeen } from '@/lib/hint-seen';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatRecord } from '@/lib/record';
 import { MATCH_TYPE } from '@/lib/tournament-kinds';
 import { useProgress } from '@/components/progress/use-progress';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { cn } from '@/lib/utils';
-import type { TournamentType } from '@/lib/dto';
+import type { TournamentType, TournamentSummaryDTO } from '@/lib/dto';
 
 // Freeplay and match are segments of their own, not filters within this one.
 const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
@@ -52,6 +54,18 @@ export function TournamentList() {
   const [filter, setFilter] = useState<TournamentType | 'all'>('all');
   const { entries } = useOutbox();
   const { streak } = useProgress();
+  // One sheet for the whole list, not one per card: this can run to dozens.
+  const [actionsFor, setActionsFor] = useState<TournamentSummaryDTO | null>(null);
+  // Derived, not stored: whether the hint has been seen is a fact about
+  // storage, and marking it seen already triggers the render that hides it.
+  // Behind `mounted` because localStorage is client-only and this is prerendered.
+  const showHint = mounted && !hintSeen('longpress');
+
+  const openActions = (t: TournamentSummaryDTO) => {
+    // Retired the moment the gesture is actually used — it taught its lesson.
+    markHintSeen('longpress');
+    setActionsFor(t);
+  };
   const unsynced = pendingTournamentIds(entries);
 
   // Logging returns here with ?tab set; without it you would land on Tournaments
@@ -152,8 +166,10 @@ export function TournamentList() {
         {isError && <p className="text-destructive">Couldn’t load {plural}. Pull to retry.</p>}
         {data && shown.map((t) => (
           onMatches
-            ? <MatchCard key={t.id} t={t} resolveLeader={resolveLeader} unsynced={unsynced.has(t.id)} />
-            : <TournamentCard key={t.id} t={t} resolveLeader={resolveLeader} unsynced={unsynced.has(t.id)} />
+            ? <MatchCard key={t.id} t={t} resolveLeader={resolveLeader} unsynced={unsynced.has(t.id)}
+                onQuickActions={() => openActions(t)} />
+            : <TournamentCard key={t.id} t={t} resolveLeader={resolveLeader} unsynced={unsynced.has(t.id)}
+                onQuickActions={() => openActions(t)} />
         ))}
         {data && inSegment.length > 0 && shown.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
@@ -168,7 +184,20 @@ export function TournamentList() {
             </p>
           </div>
         )}
+        {/* Taught once, then gone. A gesture nobody knows about is not a
+            shortcut, but a permanent instruction is furniture. */}
+        {data && shown.length > 0 && showHint && (
+          <p className="flex items-center justify-center gap-1.5 py-1 text-xs text-muted-foreground">
+            <Hand className="size-3.5" aria-hidden />
+            Press and hold a card for quick actions.
+          </p>
+        )}
       </div>
+
+      <CardActionsSheet
+        target={actionsFor}
+        onOpenChange={(open) => { if (!open) setActionsFor(null); }}
+        resolveLeader={resolveLeader} />
     </LargeTitleScreen>
   );
 }

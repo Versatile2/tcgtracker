@@ -4,6 +4,7 @@ import { CloudOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { cn } from '@/lib/utils';
+import { useLongPress } from '@/lib/use-long-press';
 import { formatPlayedOn } from '@/lib/format-date';
 import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
 
@@ -25,12 +26,16 @@ export function MatchCard({
   t,
   resolveLeader,
   unsynced = false,
+  onQuickActions,
 }: {
   t: TournamentSummaryDTO;
   resolveLeader: (id: string) => LeaderDTO | undefined;
   /** Has changes still waiting in the offline queue. */
   unsynced?: boolean;
+  /** Press and hold, or right-click, to act on this match without opening it. */
+  onQuickActions?: () => void;
 }) {
+  const press = useLongPress(() => onQuickActions?.(), Boolean(onQuickActions));
   const mine = t.myLeaderId ? resolveLeader(t.myLeaderId) : undefined;
   // A match holds exactly one round; until the outbox has applied it there is
   // none, and the card still has a date and a deck worth showing.
@@ -42,7 +47,8 @@ export function MatchCard({
     <Card className="[--card-spacing:0px]">
       <Link
         href={`/matches/${t.id}`}
-        className="flex items-center gap-3 rounded-xl p-3 outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
+        {...press}
+        className="flex items-center gap-3 rounded-xl p-3 outline-none transition-transform select-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] [-webkit-touch-callout:none]"
       >
         <LeaderAvatar name={mine?.name ?? '—'} colors={mine?.colors} setCode={mine?.setCode} size="md" />
         <div className="min-w-0 flex-1">

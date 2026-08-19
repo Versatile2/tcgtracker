@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Medal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,11 @@ export function TournamentDetail({ id }: { id: string }) {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RoundDTO | undefined>();
-  const [shareOpen, setShareOpen] = useState(false);
+  // Sharing from the list arrives here with ?share=1: the share card needs full
+  // rounds, which the list does not hold, so the quick action opens the existing
+  // dialog rather than duplicating it.
+  const params = useSearchParams();
+  const [shareOpen, setShareOpen] = useState(params?.get('share') === '1');
 
   // Back to the segment this came from, not always Tournaments — a freeplay
   // session lives under its own tab now.

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { FreeplayGlyph } from './freeplay-glyph';
 import { cn } from '@/lib/utils';
+import { useLongPress } from '@/lib/use-long-press';
 import { formatPlayedOn } from '@/lib/format-date';
 import { formatRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel, deckCountLabel } from '@/lib/labels';
@@ -23,13 +24,17 @@ export function TournamentCard({
   t,
   resolveLeader,
   unsynced = false,
+  onQuickActions,
 }: {
   t: TournamentSummaryDTO;
   resolveLeader: (id: string) => LeaderDTO | undefined;
   /** Has changes still waiting in the offline queue. */
   unsynced?: boolean;
+  /** Press and hold, or right-click, to act on this event without opening it. */
+  onQuickActions?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const press = useLongPress(() => onQuickActions?.(), Boolean(onQuickActions));
   const leader = t.myLeaderId ? resolveLeader(t.myLeaderId) : undefined;
   const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);
@@ -40,7 +45,8 @@ export function TournamentCard({
       <div className="flex items-center gap-2 p-3">
         <Link
           href={`/tournaments/${t.id}`}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
+          {...press}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-transform select-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] [-webkit-touch-callout:none]"
         >
           {t.type === 'freeplay'
             ? <FreeplayGlyph size="md" />
