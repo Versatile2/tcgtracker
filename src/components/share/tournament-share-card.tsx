@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel, metaLabel, deckCountLabel } from '@/lib/labels';
 import { placementLabel } from '@/lib/placement';
+import { rankTier } from '@/lib/rank';
+import { RankBadge, rankSkin } from '@/components/rank/rank-badge';
 import type { TournamentDetailDTO, RoundDTO, LeaderDTO, MetaDTO } from '@/lib/dto';
 
 // Rows tint by result; the badge uses the stronger fill. Both read in light and dark.
@@ -89,9 +91,13 @@ export function TournamentShareCard({
   const eventName = tournament.name ?? tournamentTypeLabel(tournament.type);
   const eventMeta = tournament.metaId ? metaById(tournament.metaId) : undefined;
   const condensed = tournament.rounds.length > CONDENSE_AT;
+  const tier = rankTier(tournament.placement, tournament.fieldSize);
+  const placed = placementLabel(tournament.placement, tournament.fieldSize);
 
   return (
-    <div className="w-[380px] space-y-4 rounded-xl border bg-card p-5 text-card-foreground">
+    // No sweep here: html-to-image rasterises a single frame, and a highlight
+    // frozen halfway across reads as a rendering fault rather than as foil.
+    <div className={cn('w-[380px] space-y-4 rounded-xl border bg-card p-5 text-card-foreground', rankSkin(tier))}>
       {/* Header: leader (left), record, event tags (right) */}
       <div className="flex items-start gap-3">
         {tournament.type === 'freeplay'
@@ -106,9 +112,11 @@ export function TournamentShareCard({
           {myLeader?.setCode && <p className="text-xs text-muted-foreground">{myLeader.setCode}</p>}
           <p className="mt-1 text-3xl font-bold leading-none tabular-nums">{record}</p>
           {/* The line people actually screenshot for. */}
-          {placementLabel(tournament.placement, tournament.fieldSize) && (
-            <p className="mt-1 text-sm font-bold text-primary">
-              {placementLabel(tournament.placement, tournament.fieldSize)}
+          {placed && (
+            <p className="mt-1.5">
+              {tier
+                ? <RankBadge tier={tier} placement={placed} />
+                : <span className="text-sm font-bold text-muted-foreground">{placed}</span>}
             </p>
           )}
         </div>

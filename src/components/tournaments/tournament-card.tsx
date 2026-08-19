@@ -12,6 +12,8 @@ import { formatPlayedOn } from '@/lib/format-date';
 import { formatRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel, deckCountLabel } from '@/lib/labels';
 import { placementLabel } from '@/lib/placement';
+import { rankTier } from '@/lib/rank';
+import { RankBadge, rankSkin } from '@/components/rank/rank-badge';
 import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
 
 const resultPill: Record<'win' | 'loss' | 'draw', { label: string; className: string }> = {
@@ -39,9 +41,11 @@ export function TournamentCard({
   const leaderName = leader?.name ?? '—';
   const hasName = Boolean(t.name);
   const isDraft = t.status === 'draft';
+  const tier = rankTier(t.placement, t.fieldSize);
+  const placed = placementLabel(t.placement, t.fieldSize);
 
   return (
-    <Card className="[--card-spacing:0px]">
+    <Card className={cn('[--card-spacing:0px]', rankSkin(tier))}>
       <div className="flex items-center gap-2 p-3">
         <Link
           href={`/tournaments/${t.id}`}
@@ -65,8 +69,10 @@ export function TournamentCard({
               {unsynced && <CloudOff className="size-3.5 text-muted-foreground" aria-label="Not synced yet" />}
             </div>
             {hasName && <p className="mt-1 truncate font-semibold">{t.name}</p>}
-            {placementLabel(t.placement, t.fieldSize) && (
-              <p className="mt-0.5 text-xs font-semibold text-primary">{placementLabel(t.placement, t.fieldSize)}</p>
+            {placed && (
+              tier
+                ? <p className="mt-1"><RankBadge tier={tier} placement={placed} /></p>
+                : <p className="mt-0.5 text-xs font-semibold text-muted-foreground">{placed}</p>
             )}
             <div className={cn('flex items-baseline gap-1.5 text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
               {t.type !== 'freeplay' && (

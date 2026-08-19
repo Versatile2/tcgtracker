@@ -266,3 +266,136 @@ input[type="date"]::-webkit-date-and-time-value {
   .celebrate-rise-2 { animation-delay: 500ms; }
   .celebrate-rise-3 { animation-delay: 620ms; }
 }
+
+/* Earned finishes — the four rungs of src/lib/rank.ts.
+
+   Gold is not yellow. What reads as metal is a gradient that *reverses*: a pale
+   highlight crossing a warm field into shadow, twice, the way a foil card
+   catches light at two angles. A flat warm fill reads as plastic.
+
+   Two gradients per metal, deliberately. The card edge uses the full range
+   including the dark stop, because that is what makes an edge look like milled
+   metal. The chip uses only the light half, because text sits on it and the
+   dark stop would drop that text under 4.5:1 wherever the band happened to
+   fall. Contrast is not something a gradient gets to negotiate. */
+.rank-champion { --m-hi: oklch(0.96 0.055 96);  --m-mid: oklch(0.83 0.145 84);  --m-lo: oklch(0.60 0.115 66); --rank-ink: oklch(0.32 0.070 68); }
+.rank-silver   { --m-hi: oklch(0.98 0.006 250); --m-mid: oklch(0.86 0.010 250); --m-lo: oklch(0.66 0.014 256); --rank-ink: oklch(0.34 0.012 256); }
+.rank-bronze   { --m-hi: oklch(0.89 0.065 58);  --m-mid: oklch(0.74 0.105 50);  --m-lo: oklch(0.48 0.090 44); --rank-ink: oklch(0.26 0.055 46); }
+
+.rank-champion, .rank-silver, .rank-bronze {
+  --rank-metal: linear-gradient(105deg,
+    var(--m-lo) 0%, var(--m-mid) 13%, var(--m-hi) 29%,
+    var(--m-mid) 45%, var(--m-lo) 61%, var(--m-hi) 84%, var(--m-mid) 100%);
+  --rank-chip-metal: linear-gradient(105deg,
+    var(--m-mid) 0%, var(--m-hi) 38%, var(--m-mid) 72%, var(--m-hi) 100%);
+  --rank-wash: color-mix(in oklab, var(--m-mid) 13%, transparent);
+}
+
+/* Making the cut is the one rung that follows the player's chosen accent.
+   Earned metal is fixed — a medal is a medal — but making the cut is theirs. */
+.rank-cut {
+  --rank-metal: linear-gradient(105deg,
+    color-mix(in oklab, var(--primary) 55%, transparent) 0%, var(--primary) 60%,
+    color-mix(in oklab, var(--primary) 55%, transparent) 100%);
+  --rank-wash: color-mix(in oklab, var(--primary) 7%, transparent);
+}
+
+/* The skin: a metal ring around a faintly washed card.
+
+   The ring is a masked pseudo-element rather than the usual
+   `background-clip: padding-box, border-box` trick. That trick needs an opaque
+   padding-box layer to hide the metal behind the card face, and these cards are
+   deliberately translucent glass — so the metal bled through at ~87% and turned
+   every ranked card into a saturated slab with unreadable muted text.
+
+   The wash stays at 13% so body copy keeps its own colour. That is the rule
+   that keeps a trophy card a card rather than a gold rectangle. */
+.rank-skin {
+  position: relative;
+  border-color: transparent;
+  background-image: linear-gradient(var(--rank-wash), var(--rank-wash));
+}
+
+.rank-skin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  /* 2px, not 1.5: Chromium floors sub-pixel widths, and a 1px ring is the
+     hairline the card already had — the frame would never appear. */
+  padding: 2px;
+  background-image: var(--rank-metal);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.rank-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.15;
+  white-space: nowrap;
+  background-image: var(--rank-chip-metal);
+  color: var(--rank-ink);
+  box-shadow: inset 0 1px 0 0 color-mix(in oklab, white 55%, transparent),
+              0 1px 2px -1px oklch(0 0 0 / 0.35);
+}
+
+/* The cut gets a tint rather than a struck medal: it is an achievement, not an
+   object you were handed. */
+.rank-chip.rank-cut {
+  background-image: none;
+  background-color: color-mix(in oklab, var(--primary) 14%, transparent);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+/* Gold outranks the other metals by weight, not by more colour: a heavier ring
+   and a warm lift off the page. Saturating the face further is the one move
+   that would cost the legibility just won back. */
+.rank-champion.rank-skin::before { padding: 3px; }
+.rank-champion.rank-skin {
+  box-shadow:
+    0 12px 30px -16px color-mix(in oklab, var(--m-lo) 85%, transparent),
+    var(--glass-shadow),
+    inset 0 1px 0 0 var(--glass-highlight);
+}
+
+/* Silver at 13% over a white card is nothing at all — it needs its shadow
+   stop, not its body, to register as a tint. */
+.rank-silver { --rank-wash: color-mix(in oklab, var(--m-lo) 14%, transparent); }
+
+/* One sweep, on mount, then it rests. A looping shimmer down a scrolling list
+   is a slot machine; a single pass when the app opens is a greeting. Champion
+   only — silver and bronze are metal, not theatre. */
+.rank-champion.rank-skin::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background-image: linear-gradient(105deg,
+    transparent 42%, color-mix(in oklab, var(--m-hi) 60%, transparent) 50%, transparent 58%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rank-sweep {
+    0%   { opacity: 0; transform: translateX(-115%); }
+    14%  { opacity: 1; }
+    86%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(115%); }
+  }
+  .rank-champion.rank-skin::after {
+    animation: rank-sweep 2600ms cubic-bezier(0.4, 0, 0.2, 1) 400ms 1 both;
+  }
+}

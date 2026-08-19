@@ -1,4 +1,5 @@
 import type { Achievement } from '@/lib/achievements/definitions';
+import { rankTier, rankLabel, isPodiumTier } from '@/lib/rank';
 
 export type CelebrationLeader = { name: string; colors?: string[]; setCode?: string | null } | null;
 
@@ -14,6 +15,9 @@ export type Celebration = {
   leveledTo: number | null;
   streakWeeks: number;
   streakExtended: boolean;
+  /** Where the event finished, when this save was the one that finished it. */
+  placement: number | null;
+  fieldSize: number | null;
   headline: string;
 };
 
@@ -26,6 +30,12 @@ export type Celebration = {
  * something — and because most saves do not, the ones that do land hard.
  */
 export function isMilestone(c: Celebration): boolean {
+  // A podium finish earns the moment on its own merits. Without this clause the
+  // Champion achievement — which unlocks once and never again — is the only
+  // thing marking a win, so a player's second tournament victory passes more
+  // quietly than an ordinary round. Winning is rare enough that it can never
+  // become noise.
+  if (isPodiumTier(rankTier(c.placement, c.fieldSize))) return true;
   return c.unlocked.length > 0 || c.leveledTo !== null || c.streakExtended;
 }
 
@@ -36,7 +46,13 @@ export function headlineFor(input: {
   leveledTo: number | null;
   streakExtended: boolean;
   streakWeeks: number;
+  placement?: number | null;
+  fieldSize?: number | null;
 }): string {
+  // Above the achievement branch on purpose: a win that also unlocks something
+  // is a win first. "Champion" beats the name of the badge it earned.
+  const tier = rankTier(input.placement ?? null, input.fieldSize ?? null);
+  if (isPodiumTier(tier)) return rankLabel[tier!];
   if (input.unlocked.length === 1) return input.unlocked[0].name;
   if (input.unlocked.length > 1) return `${input.unlocked.length} achievements`;
   if (input.leveledTo !== null) return `Level ${input.leveledTo}`;

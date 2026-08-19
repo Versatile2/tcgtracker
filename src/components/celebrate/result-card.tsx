@@ -5,6 +5,9 @@ import { getLeaderImage } from '@/lib/leader-visual';
 import { useLeaderArt } from '@/components/leaders/leader-art-provider';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { CountUp } from './count-up';
+import { rankTier } from '@/lib/rank';
+import { RankBadge } from '@/components/rank/rank-badge';
+import { placementLabel } from '@/lib/placement';
 import type { Celebration } from './celebration';
 
 /**
@@ -22,6 +25,7 @@ import type { Celebration } from './celebration';
 export function ResultCard({ c, onDismiss }: { c: Celebration; onDismiss: () => void }) {
   const { art } = useLeaderArt();
   const won = c.result === 'win';
+  const tier = rankTier(c.placement, c.fieldSize);
   // The winner faces up. On a draw, and when no game was played at all, the
   // player's own card leads — nobody lost.
   const mineLeads = c.result !== 'loss';
@@ -39,11 +43,16 @@ export function ResultCard({ c, onDismiss }: { c: Celebration; onDismiss: () => 
       className="celebrate-veil fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-background/88 p-6 backdrop-blur-sm"
     >
       <div className="celebrate-scene relative flex items-center justify-center">
-        {/* Accent light, wins only — a loss gets dignity, not applause. */}
-        {won && (
+        {/* Light behind the card: the accent for a win, the metal itself when
+            the event was won. A loss gets dignity, not applause. */}
+        {(won || tier) && (
           <span
             aria-hidden
-            className="celebrate-bloom absolute size-56 rounded-full bg-primary/40 blur-2xl"
+            className={cn(
+              'celebrate-bloom absolute size-56 rounded-full blur-2xl',
+              tier ? `rank-${tier}` : 'bg-primary/40',
+            )}
+            style={tier ? { backgroundImage: 'var(--rank-metal)', opacity: 0.5 } : undefined}
           />
         )}
         <div className="celebrate-card relative h-[15.4rem] w-44">
@@ -54,6 +63,12 @@ export function ResultCard({ c, onDismiss }: { c: Celebration; onDismiss: () => 
 
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="celebrate-rise celebrate-rise-1 text-2xl font-bold tracking-tight">{c.headline}</p>
+
+        {tier && (
+          <p className="celebrate-rise celebrate-rise-2">
+            <RankBadge tier={tier} placement={placementLabel(c.placement, c.fieldSize)} />
+          </p>
+        )}
 
         <div className="celebrate-rise celebrate-rise-2 flex flex-wrap items-center justify-center gap-2">
           {/* Starting an event pays nothing, and "+0 XP" on the very first

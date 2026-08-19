@@ -34,6 +34,9 @@ export function useLogCelebration() {
         result: 'win' | 'loss' | 'draw' | null;
         myLeaderId: string | null;
         opponentLeaderId: string | null;
+        /** Set only by the finish path, where a placement is being recorded. */
+        placement?: number | null;
+        fieldSize?: number | null;
       },
     ) => {
       const read = () => {
@@ -84,12 +87,16 @@ export function useLogCelebration() {
         leveledTo,
         streakWeeks: after.streak.weeks,
         streakExtended,
+        placement: game.placement ?? null,
+        fieldSize: game.fieldSize ?? null,
         headline: headlineFor({
           result: game.result,
           unlocked,
           leveledTo,
           streakExtended,
           streakWeeks: after.streak.weeks,
+          placement: game.placement ?? null,
+          fieldSize: game.fieldSize ?? null,
         }),
       };
       celebrate(c);

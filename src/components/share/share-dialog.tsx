@@ -51,13 +51,29 @@ export function ShareDialog({
       );
     };
 
-    measure();
-    const observer = new ResizeObserver(measure);
-    if (boxRef.current) observer.observe(boxRef.current);
-    if (ref.current) observer.observe(ref.current);
+    // The popup is portalled, so it is not in the DOM on the commit where
+    // `open` flips — both refs are still null here. Attaching the observer
+    // unconditionally at that point observed nothing at all, and the preview
+    // stayed at scale 1 for the life of the dialog: a 380px card clipped inside
+    // a 326px column, losing the event name and the footer off both edges.
+    let observer: ResizeObserver | undefined;
+    let raf = 0;
+    const attach = () => {
+      if (!boxRef.current || !ref.current) {
+        raf = requestAnimationFrame(attach);
+        return;
+      }
+      observer = new ResizeObserver(measure);
+      observer.observe(boxRef.current);
+      observer.observe(ref.current);
+      measure();
+    };
+
+    attach();
     window.addEventListener('resize', measure);
     return () => {
-      observer.disconnect();
+      cancelAnimationFrame(raf);
+      observer?.disconnect();
       window.removeEventListener('resize', measure);
     };
   }, [open]);

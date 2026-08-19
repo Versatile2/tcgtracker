@@ -25,6 +25,8 @@ import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatPlayedOn } from '@/lib/format-date';
 import { placementLabel } from '@/lib/placement';
+import { rankTier } from '@/lib/rank';
+import { RankBadge } from '@/components/rank/rank-badge';
 import type { RoundDTO } from '@/lib/dto';
 import type { CreateRoundInput } from '@/lib/validation/round';
 import { ShareDialog } from '@/components/share/share-dialog';
@@ -116,9 +118,17 @@ export function TournamentDetail({ id }: { id: string }) {
           <p className="text-sm text-muted-foreground">{formatPlayedOn(t.playedOn)}</p>
           {/* The most quotable fact about an event, so it sits with the name. */}
           {placementLabel(t.placement, t.fieldSize) && (
-            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
-              <Medal className="size-3.5" aria-hidden />
-              {placementLabel(t.placement, t.fieldSize)}
+            <p className="mt-1.5">
+              {rankTier(t.placement, t.fieldSize) ? (
+                <RankBadge
+                  tier={rankTier(t.placement, t.fieldSize)!}
+                  placement={placementLabel(t.placement, t.fieldSize)} />
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                  <Medal className="size-3.5" aria-hidden />
+                  {placementLabel(t.placement, t.fieldSize)}
+                </span>
+              )}
             </p>
           )}
           {/* Text, never a control. The leader is what every statistic for this
@@ -174,7 +184,14 @@ export function TournamentDetail({ id }: { id: string }) {
                   tournamentWrites.update(id, { placement, fieldSize });
                 }
                 tournamentWrites.finish(id);
-              }, { result: null, myLeaderId: t.myLeaderId, opponentLeaderId: null });
+              }, {
+                result: null,
+                myLeaderId: t.myLeaderId,
+                opponentLeaderId: null,
+                // What makes a podium finish its own milestone, every time.
+                placement,
+                fieldSize: fieldSize ?? t.fieldSize,
+              });
             }} />
         ) : (
           <Button variant="outline" className="h-12 flex-1" onClick={() => tournamentWrites.reopen(id)}>Reopen</Button>
