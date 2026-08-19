@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Dices, Trash2 } from 'lucide-react';
@@ -9,9 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Segmented } from '@/components/ui/segmented';
 import { NavBar } from '@/components/nav/nav-bar';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
+import { ReferenceCombobox } from '@/components/tournaments/reference-combobox';
 import {
   useLeaders, useAddCustomLeader, useStats, useTournamentWrites, useRoundWrites,
+  useMetas, useAddCustomMeta,
 } from '@/components/query-hooks';
+import { metaLabel } from '@/lib/labels';
+import { pickDefaultMetaId } from '@/lib/meta-selection';
 import { recentLeaders } from '@/lib/recent-leaders';
 import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import { useIsMounted } from '@/lib/use-is-mounted';
@@ -40,6 +44,8 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
   const { data: leaders } = useLeaders();
   const { data: stats } = useStats();
   const addLeader = useAddCustomLeader();
+  const { data: metas } = useMetas();
+  const addMeta = useAddCustomMeta();
   const online = useOnlineStatus();
   const mounted = useIsMounted();
 
@@ -61,6 +67,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
   const [wonDieRoll, setWonDieRoll] = useState<boolean | null>(round?.wonDieRoll ?? null);
   const [playedOn, setPlayedOn] = useState(initial?.playedOn ?? (() => new Date().toISOString().slice(0, 10))());
   const [notes, setNotes] = useState(round?.notes ?? '');
+  const [metaId, setMetaId] = useState<string | null>(initial?.metaId ?? null);
 
   // Same rule as the tournament form: open on the deck you last played, derived
   // rather than stored, and only if that leader still exists.
@@ -69,6 +76,16 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
     return recentLeaders('my-deck').find((id) => leaders.some((l) => l.id === id)) ?? null;
   }, [editing, mounted, leaders]);
   const myLeaderId = pickedMine ?? defaultMine;
+
+  // Applied once on arrival and never over a choice already made — the same
+  // rule the tournament form follows, so a match logged in a hurry still lands
+  // in the current format.
+  const defaultApplied = useRef(false);
+  useEffect(() => {
+    if (editing || defaultApplied.current || !metas?.length) return;
+    defaultApplied.current = true;
+    setMetaId((current) => current ?? pickDefaultMetaId(metas));
+  }, [editing, metas]);
 
   const addLeaderCustom = async (name: string) => {
     if (!online) { toast.error('Adding a leader needs a connection — pick one from the list for now'); return null; }
@@ -94,7 +111,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
       notes: notes.trim() || null,
     };
     if (editing) {
-      tournaments.update(matchId, { myLeaderId: myLeaderId!, playedOn });
+      tournaments.update(matchId, { myLeaderId: myLeaderId!, metaId: metaId ?? null, playedOn });
       // A match always has its round; `round!` is safe because the page only
       // renders this form once the match has loaded.
       rounds.update(round!.id, roundInput);
@@ -102,7 +119,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
       // Both writes inside one celebration window: the match and its single
       // round are one act, and the reward belongs to the act.
       logCelebration(() => {
-        tournaments.create({ id: matchId, type: 'match', myLeaderId: myLeaderId!, playedOn });
+        tournaments.create({ id: matchId, type: 'match', myLeaderId: myLeaderId!, metaId: metaId ?? undefined, playedOn });
         rounds.add(roundInput);
       }, { result, myLeaderId, opponentLeaderId: oppLeaderId });
     }
@@ -176,6 +193,23 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
               className={cn('h-9 rounded-lg px-5 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 result === 'loss' ? 'bg-red-600 text-white' : 'text-muted-foreground')}>Lose</button>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="mf-meta" className="text-sm font-medium">Meta (optional)</label>
+          {/* Matches feed opponent statistics, and that breakdown is per meta —
+              so recording one here is what makes a casual game count toward the
+              matchup intelligence the app exists for. */}
+          <ReferenceCombobox
+            id="mf-meta"
+            options={metas ?? []} value={metaId} onChange={setMetaId}
+            getLabel={metaLabel}
+            onAddCustom={async (n) => {
+              if (!online) { toast.error('Adding a meta needs a connection — pick one from the list for now'); return null; }
+              const m = await addMeta.mutateAsync({ name: n });
+              return { id: m.id, name: m.name };
+            }}
+            placeholder="e.g. OP16" />
         </div>
 
         <div className="space-y-2">

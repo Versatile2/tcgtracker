@@ -49,9 +49,12 @@ async function aggregateByMeta(db: DB, ownerId: string, opts: { includeFreeplay:
     .where(and(
       eq(tournaments.ownerId, ownerId),
       sql`${rounds.kind} not in ('bye', 'no_show')`,
-      // Matches record no meta, so they would all pile into a "No meta" bucket —
-      // excluded whichever way the freeplay switch is set, unlike everywhere else
-      // where the two casual types are treated alike.
+      // Excluded whichever way the freeplay switch is set, unlike everywhere
+      // else where the two casual types are treated alike. A match can now
+      // carry a meta, so this is no longer about missing data: the per-meta
+      // breakdown reports the competitive record, and a casual game is not part
+      // of it. Its meta still counts where matches do belong — the per-opponent
+      // breakdown below.
       ne(tournaments.type, MATCH_TYPE),
       ...(opts.includeFreeplay ? [] : [ne(tournaments.type, 'freeplay')]),
     ))

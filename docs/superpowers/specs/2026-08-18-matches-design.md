@@ -49,10 +49,15 @@ tournament breaks ownership derivation in `stats.ts`, `achievements.ts` and
 same shape as the existing freeplay guard, and for the same reason: a five-round
 tournament cannot become a single match without silently losing rounds.
 
-**No meta field.** Matches do not feed the per-meta breakdown, so a meta on one
-would be write-only. Verified safe: the per-leader×meta query inner-joins on the
-meta (`stats.ts:172`), so a match without one contributes to its opponent's win
-rate and is simply absent from that opponent's meta sub-breakdown.
+**No meta field** *(reversed 2026-08-19 — the form now asks for one.)* The
+original reasoning was that matches do not feed the per-meta breakdown, so a
+meta would be write-only. That was wrong: matches *do* feed opponent statistics,
+and that breakdown is per meta via
+`coalesce(rounds.opponentMetaId, tournaments.metaId)`. Without a meta a match
+contributed to its opponent's overall win rate but was absent from the meta
+sub-breakdown — which is the matchup intelligence the product exists for. The
+per-meta *screen* still excludes matches, because that reports the competitive
+record.
 
 ## Statistics
 

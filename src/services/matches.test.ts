@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
-import { leaders } from '../db/schema';
+import { leaders, metas } from '../db/schema';
 import { createTournament, updateTournament } from './tournaments';
 import { addRound } from './rounds';
 import { getOverallStats, getPerMetaStats, getOpponentStats, getMatchupStats } from './stats';
@@ -82,8 +82,9 @@ describe('a match and the competitive record', () => {
   });
 
   it('is absent from the per-meta breakdown', async () => {
-    // Matches record no meta, so counting them would pile every one into a
-    // single "No meta" row — excluded even though freeplay is included here.
+    // Excluded even though freeplay is included here: the per-meta breakdown
+    // reports the competitive record, and a casual game is not part of it —
+    // regardless of whether a meta was recorded on it.
     const perMeta = await getPerMetaStats(db, USER);
     expect(perMeta.reduce((n, r) => n + r.wins + r.losses + r.draws, 0)).toBe(0);
   });
@@ -97,6 +98,21 @@ describe('a match and the competitive record', () => {
     const opponents = await getOpponentStats(db, USER);
     expect(opponents.map((o) => o.name)).toContain('Monkey D. Luffy');
     expect(opponents.find((o) => o.name === 'Monkey D. Luffy')?.wins).toBe(1);
+  });
+
+  it('carries its meta into the per-opponent breakdown', async () => {
+    // The reason the form asks for a meta at all: without one a match counts
+    // toward an opponent's overall win rate but vanishes from the per-meta
+    // split, which is the matchup intelligence the product exists for.
+    const [meta] = await db.select().from(metas).where(eq(metas.code, 'OP16')).limit(1);
+    const t = await createTournament(db, USER, {
+      type: 'match', myLeaderId: await leaderId('Roronoa Zoro'), metaId: meta.id, playedOn: '2026-08-19',
+    });
+    await addRound(db, USER, t.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Kaido'), result: 'win', playOrder: 'first',
+    });
+    const kaido = (await getOpponentStats(db, USER)).find((o) => o.name === 'Kaido');
+    expect(kaido?.byMeta.map((m) => m.name)).toContain('OP16');
   });
 
   it('counts toward matchup statistics for the deck played', async () => {
