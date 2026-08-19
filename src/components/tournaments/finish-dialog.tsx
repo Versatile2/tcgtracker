@@ -3,6 +3,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  NumberPicker, COMMON_FIELD_SIZES, MAX_PICKABLE_PLACEMENT, placementOptions,
+} from '@/components/ui/number-picker';
+import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import { placementLabel } from '@/lib/placement';
@@ -27,12 +30,13 @@ export function FinishDialog({
   tournament: TournamentDetailDTO;
   onFinish: (placement: number | null, fieldSize: number | null) => void;
 }) {
-  const [placement, setPlacement] = useState('');
-  const [players, setPlayers] = useState(tournament.fieldSize != null ? String(tournament.fieldSize) : '');
+  const [placement, setPlacement] = useState<number | null>(null);
+  const [players, setPlayers] = useState<number | null>(tournament.fieldSize);
 
-  const num = (v: string) => (v.trim() === '' ? null : Math.max(1, Number.parseInt(v, 10) || 1));
-  const p = num(placement);
-  const f = num(players);
+  const p = placement;
+  const f = players;
+  /** Empty means unknown, not zero — a placement is often learned later. */
+  const toNum = (v: string) => (v.trim() === '' ? null : Math.max(1, Number.parseInt(v, 10) || 1));
   const issue = placementIssue({ placement: p, fieldSize: f });
   const preview = placementLabel(p, f);
 
@@ -43,30 +47,40 @@ export function FinishDialog({
         <DialogHeader><DialogTitle>Finish tournament?</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">This locks the tournament. You can reopen it later to make changes.</p>
 
-        <div className="mt-1 grid grid-cols-2 gap-3">
+        <div className="mt-1 space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="fin-placement" className="text-sm font-medium">You finished</label>
-            <Input
-              id="fin-placement"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={placement}
-              onChange={(e) => setPlacement(e.target.value)}
-              placeholder="e.g. 2"
-              className="h-12 text-base" />
+            <span className="text-sm font-medium">You finished</span>
+            {/* Above 32 players, finding your position in a strip is slower than
+                typing it — so the picker gives way to a field. */}
+            {f !== null && f > MAX_PICKABLE_PLACEMENT ? (
+              <Input
+                id="fin-placement"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={placement ?? ''}
+                onChange={(e) => setPlacement(toNum(e.target.value))}
+                placeholder="e.g. 12"
+                className="h-12 text-base" />
+            ) : (
+              <NumberPicker
+                id="fin-placement"
+                value={placement}
+                onChange={setPlacement}
+                options={placementOptions(f)}
+                ariaLabel="Where you finished"
+                placeholder="e.g. 12" />
+            )}
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="fin-players" className="text-sm font-medium">Out of</label>
-            <Input
+            <span className="text-sm font-medium">Out of</span>
+            <NumberPicker
               id="fin-players"
-              type="number"
-              inputMode="numeric"
-              min={1}
               value={players}
-              onChange={(e) => setPlayers(e.target.value)}
-              placeholder="e.g. 14"
-              className="h-12 text-base" />
+              onChange={setPlayers}
+              options={COMMON_FIELD_SIZES}
+              ariaLabel="How many played"
+              placeholder="e.g. 47" />
           </div>
         </div>
 
