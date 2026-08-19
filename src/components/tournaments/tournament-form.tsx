@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NumberPicker, COMMON_FIELD_SIZES } from '@/components/ui/number-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { NavBar } from '@/components/nav/nav-bar';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
@@ -56,7 +55,6 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   const [metaId, setMetaId] = useState<string | null>(initial?.metaId ?? null);
   const [name, setName] = useState(initial?.name ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
-  const [players, setPlayers] = useState<number | null>(initial?.fieldSize ?? null);
   const [playedOn, setPlayedOn] = useState(initial?.playedOn ?? new Date().toISOString().slice(0, 10));
 
   // Metas load asynchronously, so the default is applied on arrival. The ref
@@ -119,7 +117,6 @@ export function TournamentForm({ kind = 'tournament', initial }: {
         metaId: metaId ?? null,
         name: name.trim() || null,
         notes: notes.trim() || null,
-        fieldSize: players,
         playedOn,
       });
       router.push(`/tournaments/${initial!.id}`);
@@ -143,7 +140,6 @@ export function TournamentForm({ kind = 'tournament', initial }: {
         metaId: metaId ?? undefined,
         name: name.trim() || undefined,
         notes: notes.trim() || undefined,
-        ...(players != null ? { fieldSize: players } : {}),
         playedOn,
       });
     }, { result: null, myLeaderId: freeplayMode ? null : myLeaderId, opponentLeaderId: null });
@@ -218,21 +214,6 @@ export function TournamentForm({ kind = 'tournament', initial }: {
           options={metas ?? []} value={metaId} onChange={setMetaId}
           getLabel={metaLabel}
           placeholder="e.g. OP16" />
-      </div>
-
-      <div className="space-y-2">
-        <span className="text-sm font-medium">Players (optional)</span>
-        {/* Captured here because the turnout is known on the day. Finishing then
-            asks only where you placed, instead of two numbers at the moment you
-            are packing up to leave. Same control as the finish dialog uses for
-            the same value. */}
-        <NumberPicker
-          id="nt-players"
-          value={players}
-          onChange={setPlayers}
-          options={COMMON_FIELD_SIZES}
-          ariaLabel="How many played"
-          placeholder="e.g. 47" />
       </div>
 
       <div className="space-y-2">

@@ -20,8 +20,10 @@ import type { TournamentDetailDTO } from '@/lib/dto';
  * nobody has told you yet would break the log-first principle for the sake of
  * tidier data.
  *
- * The field size is prefilled from what was recorded when the event was
- * created, so the common case asks for one number rather than two.
+ * The turnout is asked here rather than at creation. You rarely know the real
+ * number when you sign up, and asking twice for one fact meant the creation
+ * form carried a question most people skipped. It is prefilled on a reopened
+ * event from whatever was recorded the first time round.
  */
 export function FinishDialog({
   tournament,
@@ -48,8 +50,21 @@ export function FinishDialog({
         <p className="text-sm text-muted-foreground">This locks the tournament. You can reopen it later to make changes.</p>
 
         <div className="mt-1 space-y-4">
+          {/* Asked first, and it is not politeness: the turnout is what sizes
+              the strip below. Answering it up front means the positions
+              offered are the positions that existed. */}
           <div className="space-y-1.5">
-            <span className="text-sm font-medium">You finished</span>
+            <span className="text-sm font-medium">How many played</span>
+            <NumberPicker
+              id="fin-players"
+              value={players}
+              onChange={setPlayers}
+              options={COMMON_FIELD_SIZES}
+              ariaLabel="How many played"
+              placeholder="e.g. 47" />
+          </div>
+          <div className="space-y-1.5">
+            <span className="text-sm font-medium">Where you finished</span>
             {/* Above 32 players, finding your position in a strip is slower than
                 typing it — so the picker gives way to a field. */}
             {f !== null && f > MAX_PICKABLE_PLACEMENT ? (
@@ -71,16 +86,6 @@ export function FinishDialog({
                 ariaLabel="Where you finished"
                 placeholder="e.g. 12" />
             )}
-          </div>
-          <div className="space-y-1.5">
-            <span className="text-sm font-medium">Out of</span>
-            <NumberPicker
-              id="fin-players"
-              value={players}
-              onChange={setPlayers}
-              options={COMMON_FIELD_SIZES}
-              ariaLabel="How many played"
-              placeholder="e.g. 47" />
           </div>
         </div>
 
