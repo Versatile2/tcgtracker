@@ -18,11 +18,12 @@ import { useIsMounted } from '@/lib/use-is-mounted';
 import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import type { TournamentType, TournamentDetailDTO } from '@/lib/dto';
 import { cn } from '@/lib/utils';
+import { isFreeplay, FREEPLAY_TYPES, TOURNAMENT_TYPES } from '@/lib/tournament-kinds';
 
-// Freeplay and match are reached through their own tabs, not chosen here: a
-// freeplay session has no leader of its own and a match is a single game, so
-// neither fits the fields this form shows.
-const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
+// A match is reached through its own tab — it is a single game, not an event.
+// Freeplay is no longer a single type but a segment with its own two choices,
+// because the same simulator session can be logged either way and it is the
+// segment, not the label, that decides whether it counts competitively.
 
 /**
  * Creates a tournament, or a freeplay session — the same fields either way bar
@@ -39,7 +40,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   initial?: TournamentDetailDTO;
 }) {
   const editing = Boolean(initial);
-  const isFreeplay = (initial ? initial.type === 'freeplay' : kind === 'freeplay');
+  const freeplayMode = (initial ? isFreeplay(initial.type) : kind === 'freeplay');
   const router = useRouter();
   const { data: leaders } = useLeaders();
   // Decks you have actually played head the strip; a new account has none and it
@@ -91,8 +92,15 @@ export function TournamentForm({ kind = 'tournament', initial }: {
    * and there is no effect to sequence against.
    */
   const lastType = useMemo(() => (mounted && !editing ? lastTournamentType() : null), [mounted, editing]);
-  const orderedTypes = useMemo(() => orderTypes(TYPES, lastType), [lastType]);
-  const type: TournamentType = isFreeplay ? 'freeplay' : (pickedType ?? orderedTypes[0]);
+  const offered = freeplayMode ? FREEPLAY_TYPES : TOURNAMENT_TYPES;
+  // A freeplay session always leads with plain Freeplay: the remembered type is
+  // the tournament one, and carrying it across segments would open the session
+  // form on Ranked Simulator because of a Regional logged last week.
+  const orderedTypes = useMemo(
+    () => (freeplayMode ? offered : orderTypes(offered, lastType)),
+    [freeplayMode, offered, lastType],
+  );
+  const type: TournamentType = pickedType ?? orderedTypes[0];
 
   const defaultLeaderId = useMemo(() => {
     if (editing || !mounted || !leaders?.length) return null;
@@ -101,12 +109,13 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   const myLeaderId = pickedLeaderId ?? defaultLeaderId;
 
   function submit() {
-    if (!isFreeplay && !myLeaderId) { toast.error('Choose your leader first'); return; }
+    if (!freeplayMode && !myLeaderId) { toast.error('Choose your leader first'); return; }
     if (editing) {
       // Type and leader are omitted for freeplay: the service rejects both on a
       // session that records its leader per round.
       tournaments.update(initial!.id, {
-        ...(isFreeplay ? {} : { type, myLeaderId: myLeaderId! }),
+        type,
+        ...(freeplayMode ? {} : { myLeaderId: myLeaderId! }),
         metaId: metaId ?? null,
         name: name.trim() || null,
         notes: notes.trim() || null,
@@ -120,7 +129,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
     // the venue has signal — the outbox delivers the tournament when it can.
     // Editing deliberately does not move the remembered type: changing an
     // event's type after the fact says nothing about what will be logged next.
-    if (!isFreeplay) rememberTournamentType(type);
+    if (!freeplayMode) rememberTournamentType(type);
     // Starting an event is a logging act too, and it can cross a milestone —
     // "Log your first tournament" is earned here, not by the first round. Left
     // uncelebrated, a brand-new player's very first act would pass in silence,
@@ -130,14 +139,14 @@ export function TournamentForm({ kind = 'tournament', initial }: {
       tournaments.create({
         id,
         type,
-        myLeaderId: isFreeplay ? undefined : myLeaderId!,
+        myLeaderId: freeplayMode ? undefined : myLeaderId!,
         metaId: metaId ?? undefined,
         name: name.trim() || undefined,
         notes: notes.trim() || undefined,
         ...(players != null ? { fieldSize: players } : {}),
         playedOn,
       });
-    }, { result: null, myLeaderId: isFreeplay ? null : myLeaderId, opponentLeaderId: null });
+    }, { result: null, myLeaderId: freeplayMode ? null : myLeaderId, opponentLeaderId: null });
     router.push(`/tournaments/${id}`);
   }
 
@@ -147,21 +156,23 @@ export function TournamentForm({ kind = 'tournament', initial }: {
     <main className="mx-auto max-w-xl space-y-5 p-4 pb-6">
       <h1 className="text-3xl font-bold tracking-tight">
         {editing
-          ? (isFreeplay ? 'Edit Session' : 'Edit Tournament')
-          : (isFreeplay ? 'New Freeplay Session' : 'New Tournament')}
+          ? (freeplayMode ? 'Edit Session' : 'Edit Tournament')
+          : (freeplayMode ? 'New Freeplay Session' : 'New Tournament')}
       </h1>
 
       <div className="space-y-2">
         <label htmlFor="nt-name" className="text-sm font-medium">Name (optional)</label>
-        <Input id="nt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={isFreeplay ? 'e.g. Thursday testing' : 'e.g. Spring Regional'} className="h-12 text-base" />
+        <Input id="nt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={freeplayMode ? 'e.g. Thursday testing' : 'e.g. Spring Regional'} className="h-12 text-base" />
       </div>
 
-      {!isFreeplay && (
-        <div className="space-y-2">
+      <div className="space-y-2">
           <span className="text-sm font-medium">Type</span>
-          {/* A strip rather than a dropdown: six choices, all of them short, and
-              the one you want is almost always the one you used last — which
-              leads it. A dropdown hid every option behind a tap to show six. */}
+          {/* A strip rather than a dropdown: a handful of choices, all of them
+              short, and the one you want is almost always the one you used last
+              — which leads it. A dropdown hid every option behind a tap.
+
+              Freeplay gets the same strip with its own two options, so a
+              simulator session is chosen exactly the way a Regional is. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Type">
             {orderedTypes.map((ty) => (
               <button
@@ -181,10 +192,9 @@ export function TournamentForm({ kind = 'tournament', initial }: {
               </button>
             ))}
           </div>
-        </div>
-      )}
+      </div>
 
-      {!isFreeplay && (
+      {!freeplayMode && (
         <div className="space-y-2">
           <span className="text-sm font-medium">Leader</span>
           <LeaderPicker
@@ -195,7 +205,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
         </div>
       )}
 
-      {isFreeplay && (
+      {freeplayMode && (
         <p className="text-sm text-muted-foreground">
           You’ll pick a deck on each round — a freeplay session has no fixed leader.
         </p>
@@ -234,10 +244,10 @@ export function TournamentForm({ kind = 'tournament', initial }: {
         <label htmlFor="nt-notes" className="text-sm font-medium">Note (optional)</label>
         {/* About the event, not the games — rounds keep their own notes. */}
         <Textarea id="nt-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-          placeholder={isFreeplay ? 'Who you tested with, what you were trying…' : 'Venue, who you went with, how it went…'} />
+          placeholder={freeplayMode ? 'Who you tested with, what you were trying…' : 'Venue, who you went with, how it went…'} />
       </div>
 
-      <Button onClick={submit} disabled={!isFreeplay && !myLeaderId} className="h-14 w-full text-base">
+      <Button onClick={submit} disabled={!freeplayMode && !myLeaderId} className="h-14 w-full text-base">
         {editing ? 'Save Changes' : 'Create & Start Logging'}
       </Button>
     </main>

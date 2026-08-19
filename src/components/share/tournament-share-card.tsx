@@ -8,6 +8,7 @@ import { placementLabel } from '@/lib/placement';
 import { rankTier } from '@/lib/rank';
 import { RankBadge, rankSkin } from '@/components/rank/rank-badge';
 import type { TournamentDetailDTO, RoundDTO, LeaderDTO, MetaDTO } from '@/lib/dto';
+import { isFreeplay } from '@/lib/tournament-kinds';
 
 // Rows tint by result; the badge uses the stronger fill. Both read in light and dark.
 const rowTint: Record<RoundDTO['result'], string> = {
@@ -100,12 +101,12 @@ export function TournamentShareCard({
     <div className={cn('w-[380px] space-y-4 rounded-xl border bg-card p-5 text-card-foreground', rankSkin(tier))}>
       {/* Header: leader (left), record, event tags (right) */}
       <div className="flex items-start gap-3">
-        {tournament.type === 'freeplay'
+        {isFreeplay(tournament.type)
           ? <FreeplayGlyph size="lg" />
           : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-bold leading-tight">
-            {tournament.type === 'freeplay'
+            {isFreeplay(tournament.type)
               ? (tournament.deckCount > 0 ? deckCountLabel(tournament.deckCount) : tournamentTypeLabel(tournament.type))
               : (myLeader?.name ?? '—')}
           </p>
@@ -138,7 +139,7 @@ export function TournamentShareCard({
             key={r.id}
             round={r}
             opponent={r.opponentLeaderId ? leaderById(r.opponentLeaderId) : undefined}
-            myLeader={tournament.type === 'freeplay' && r.myLeaderId ? leaderById(r.myLeaderId) : undefined}
+            myLeader={isFreeplay(tournament.type) && r.myLeaderId ? leaderById(r.myLeaderId) : undefined}
             condensed={condensed}
           />
         ))}

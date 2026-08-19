@@ -6,6 +6,7 @@ import type { GameLog } from '../lib/dto';
 // stats query rather than needing a table of its own.
 export const tournamentType = pgEnum('tournament_type', [
   'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay', 'match',
+  'ranked_sim', 'freeplay_sim',
 ]);
 export const tournamentStatus = pgEnum('tournament_status', ['draft', 'locked']);
 export const roundResult = pgEnum('round_result', ['win', 'loss', 'draw']);

@@ -32,6 +32,7 @@ import type { CreateRoundInput } from '@/lib/validation/round';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { TournamentShareCard } from '@/components/share/tournament-share-card';
 import { shareFilename } from '@/lib/share-image';
+import { isFreeplay } from '@/lib/tournament-kinds';
 
 /** Reconstruct a create payload from an existing round (for the delete → Undo action). */
 function roundToInput(r: RoundDTO): CreateRoundInput {
@@ -68,7 +69,7 @@ export function TournamentDetail({ id }: { id: string }) {
 
   // Back to the segment this came from, not always Tournaments — a freeplay
   // session lives under its own tab now.
-  const backToList = () => router.push(t?.type === 'freeplay' ? '/?tab=freeplay' : '/');
+  const backToList = () => router.push(t && isFreeplay(t.type) ? '/?tab=freeplay' : '/');
 
   if (isLoading) return <><NavBar backLabel="Tournaments" onBack={backToList} /><main className="mx-auto max-w-xl p-4"><Skeleton className="h-24 w-full" /></main></>;
   if (isError || !t) return <><NavBar backLabel="Tournaments" onBack={backToList} /><main className="mx-auto max-w-xl p-4"><p className="text-destructive">Couldn&apos;t load this tournament.</p></main></>;
@@ -83,7 +84,7 @@ export function TournamentDetail({ id }: { id: string }) {
   // type has one leader for the whole event: repeating it on every row costs
   // height on the densest screen and says nothing the header has not said.
   const leaderForRound = (r: RoundDTO) => {
-    if (t.type !== 'freeplay') return undefined;
+    if (!isFreeplay(t.type)) return undefined;
     const l = r.myLeaderId ? leaders?.find((x) => x.id === r.myLeaderId) : undefined;
     return l ? { name: l.name, colors: l.colors, setCode: l.setCode } : undefined;
   };
@@ -102,11 +103,11 @@ export function TournamentDetail({ id }: { id: string }) {
 
   return (
     <>
-    <NavBar backLabel={t.type === 'freeplay' ? 'Freeplay' : 'Tournaments'} onBack={backToList} />
+    <NavBar backLabel={isFreeplay(t.type) ? 'Freeplay' : 'Tournaments'} onBack={backToList} />
     <main className="mx-auto max-w-xl p-4 pb-28">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          {t.type === 'freeplay'
+          {isFreeplay(t.type)
             ? <FreeplayGlyph size="lg" />
             : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
           <div className="min-w-0">
@@ -135,7 +136,7 @@ export function TournamentDetail({ id }: { id: string }) {
               event hangs off, and it used to be an inline combobox sitting in
               the header — the one field you could change by accident while
               reading the page. It is changed on the edit screen now. */}
-          {t.type !== 'freeplay' && t.myLeaderId && (
+          {!isFreeplay(t.type) && t.myLeaderId && (
             <p className="mt-2 text-sm">Leader: <span className="font-medium">{leaderName(t.myLeaderId)}</span></p>
           )}
           </div>
@@ -218,7 +219,7 @@ export function TournamentDetail({ id }: { id: string }) {
       )}
 
       <RoundFormSheet open={sheetOpen} onOpenChange={setSheetOpen} initial={editing}
-        isFreeplay={t.type === 'freeplay'}
+        isFreeplay={isFreeplay(t.type)}
         defaultMyLeaderId={t.rounds.length > 0 ? (t.rounds[t.rounds.length - 1].myLeaderId ?? null) : null}
         onDelete={editing ? () => handleDeleteRound(editing) : undefined}
         onSubmit={async (data) => {
@@ -229,7 +230,7 @@ export function TournamentDetail({ id }: { id: string }) {
           if (data.kind === 'bye' || data.kind === 'no_show') { roundWrites.add(data); return; }
           logCelebration(() => roundWrites.add(data), {
             result: data.kind === 'top_cut' ? matchResultFromGames(data.games) : data.result,
-            myLeaderId: t.type === 'freeplay' ? (data.myLeaderId ?? null) : t.myLeaderId,
+            myLeaderId: isFreeplay(t.type) ? (data.myLeaderId ?? null) : t.myLeaderId,
             opponentLeaderId: data.opponentLeaderId,
           });
         }} />

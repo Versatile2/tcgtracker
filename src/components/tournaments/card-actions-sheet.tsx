@@ -14,6 +14,7 @@ import { placementLabel } from '@/lib/placement';
 import { MATCH_TYPE } from '@/lib/tournament-kinds';
 import { cn } from '@/lib/utils';
 import type { LeaderDTO, TournamentSummaryDTO } from '@/lib/dto';
+import { isFreeplay } from '@/lib/tournament-kinds';
 
 /**
  * What you can do to an event without opening it.
@@ -65,10 +66,10 @@ function Body({
   const [confirming, setConfirming] = useState(false);
 
   const isMatch = t.type === MATCH_TYPE;
-  const isFreeplay = t.type === 'freeplay';
+  const freeplay = isFreeplay(t.type);
   const drafting = t.status === 'draft';
   const leader = t.myLeaderId ? resolveLeader(t.myLeaderId) : undefined;
-  const noun = isMatch ? 'match' : isFreeplay ? 'session' : 'tournament';
+  const noun = isMatch ? 'match' : freeplay ? 'session' : 'tournament';
 
   const actions: Action[] = [
     // Absent on a finished tournament: /tournaments/[id]/edit refuses one, and
@@ -86,7 +87,7 @@ function Body({
     // A match is a single game with no draft state worth toggling.
     ...(isMatch ? [] : [drafting
       ? {
-        key: 'finish', icon: Lock, label: isFreeplay ? 'Finish session' : 'Finish',
+        key: 'finish', icon: Lock, label: freeplay ? 'Finish session' : 'Finish',
         run: () => { close(); writes.finish(t.id); },
       } as Action
       : {
@@ -104,7 +105,7 @@ function Body({
 
       {/* Identity first: it must be obvious which event is about to change. */}
       <div className="flex items-center gap-3 px-4 pb-3">
-        {isFreeplay
+        {freeplay
           ? <FreeplayGlyph size="md" />
           : <LeaderAvatar name={leader?.name ?? '—'} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
         <div className="min-w-0">

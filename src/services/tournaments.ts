@@ -5,6 +5,7 @@ import { tournaments, rounds } from '../db/schema';
 import { computeRecord, computeDeckCount } from '../lib/record';
 import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
 import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/validation/tournament';
+import { isFreeplay } from '../lib/tournament-kinds';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Tournament = typeof tournaments.$inferSelect;
@@ -32,10 +33,10 @@ export async function createTournament(db: DB, ownerId: string, input: CreateTou
   // The zod schema carries the same rule for callers that go through it (the
   // API route), but this service is also called directly (e.g. from tests),
   // so it must enforce the rule itself too.
-  if (input.type === 'freeplay' && input.myLeaderId !== undefined) {
+  if (isFreeplay(input.type) && input.myLeaderId !== undefined) {
     throw new ValidationError('A freeplay session has no leader of its own.');
   }
-  if (input.type !== 'freeplay' && input.myLeaderId === undefined) {
+  if (!isFreeplay(input.type) && input.myLeaderId === undefined) {
     throw new ValidationError('Choose your leader.');
   }
   // A client-supplied id makes the create idempotent: replaying a queued
@@ -93,7 +94,7 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
   // The leader invariant cannot survive a type switch: going to freeplay would
   // orphan the session leader, and leaving it would leave rounds owning leaders
   // the tournament should own.
-  if (input.type !== undefined && (input.type === 'freeplay') !== (current.type === 'freeplay')) {
+  if (input.type !== undefined && isFreeplay(input.type) !== isFreeplay(current.type)) {
     throw new ValidationError('A session cannot be changed into or out of freeplay.');
   }
   // Same shape, different invariant: a match holds exactly one round, so a
@@ -107,7 +108,7 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
   // its own — this is the same one-leader-per-session rule, just reached
   // without a type change. (A freeplay tournament's own myLeaderId is always
   // already null, so an explicit `null` here is a no-op, not a violation.)
-  if (current.type === 'freeplay' && input.myLeaderId !== undefined && input.myLeaderId !== null) {
+  if (isFreeplay(current.type) && input.myLeaderId !== undefined && input.myLeaderId !== null) {
     throw new ValidationError('A freeplay session has no leader of its own.');
   }
   const patch: Partial<typeof tournaments.$inferInsert> = { updatedAt: new Date() };

@@ -7,7 +7,11 @@ export const TOURNAMENT_TYPE_LABELS: Record<TournamentType, string> = {
   extra_grand_battle: 'Extra Grand Battle',
   pirates_party: 'Pirates Party',
   testing: 'Testing',
+  // One label, two stored values: the same event read differently depending on
+  // which segment it was logged in.
+  ranked_sim: 'Ranked Simulator',
   freeplay: 'Freeplay',
+  freeplay_sim: 'Ranked Simulator',
   match: 'Match',
 };
 

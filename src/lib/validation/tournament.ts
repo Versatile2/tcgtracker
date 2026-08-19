@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isFreeplay } from '../tournament-kinds';
 
 export const tournamentTypeEnum = z.enum([
   'local',
@@ -7,7 +8,11 @@ export const tournamentTypeEnum = z.enum([
   'extra_grand_battle',
   'pirates_party',
   'testing',
+  // Ranked play on the simulator, logged as an event.
+  'ranked_sim',
   'freeplay',
+  // The same simulator games logged as a casual session instead.
+  'freeplay_sim',
   'match',
 ]);
 
@@ -52,10 +57,10 @@ export const createTournamentSchema = z.object({
 }).superRefine((v, ctx) => {
   const bad = placementIssue(v);
   if (bad) ctx.addIssue({ code: 'custom', path: ['placement'], message: bad });
-  if (v.type === 'freeplay' && v.myLeaderId !== undefined) {
+  if (isFreeplay(v.type) && v.myLeaderId !== undefined) {
     ctx.addIssue({ code: 'custom', path: ['myLeaderId'], message: 'A freeplay session has no leader of its own.' });
   }
-  if (v.type !== 'freeplay' && v.myLeaderId === undefined) {
+  if (!isFreeplay(v.type) && v.myLeaderId === undefined) {
     ctx.addIssue({ code: 'custom', path: ['myLeaderId'], message: 'Choose your leader.' });
   }
 });

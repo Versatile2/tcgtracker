@@ -15,7 +15,7 @@ export type RoundDTO = {
   games: GameLog[] | null; notes: string | null;
 };
 export type RecordDTO = { wins: number; losses: number; draws: number };
-export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing' | 'freeplay' | 'match';
+export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing' | 'ranked_sim' | 'freeplay' | 'freeplay_sim' | 'match';
 // playOrder rides along so the client can evaluate achievements from its own
 // cache — without it, unlocks could only be discovered on the next server read.
 export type MatchSummaryDTO = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: RoundKind; playOrder: 'first' | 'second' | null };

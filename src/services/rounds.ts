@@ -5,6 +5,7 @@ import { tournaments, rounds } from '../db/schema';
 import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
 import type { CreateRoundInput, UpdateRoundInput } from '../lib/validation/round';
 import { roundFieldsFromInput as valuesForKind } from '../lib/round-values';
+import { isFreeplay } from '../lib/tournament-kinds';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Round = typeof rounds.$inferSelect;
@@ -34,11 +35,11 @@ async function requireOwnedRound(db: DB, ownerId: string, roundId: string) {
 // they are not games and feed no statistic.
 function assertLeaderInvariant(tournament: typeof tournaments.$inferSelect, input: CreateRoundInput | UpdateRoundInput) {
   if (input.kind === 'swiss' || input.kind === 'top_cut') {
-    const isFreeplay = tournament.type === 'freeplay';
-    if (isFreeplay && !input.myLeaderId) {
+    const freeplay = isFreeplay(tournament.type);
+    if (freeplay && !input.myLeaderId) {
       throw new ValidationError('Choose which deck you played this round.');
     }
-    if (!isFreeplay && input.myLeaderId) {
+    if (!freeplay && input.myLeaderId) {
       throw new ValidationError('Only a freeplay round records its own leader.');
     }
   }

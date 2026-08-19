@@ -18,9 +18,10 @@ import { useProgress } from '@/components/progress/use-progress';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { cn } from '@/lib/utils';
 import type { TournamentType, TournamentSummaryDTO } from '@/lib/dto';
+import { isFreeplay, TOURNAMENT_TYPES } from '@/lib/tournament-kinds';
 
 // Freeplay and match are segments of their own, not filters within this one.
-const TYPES: TournamentType[] = ['local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing'];
+const TYPES = TOURNAMENT_TYPES;
 
 type Segment = 'tournaments' | 'freeplay' | 'matches';
 
@@ -82,8 +83,8 @@ export function TournamentList() {
 
   const belongs = (t: { type: TournamentType }) =>
     segment === 'matches' ? t.type === MATCH_TYPE
-      : segment === 'freeplay' ? t.type === 'freeplay'
-      : t.type !== MATCH_TYPE && t.type !== 'freeplay';
+      : segment === 'freeplay' ? isFreeplay(t.type)
+      : t.type !== MATCH_TYPE && !isFreeplay(t.type);
   const inSegment = data?.filter(belongs) ?? [];
   // Only tournaments have a type worth filtering within.
   const shown = segment === 'tournaments'

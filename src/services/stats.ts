@@ -2,7 +2,7 @@ import { and, eq, ne, desc, notInArray, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds, leaders, metas } from '../db/schema';
-import { CASUAL_TYPES, MATCH_TYPE } from '../lib/tournament-kinds';
+import { CASUAL_TYPES, FREEPLAY_TYPES, MATCH_TYPE } from '../lib/tournament-kinds';
 
 type DB = NodePgDatabase<typeof schema>;
 
@@ -56,7 +56,7 @@ async function aggregateByMeta(db: DB, ownerId: string, opts: { includeFreeplay:
       // of it. Its meta still counts where matches do belong — the per-opponent
       // breakdown below.
       ne(tournaments.type, MATCH_TYPE),
-      ...(opts.includeFreeplay ? [] : [ne(tournaments.type, 'freeplay')]),
+      ...(opts.includeFreeplay ? [] : [notInArray(tournaments.type, FREEPLAY_TYPES)]),
     ))
     .groupBy(tournaments.metaId, metas.name, metas.code);
   return rows.map((r) => {

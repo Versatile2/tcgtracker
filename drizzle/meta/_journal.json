@@ -64,6 +64,13 @@
       "when": 1787062578960,
       "tag": "0008_brown_mattie_franklin",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787142466071,
+      "tag": "0009_thin_warhawk",
+      "breakpoints": true
     }
   ]
 }
