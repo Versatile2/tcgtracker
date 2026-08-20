@@ -61,15 +61,22 @@ const findRoundCreate = (queue: OutboxEntry[], roundId: string) =>
 
 /**
  * True when a queued `tournament.convert` for this tournament sits somewhere
- * after `at`. A create's payload — or a round create's payload — only makes
- * sense for the leader segment the tournament was in at the point it was
- * authored: a freeplay round carries its own leader, a classic one must not.
- * Folding a later edit back into that create would carry a payload written
- * for whichever side of the boundary the tournament was on *when the edit was
- * made* to a spot in the queue that predates the convert that put it there —
- * encoding a leader shape valid for the wrong segment. Declining to fold and
- * appending instead keeps every payload's leader shape valid for the segment
- * it was actually written against.
+ * after `at` — position-relative, not "anywhere in the queue". `at` is always
+ * the index of the create the caller is about to fold into, so what this
+ * asks is: does anything between that create and the tail cross the
+ * freeplay boundary? A create's payload — or a round create's payload — only
+ * makes sense for the leader segment the tournament was in at the point it
+ * was authored: a freeplay round carries its own leader, a classic one must
+ * not. If a convert sits between the create and the edit being folded, the
+ * two were authored on opposite sides of the boundary and folding would carry
+ * the edit's leader shape back to a spot that predates the convert that made
+ * it valid. If no convert sits between them — e.g. a round created *after* an
+ * already-queued convert, then edited again — both were authored on the same
+ * (post-convert) side, and folding is exactly as safe as it always was; the
+ * round.create not being first for its tournament id doesn't matter, only
+ * where it sits relative to the convert. Declining to fold and appending
+ * instead keeps every payload's leader shape valid for the segment it was
+ * actually written against.
  */
 function convertQueuedAfter(queue: OutboxEntry[], at: number, tournamentId: string): boolean {
   return queue
