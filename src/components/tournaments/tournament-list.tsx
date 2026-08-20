@@ -18,12 +18,17 @@ import { useProgress } from '@/components/progress/use-progress';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { cn } from '@/lib/utils';
 import type { TournamentType, TournamentSummaryDTO } from '@/lib/dto';
-import { isFreeplay, TOURNAMENT_TYPES } from '@/lib/tournament-kinds';
-
-// Freeplay and match are segments of their own, not filters within this one.
-const TYPES = TOURNAMENT_TYPES;
+import { isFreeplay, TOURNAMENT_TYPES, FREEPLAY_TYPES } from '@/lib/tournament-kinds';
 
 type Segment = 'tournaments' | 'freeplay' | 'matches';
+
+// Freeplay and match are segments of their own, not filters within this one —
+// but each segment filters within itself. A match has one type, so it has none.
+const CHIP_TYPES: Record<Segment, TournamentType[]> = {
+  tournaments: TOURNAMENT_TYPES,
+  freeplay: FREEPLAY_TYPES,
+  matches: [],
+};
 
 /**
  * The three kinds of thing you can log, and what each segment says about itself.
@@ -78,6 +83,13 @@ export function TournamentList() {
   );
   const onMatches = segment === 'matches';
   const current = SEGMENTS.find((s) => s.key === segment)!;
+  // The filter belongs to the segment, not to the page. Carrying "Regionals"
+  // into Freeplay would show an empty list with nothing on screen to explain it.
+  const selectSegment = (key: Segment) => {
+    setSegment(key);
+    setFilter('all');
+  };
+  const chips = CHIP_TYPES[segment];
 
   const resolveLeader = (id: string) => leaders?.find((l) => l.id === id);
 
@@ -86,8 +98,7 @@ export function TournamentList() {
       : segment === 'freeplay' ? isFreeplay(t.type)
       : t.type !== MATCH_TYPE && !isFreeplay(t.type);
   const inSegment = data?.filter(belongs) ?? [];
-  // Only tournaments have a type worth filtering within.
-  const shown = segment === 'tournaments'
+  const shown = chips.length > 0
     ? inSegment.filter((t) => filter === 'all' || t.type === filter)
     : inSegment;
   const totals = shown.reduce(
@@ -127,7 +138,7 @@ export function TournamentList() {
             type="button"
             role="tab"
             aria-selected={segment === s.key}
-            onClick={() => setSegment(s.key)}
+            onClick={() => selectSegment(s.key)}
             className={cn(
               'h-10 flex-1 rounded-lg text-sm font-semibold capitalize transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
               segment === s.key ? 'bg-background shadow-sm' : 'text-muted-foreground',
@@ -148,12 +159,12 @@ export function TournamentList() {
         {current.add}
       </Link>
 
-      {/* Type chips filter tournament types; freeplay and matches have none. */}
-      {segment === 'tournaments' && (
+      {/* Type chips filter within the segment; matches have one type, so none. */}
+      {chips.length > 0 && (
         <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
           <button onClick={() => setFilter('all')}
             className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === 'all' ? 'bg-primary text-primary-foreground' : 'border border-border/50 bg-card/60 supports-backdrop-filter:backdrop-blur-md'}`}>All</button>
-          {TYPES.map((ty) => (
+          {chips.map((ty) => (
             <button key={ty} onClick={() => setFilter(ty)}
               className={`inline-flex min-h-10 items-center whitespace-nowrap rounded-full px-4 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === ty ? 'bg-primary text-primary-foreground' : 'border border-border/50 bg-card/60 supports-backdrop-filter:backdrop-blur-md'}`}>
               {tournamentTypeLabel(ty)}
@@ -174,7 +185,7 @@ export function TournamentList() {
         ))}
         {data && inSegment.length > 0 && shown.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
-            No {tournamentTypeLabel(filter as TournamentType)} tournaments yet.
+            No {tournamentTypeLabel(filter as TournamentType)} {plural} yet.
           </div>
         )}
         {data && inSegment.length === 0 && (
