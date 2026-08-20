@@ -6,7 +6,12 @@ import type { TournamentType } from './dto';
  * Ranked Simulator is one kind of event with two stored values, because the
  * segment it was logged in — not its label — decides whether it counts. These
  * tests hold that split in place: the tournament one is competitive, the
- * freeplay one is not, and nothing else moved.
+ * freeplay one is not.
+ *
+ * Testing holds the opposite lesson: one stored value can change segment
+ * outright. It was a tournament type only because freeplay used to be a
+ * single option, forcing a deck-testing night to declare a leader it never
+ * needed. These tests also hold its move into the freeplay segment in place.
  */
 describe('tournament kinds', () => {
   it('puts both freeplay flavours in the freeplay segment', () => {
