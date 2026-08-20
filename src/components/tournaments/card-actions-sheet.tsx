@@ -1,13 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Share2, Lock, LockOpen, Trash2 } from 'lucide-react';
+import { Pencil, Share2, Lock, LockOpen, Trash2, Shuffle, Trophy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { TypeGlyph } from './type-glyph';
 import { TypeBadge } from './type-badge';
+import { ConvertSheet } from './convert-sheet';
 import { useTournamentWrites } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatPlayedOn } from '@/lib/format-date';
@@ -36,18 +37,36 @@ export function CardActionsSheet({
   onOpenChange: (open: boolean) => void;
   resolveLeader: (id: string) => LeaderDTO | undefined;
 }) {
+  // Lives here, not inside Body: running the convert action closes the
+  // actions sheet, which unmounts Body immediately — a state that must
+  // outlive that close belongs to the component that doesn't unmount.
+  const [converting, setConverting] = useState<TournamentSummaryDTO | null>(null);
+
   return (
-    <Sheet open={Boolean(target)} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
-        <div className="mx-auto mt-1 mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
-        {/* Keyed by target, so a new card always opens on the actions and never
-            on a confirmation left over from the last one. A remount rather than
-            an effect that resets it. */}
-        {target && (
-          <Body key={target.id} t={target} close={() => onOpenChange(false)} resolveLeader={resolveLeader} />
-        )}
-      </SheetContent>
-    </Sheet>
+    <>
+      <Sheet open={Boolean(target)} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
+          <div className="mx-auto mt-1 mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
+          {/* Keyed by target, so a new card always opens on the actions and never
+              on a confirmation left over from the last one. A remount rather than
+              an effect that resets it. */}
+          {target && (
+            <Body
+              key={target.id}
+              t={target}
+              close={() => onOpenChange(false)}
+              resolveLeader={resolveLeader}
+              onConvert={() => { onOpenChange(false); setConverting(target); }}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+      <ConvertSheet
+        open={Boolean(converting)}
+        onOpenChange={(open) => { if (!open) setConverting(null); }}
+        tournament={converting}
+      />
+    </>
   );
 }
 
@@ -57,10 +76,12 @@ function Body({
   t,
   close,
   resolveLeader,
+  onConvert,
 }: {
   t: TournamentSummaryDTO;
   close: () => void;
   resolveLeader: (id: string) => LeaderDTO | undefined;
+  onConvert: () => void;
 }) {
   const router = useRouter();
   const writes = useTournamentWrites();
@@ -85,6 +106,20 @@ function Body({
       key: 'share', icon: Share2, label: 'Share',
       run: () => { close(); router.push(isMatch ? `/matches/${t.id}` : `/tournaments/${t.id}?share=1`); },
     },
+    // A match cannot be converted — it is a single game, not an event with a
+    // segment to move between. A session offers the reverse only when it has
+    // at most one distinct deck across its rounds: with two or more, no single
+    // leader exists for the tournament this would become, and a menu should
+    // not offer a door that is locked.
+    ...(isMatch ? [] : freeplay
+      ? (t.deckCount <= 1 ? [{
+          key: 'convert', icon: Trophy, label: 'Convert to tournament',
+          run: () => onConvert(),
+        } as Action] : [])
+      : [{
+          key: 'convert', icon: Shuffle, label: 'Convert to session',
+          run: () => onConvert(),
+        } as Action]),
     // A match is a single game with no draft state worth toggling.
     ...(isMatch ? [] : [drafting
       ? {
