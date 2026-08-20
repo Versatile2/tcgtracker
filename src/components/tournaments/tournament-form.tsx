@@ -12,7 +12,7 @@ import { useLeaders, useMetas, useTournamentWrites, useStats } from '@/component
 import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
 import { pickDefaultMetaId } from '@/lib/meta-selection';
 import { recentLeaders } from '@/lib/recent-leaders';
-import { lastTournamentType, rememberTournamentType, orderTypes } from '@/lib/last-tournament-type';
+import { lastType, rememberType, orderTypes } from '@/lib/last-type';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import type { TournamentType, TournamentDetailDTO } from '@/lib/dto';
@@ -89,14 +89,14 @@ export function TournamentForm({ kind = 'tournament', initial }: {
    * the leader default: derived, not stored, so a pick simply takes precedence
    * and there is no effect to sequence against.
    */
-  const lastType = useMemo(() => (mounted && !editing ? lastTournamentType() : null), [mounted, editing]);
+  const lastTypeValue = useMemo(() => (mounted && !editing ? lastType('tournament') : null), [mounted, editing]);
   const offered = freeplayMode ? FREEPLAY_TYPES : TOURNAMENT_TYPES;
   // A freeplay session always leads with plain Freeplay: the remembered type is
   // the tournament one, and carrying it across segments would open the session
   // form on Ranked Simulator because of a Regional logged last week.
   const orderedTypes = useMemo(
-    () => (freeplayMode ? offered : orderTypes(offered, lastType)),
-    [freeplayMode, offered, lastType],
+    () => (freeplayMode ? offered : orderTypes(offered, lastTypeValue)),
+    [freeplayMode, offered, lastTypeValue],
   );
   const type: TournamentType = pickedType ?? orderedTypes[0];
 
@@ -126,7 +126,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
     // the venue has signal — the outbox delivers the tournament when it can.
     // Editing deliberately does not move the remembered type: changing an
     // event's type after the fact says nothing about what will be logged next.
-    if (!freeplayMode) rememberTournamentType(type);
+    if (!freeplayMode) rememberType('tournament', type);
     // Starting an event is a logging act too, and it can cross a milestone —
     // "Log your first tournament" is earned here, not by the first round. Left
     // uncelebrated, a brand-new player's very first act would pass in silence,
