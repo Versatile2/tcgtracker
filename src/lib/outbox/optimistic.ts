@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { RoundDTO, TournamentDetailDTO, TournamentSummaryDTO } from '@/lib/dto';
 import { keys } from '@/lib/query-keys';
 import { computeRecord, computeDeckCount } from '@/lib/record';
+import { isFreeplay } from '@/lib/tournament-kinds';
 
 /**
  * Apply a pending write to the query cache immediately. The cache is persisted
@@ -74,6 +75,53 @@ export function promotedLeaderId(qc: QueryClient, tournamentId: string, offered:
   if (!detail) return offered;
   const fromRounds = detail.rounds.find((r) => (r.kind === 'swiss' || r.kind === 'top_cut') && r.myLeaderId !== null)?.myLeaderId;
   return fromRounds ?? offered;
+}
+
+/**
+ * Applies a conversion to the cache the same way `convertTournamentType`
+ * applies it to the row: the leader moves between the tournament and its
+ * swiss/top_cut rounds, not just the tournament's own field. `putDetail`
+ * recomputes `deckCount` from `detail.rounds`, so leaving the rounds behind
+ * would collapse a session's deck count to 0 the moment it converts — the
+ * card would then offer a leader picker on the way back even though the
+ * tournament already has one, and worse, the leader the player repicks there
+ * is silently overruled by the round's real leader once the flush lands.
+ * Byes and no-shows are skipped, same as the server: they never carry a
+ * leader on either side of the boundary.
+ *
+ * Without a cached detail (converting from a list card whose tournament was
+ * never opened) there is no round data to move, so this degrades to the same
+ * tournament-row-only patch `convert` used to do unconditionally.
+ */
+export function convertTournament(
+  qc: QueryClient,
+  tournamentId: string,
+  payload: { type: TournamentDetailDTO['type']; myLeaderId?: string | null }
+) {
+  const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(tournamentId));
+  const toFreeplay = isFreeplay(payload.type);
+
+  if (!detail) {
+    patchTournament(qc, tournamentId, {
+      type: payload.type,
+      myLeaderId: toFreeplay ? null : (payload.myLeaderId ?? null),
+    });
+    return;
+  }
+
+  // Computed from the pre-conversion cache, before rounds/tournament below are
+  // rewritten — same rule `promotedLeaderId` documents for the server's own
+  // promotion step.
+  const myLeaderId = toFreeplay ? null : promotedLeaderId(qc, tournamentId, payload.myLeaderId ?? null);
+  // Going to freeplay pushes the tournament's own (pre-conversion) leader down
+  // onto the games; coming back clears them, mirroring the two branches of
+  // convertTournamentType.
+  const pushedDown = detail.myLeaderId;
+  const rounds = detail.rounds.map((r) =>
+    r.kind === 'swiss' || r.kind === 'top_cut' ? { ...r, myLeaderId: toFreeplay ? pushedDown : null } : r
+  );
+
+  putDetail(qc, { ...detail, type: payload.type, myLeaderId, rounds });
 }
 
 export function dropTournament(qc: QueryClient, id: string) {

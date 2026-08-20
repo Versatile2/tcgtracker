@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { addTournament, addRound, promotedLeaderId } from './optimistic';
+import { addTournament, addRound, promotedLeaderId, convertTournament } from './optimistic';
 import { keys } from '@/lib/query-keys';
 import type { TournamentDetailDTO, RoundDTO, TournamentSummaryDTO } from '@/lib/dto';
 
@@ -13,6 +13,22 @@ const freeplayDetail: TournamentDetailDTO = {
   id: T,
   type: 'freeplay',
   myLeaderId: null,
+  metaId: null,
+  name: null,
+  notes: null,
+  placement: null,
+  fieldSize: null,
+  playedOn: '2026-08-14',
+  status: 'draft',
+  matches: [],
+  deckCount: 0,
+  rounds: [],
+};
+
+const localDetail: TournamentDetailDTO = {
+  id: T,
+  type: 'local',
+  myLeaderId: ZORO,
   metaId: null,
   name: null,
   notes: null,
@@ -101,5 +117,97 @@ describe('promotedLeaderId', () => {
     // no round data available to read, same as the server has nothing to read
     // when it has no cached detail to fall back to either.
     expect(promotedLeaderId(qc, T, ZORO)).toBe(ZORO);
+  });
+});
+
+describe('convertTournament', () => {
+  // Mirrors convertTournamentType's two branches on the cached rounds, not
+  // just the tournament row — otherwise deckCount (recomputed from rounds by
+  // putDetail) goes stale the moment a conversion happens optimistically.
+
+  it('classic to session: pushes the leader down onto the games and clears the tournament row', () => {
+    addTournament(qc, localDetail);
+    addRound(qc, T, { ...swissRound(1, ZORO), myLeaderId: null });
+    addRound(qc, T, { ...swissRound(2, ZORO), myLeaderId: null });
+
+    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+
+    const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
+    expect(detail?.type).toBe('freeplay_gauntlet');
+    expect(detail?.myLeaderId).toBeNull();
+    expect(detail?.rounds.every((r) => r.myLeaderId === ZORO)).toBe(true);
+    // The rounds now carry the leader, so the deck count is not 0.
+    expect(detail?.deckCount).toBe(1);
+
+    const list = qc.getQueryData<TournamentSummaryDTO[]>(keys.tournaments);
+    expect(list?.find((t) => t.id === T)?.deckCount).toBe(1);
+  });
+
+  it('classic to session: leaves byes and no-shows without a leader', () => {
+    addTournament(qc, localDetail);
+    addRound(qc, T, { ...swissRound(1, ZORO), myLeaderId: null, kind: 'bye' });
+
+    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+
+    const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
+    expect(detail?.rounds[0].myLeaderId).toBeNull();
+  });
+
+  it('session to classic: promotes the round leader onto the tournament row and clears the games', () => {
+    addTournament(qc, freeplayDetail);
+    addRound(qc, T, swissRound(1, ZORO));
+    addRound(qc, T, swissRound(2, ZORO));
+
+    convertTournament(qc, T, { type: 'local' });
+
+    const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
+    expect(detail?.type).toBe('local');
+    expect(detail?.myLeaderId).toBe(ZORO);
+    expect(detail?.rounds.every((r) => r.myLeaderId === null)).toBe(true);
+    // A classic type's deck count is always 0 — the leader lives on the row.
+    expect(detail?.deckCount).toBe(0);
+  });
+
+  it('session to classic: falls back to the offered leader when no round has one to promote', () => {
+    addTournament(qc, freeplayDetail);
+    addRound(qc, T, { ...swissRound(1, ZORO), kind: 'bye' });
+
+    convertTournament(qc, T, { type: 'local', myLeaderId: NAMI });
+
+    const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
+    expect(detail?.myLeaderId).toBe(NAMI);
+  });
+
+  it('round-trips: converting back offers the same leader instead of a stale deckCount of 0', () => {
+    // The exact regression this fixes: without moving the rounds, converting
+    // classic -> session left the cached rounds without the leader, so
+    // deckCount read 0 and the reverse conversion looked like it needed a
+    // leader picked from scratch (convert-sheet.tsx gates on deckCount === 0).
+    addTournament(qc, localDetail);
+    addRound(qc, T, { ...swissRound(1, ZORO), myLeaderId: null });
+
+    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+    let detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
+    expect(detail?.deckCount).toBe(1);
+
+    convertTournament(qc, T, { type: 'local' });
+    detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
+    expect(detail?.myLeaderId).toBe(ZORO);
+  });
+
+  it('falls back to a row-only patch when the detail is not cached', () => {
+    // Converting from a list card whose tournament was never opened — there is
+    // no round data to move, same fallback promotedLeaderId documents. Seed
+    // the summary list directly, the way the list query would have populated
+    // it, without ever caching the detail.
+    const { rounds: _rounds, ...summary } = localDetail;
+    void _rounds;
+    qc.setQueryData<TournamentSummaryDTO[]>(keys.tournaments, [{ ...summary, record: { wins: 0, losses: 0, draws: 0 } }]);
+
+    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+
+    const list = qc.getQueryData<TournamentSummaryDTO[]>(keys.tournaments);
+    expect(list?.find((t) => t.id === T)?.type).toBe('freeplay_gauntlet');
+    expect(list?.find((t) => t.id === T)?.myLeaderId).toBeNull();
   });
 });

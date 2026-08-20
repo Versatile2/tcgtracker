@@ -6,7 +6,6 @@ import { keys } from '@/lib/query-keys';
 import { roundFieldsFromInput } from '@/lib/round-values';
 import * as cache from '@/lib/outbox/optimistic';
 import { useOutbox } from '@/lib/outbox/use-outbox';
-import { isFreeplay } from '@/lib/tournament-kinds';
 import type { RoundDTO, TournamentDetailDTO } from '@/lib/dto';
 import type { CreateRoundInput, UpdateRoundInput } from '@/lib/validation/round';
 import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from '@/lib/validation/tournament';
@@ -91,19 +90,11 @@ export function useTournamentWrites() {
 
   const convert = useCallback(
     (id: string, payload: ConvertTournamentInput) => {
-      // The card must change segment on the tap, not on the flush. Going to
-      // freeplay always clears the tournament's own leader — it moves onto the
-      // rounds, mirroring the server unconditionally. Going the other way
-      // promotes a leader from the cached rounds when the detail is loaded
-      // (same rule the server applies), else falls back to what was offered.
-      // The rounds themselves are not rewritten here: the list only reads the
-      // tournament row, so the per-round leader swap is left for the detail
-      // view to pick up on its next fetch rather than duplicating that logic
-      // twice.
-      cache.patchTournament(qc, id, {
-        type: payload.type,
-        myLeaderId: isFreeplay(payload.type) ? null : cache.promotedLeaderId(qc, id, payload.myLeaderId ?? null),
-      });
+      // The card must change segment on the tap, not on the flush — leader and
+      // all, on both the tournament row and its cached rounds, mirroring the
+      // server exactly. See `convertTournament`'s own comment for why leaving
+      // the rounds behind is not an option.
+      cache.convertTournament(qc, id, payload);
       push({ kind: 'tournament.convert', tournamentId: id, payload });
     },
     [qc, push]

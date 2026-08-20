@@ -183,4 +183,37 @@ describe('either direction', () => {
     await expect(convertTournamentType(db, USER, t.id, { type: 'regionals' }))
       .rejects.toBeInstanceOf(ValidationError);
   });
+
+  it('returns the row unchanged when replayed against a conversion that already landed', async () => {
+    // A replayed offline convert whose POST committed but whose response never
+    // made it back: the outbox retries and this call reaches an already-
+    // converted row. Every other queued op tolerates a replay of its own
+    // already-applied effect (createTournament, addRound); convert has to as
+    // well, or classifyFailure treats the resulting 400 as permanent and
+    // discards the entry while the screen already shows the conversion done.
+    const { mine, opp } = await anyLeaderIds();
+    const t = await createTournament(db, USER, { type: 'local', myLeaderId: mine, playedOn: '2026-08-14' });
+    await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
+
+    const converted = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+    const replayed = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+
+    expect(replayed).toEqual(converted);
+    const rs = await roundsFor(t.id);
+    expect(rs.every((r) => r.myLeaderId === mine)).toBe(true);
+  });
+
+  it('still refuses a same-side type change that is not a replay of the current type', async () => {
+    // Distinguishes the no-op branch above from a genuine caller error: this
+    // request never happened before (local -> regionals), it just happens to
+    // land on the same side of freeplay the tournament is already on. That is
+    // still not a conversion, and must still be rejected rather than silently
+    // renaming the type.
+    const { mine } = await anyLeaderIds();
+    const t = await createTournament(db, USER, { type: 'local', myLeaderId: mine, playedOn: '2026-08-14' });
+    await expect(convertTournamentType(db, USER, t.id, { type: 'regionals' }))
+      .rejects.toBeInstanceOf(ValidationError);
+    const [row] = await db.select().from(tournaments).where(eq(tournaments.id, t.id));
+    expect(row.type).toBe('local');
+  });
 });

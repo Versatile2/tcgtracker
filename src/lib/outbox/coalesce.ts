@@ -59,6 +59,24 @@ const findCreate = (queue: OutboxEntry[], tournamentId: string) =>
 const findRoundCreate = (queue: OutboxEntry[], roundId: string) =>
   queue.findIndex((e) => e.op.kind === 'round.create' && e.op.roundId === roundId);
 
+/**
+ * True when a queued `tournament.convert` for this tournament sits somewhere
+ * after `at`. A create's payload — or a round create's payload — only makes
+ * sense for the leader segment the tournament was in at the point it was
+ * authored: a freeplay round carries its own leader, a classic one must not.
+ * Folding a later edit back into that create would carry a payload written
+ * for whichever side of the boundary the tournament was on *when the edit was
+ * made* to a spot in the queue that predates the convert that put it there —
+ * encoding a leader shape valid for the wrong segment. Declining to fold and
+ * appending instead keeps every payload's leader shape valid for the segment
+ * it was actually written against.
+ */
+function convertQueuedAfter(queue: OutboxEntry[], at: number, tournamentId: string): boolean {
+  return queue
+    .slice(at + 1)
+    .some((e) => e.op.kind === 'tournament.convert' && e.op.tournamentId === tournamentId);
+}
+
 type Defined<T> = { [K in keyof T]?: Exclude<T[K], null> };
 
 /** Drop keys explicitly set to null: patches may clear a field, creates may not. */
@@ -72,9 +90,11 @@ function mergeTournamentUpdate(
   op: Extract<OutboxOp, { kind: 'tournament.update' }>
 ): OutboxEntry[] {
   // Fold into the create that has not been sent yet — the server will never see
-  // the intermediate state, so it does not need to be described.
+  // the intermediate state, so it does not need to be described. Not when a
+  // convert for this tournament is already queued after the create, though —
+  // see convertQueuedAfter.
   const createAt = findCreate(queue, op.tournamentId);
-  if (createAt !== -1) {
+  if (createAt !== -1 && !convertQueuedAfter(queue, createAt, op.tournamentId)) {
     const create = queue[createAt].op as Extract<OutboxOp, { kind: 'tournament.create' }>;
     const payload: CreateTournamentPayload = { ...create.payload, ...withoutNulls(op.payload) };
     return queue.with(createAt, { ...queue[createAt], op: { ...create, payload } });
@@ -103,7 +123,10 @@ function mergeRoundUpdate(
   op: Extract<OutboxOp, { kind: 'round.update' }>
 ): OutboxEntry[] {
   const createAt = findRoundCreate(queue, op.roundId);
-  if (createAt !== -1) {
+  // Not when a convert for this round's tournament is already queued after the
+  // create — see convertQueuedAfter. The round op carries tournamentId for
+  // exactly this check, even though delivery only needs roundId.
+  if (createAt !== -1 && !convertQueuedAfter(queue, createAt, op.tournamentId)) {
     const create = queue[createAt].op as Extract<OutboxOp, { kind: 'round.create' }>;
     // A round edit resubmits the whole round, so the patch replaces the queued
     // create's payload outright; only the id has to survive.

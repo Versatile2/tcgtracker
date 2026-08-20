@@ -148,6 +148,16 @@ export async function convertTournamentType(
   if (current.type === MATCH_TYPE || input.type === MATCH_TYPE) {
     throw new ValidationError('A match cannot be converted.');
   }
+  // A replayed offline convert whose response never made it back: the POST
+  // already committed, the outbox retries on the lost response, and the
+  // replay lands here with the row already on the destination type. Every
+  // other op in this service treats that as success (see createTournament,
+  // addRound) rather than a caller error, so convert has to as well — the
+  // alternative is classifyFailure treating the 400 as permanent and
+  // discarding the entry while the screen already shows the conversion done.
+  if (current.type === input.type) {
+    return current;
+  }
   // Not a conversion at all — the caller wants updateTournament.
   if (isFreeplay(input.type) === isFreeplay(current.type)) {
     throw new ValidationError('That type is already on the same side of freeplay.');

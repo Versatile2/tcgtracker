@@ -26,6 +26,22 @@ const createR = (roundId = R, tournamentId = T): OutboxOp => ({
   payload: { id: roundId, kind: 'swiss', opponentLeaderId: LEADER, result: 'win' },
 });
 
+// The mirror of createT/createR: a session (freeplay) tournament whose round
+// carries its own leader, the shape that only makes sense on that side of the
+// boundary.
+const createFreeplayT = (id = T): OutboxOp => ({
+  kind: 'tournament.create',
+  tournamentId: id,
+  payload: { id, type: 'freeplay_gauntlet', playedOn: '2026-08-07' },
+});
+
+const createFreeplayR = (roundId = R, tournamentId = T): OutboxOp => ({
+  kind: 'round.create',
+  tournamentId,
+  roundId,
+  payload: { id: roundId, kind: 'swiss', opponentLeaderId: LEADER, result: 'win', myLeaderId: LEADER },
+});
+
 /** Build a queue by enqueuing each op in order, the way the app does. */
 function queueOf(...ops: OutboxOp[]): OutboxEntry[] {
   return ops.reduce<OutboxEntry[]>((q, op) => enqueue(q, entry(op)), []);
@@ -209,5 +225,92 @@ describe('outbox coalescing', () => {
     const q = queueOf(createT(T2), createR(R2, T2), createT(), { kind: 'tournament.delete', tournamentId: T });
     expect(kinds(q)).toEqual(['tournament.create', 'round.create']);
     expect(q.every((e) => e.op.tournamentId === T2)).toBe(true);
+  });
+
+  describe('folding across a queued convert', () => {
+    // A create's payload is only valid for the leader segment the tournament
+    // was in when it was authored. Folding a later edit back into it would
+    // carry a payload written for whichever side of the boundary the edit was
+    // made on to a spot in the queue that predates the convert that put the
+    // tournament there — see convertQueuedAfter's comment in coalesce.ts.
+
+    it('declines to fold a tournament update into its create when a convert is queued between them', () => {
+      const q = queueOf(
+        createT(),
+        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
+      );
+      expect(kinds(q)).toEqual(['tournament.create', 'tournament.convert', 'tournament.update']);
+      // The create keeps its original, pre-convert payload untouched.
+      expect(q[0].op).toMatchObject({ payload: { type: 'local', id: T } });
+      const createPayload = (q[0].op as Extract<OutboxOp, { kind: 'tournament.create' }>).payload;
+      expect(createPayload.name).toBeUndefined();
+    });
+
+    it('declines to fold the mirror case: an update after a queued convert to classic', () => {
+      const q = queueOf(
+        createFreeplayT(),
+        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
+        { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
+      );
+      expect(kinds(q)).toEqual(['tournament.create', 'tournament.convert', 'tournament.update']);
+      expect(q[0].op).toMatchObject({ payload: { type: 'freeplay_gauntlet', id: T } });
+      const createPayload = (q[0].op as Extract<OutboxOp, { kind: 'tournament.create' }>).payload;
+      expect(createPayload.name).toBeUndefined();
+    });
+
+    it('still folds a tournament update into its create when the intervening convert is for a different tournament', () => {
+      const q = queueOf(
+        createT(),
+        createT(T2),
+        { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
+      );
+      expect(kinds(q)).toEqual(['tournament.create', 'tournament.create', 'tournament.convert']);
+      const tCreate = q.find((e) => e.op.tournamentId === T)!.op as Extract<OutboxOp, { kind: 'tournament.create' }>;
+      expect(tCreate.payload.name).toBe('Renamed');
+    });
+
+    it('declines to fold a round update into its create when a convert for the round\'s tournament is queued between them', () => {
+      const q = queueOf(
+        createT(),
+        createR(),
+        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'round.update', tournamentId: T, roundId: R, payload: { kind: 'swiss', opponentLeaderId: LEADER, result: 'loss' } },
+      );
+      expect(kinds(q)).toEqual(['tournament.create', 'round.create', 'tournament.convert', 'round.update']);
+      // The queued round create still carries its original, leaderless payload —
+      // not the leaderless edit re-encoded as though it were still valid, and not
+      // a leader added that the edit never sent either.
+      expect(q[1].op).toMatchObject({ payload: { id: R, result: 'win' } });
+      const roundPayload = (q[1].op as Extract<OutboxOp, { kind: 'round.create' }>).payload;
+      expect('myLeaderId' in roundPayload).toBe(false);
+    });
+
+    it('declines to fold the mirror case: a round update after a queued convert to classic', () => {
+      const q = queueOf(
+        createFreeplayT(),
+        createFreeplayR(),
+        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
+        { kind: 'round.update', tournamentId: T, roundId: R, payload: { kind: 'swiss', opponentLeaderId: LEADER, result: 'loss' } },
+      );
+      expect(kinds(q)).toEqual(['tournament.create', 'round.create', 'tournament.convert', 'round.update']);
+      // The queued round create still carries its own leader — not silently
+      // dropped by an edit authored after the tournament stopped needing it.
+      expect(q[1].op).toMatchObject({ payload: { id: R, myLeaderId: LEADER, result: 'win' } });
+    });
+
+    it('still folds a round update into its create when the intervening convert is for a different tournament', () => {
+      const q = queueOf(
+        createT(),
+        createR(),
+        createT(T2),
+        { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'round.update', tournamentId: T, roundId: R, payload: { kind: 'swiss', opponentLeaderId: LEADER, result: 'loss' } },
+      );
+      expect(kinds(q)).toEqual(['tournament.create', 'round.create', 'tournament.create', 'tournament.convert']);
+      const rCreate = q.find((e) => e.op.kind === 'round.create')!.op as Extract<OutboxOp, { kind: 'round.create' }>;
+      expect(rCreate.payload).toMatchObject({ result: 'loss' });
+    });
   });
 });
