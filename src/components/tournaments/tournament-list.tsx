@@ -148,6 +148,17 @@ export function TournamentList() {
         ))}
       </div>
 
+      {/* Sits under the control it explains, and stays there once games are
+          logged — the empty state's copy is gone by then, but the question
+          ("why isn't this match in my win rate?") outlives it. Muted and
+          right-aligned so it never competes with the add button below.
+          Suppressed while the empty state is up, which already offers it. */}
+      {inSegment.length > 0 && (
+        <div className="mt-2 flex justify-end">
+          <KindsHelpButton className="text-xs font-normal text-muted-foreground" />
+        </div>
+      )}
+
       {/* The segment already states the intent, so this names one thing and goes
           straight there. The nav's + stays the route in from anywhere else. */}
       <Link
