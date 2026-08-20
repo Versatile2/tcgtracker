@@ -10,6 +10,8 @@ import { useOutbox, pendingTournamentIds } from '@/lib/outbox/use-outbox';
 import { TournamentCard } from './tournament-card';
 import { MatchCard } from '@/components/matches/match-card';
 import { CardActionsSheet } from './card-actions-sheet';
+import { KindsHelpButton } from '@/components/nav/kinds-sheet';
+import { logKind } from '@/lib/log-kinds';
 import { hintSeen, markHintSeen } from '@/lib/hint-seen';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatRecord } from '@/lib/record';
@@ -195,12 +197,20 @@ export function TournamentList() {
             Nothing filed under {tournamentTypeLabel(filter as TournamentType)} yet.
           </div>
         )}
+        {/* An empty segment is the one moment the reader is asking what this
+            tab even is, so it answers rather than just reporting nothing. On
+            Tournaments with nothing logged at all, this is also the first
+            screen of the app — the same explanation serves both. */}
         {data && inSegment.length === 0 && (
-          <div className="rounded-2xl border border-dashed p-10 text-center">
+          <div className="rounded-2xl border border-dashed p-8 text-center">
             <p className="font-medium">No {plural} yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
+              {logKind(segment).blurb}
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
               Tap <span className="font-semibold text-primary">{current.add}</span> above to log your first one.
             </p>
+            <KindsHelpButton className="mt-4">Compare all three</KindsHelpButton>
           </div>
         )}
         {/* Taught once, then gone. A gesture nobody knows about is not a

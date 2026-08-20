@@ -2,9 +2,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Trophy, BarChart3, Medal, Settings, Plus, Swords, Shuffle } from 'lucide-react';
+import { Trophy, BarChart3, Medal, Settings, Plus, Info, ArrowLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { KindsComparison } from './kinds-comparison';
+import { LOG_KINDS } from '@/lib/log-kinds';
 import { cn } from '@/lib/utils';
 
 type Tab = { href: string; label: string; icon: LucideIcon; match: (p: string) => boolean };
@@ -18,16 +20,13 @@ const TABS: Tab[] = [
   { href: '/settings', label: 'Settings', icon: Settings, match: (p) => p.startsWith('/settings') },
 ];
 
-/** What the centre button can start. Order is by how often it is reached for. */
-const LOGGABLE = [
-  { href: '/tournaments/new', icon: Trophy, label: 'New Tournament', hint: 'An event you play several rounds of' },
-  { href: '/sessions/new', icon: Shuffle, label: 'New Session', hint: 'Several games, changing deck as you go' },
-  { href: '/matches/new', icon: Swords, label: 'New Match', hint: 'A single game, on its own' },
-];
-
 export function BottomNav() {
   const pathname = usePathname() ?? '/';
   const [choosing, setChoosing] = useState(false);
+  // A second pane in the same sheet rather than a sheet on top of a sheet: the
+  // question "which of these do I want?" is asked here, so the answer belongs
+  // here too, one tap deep and one tap back.
+  const [comparing, setComparing] = useState(false);
   if (pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')) return null;
 
   // The prominent center action ("+") sits between Stats and Achievements.
@@ -59,27 +58,73 @@ export function BottomNav() {
         {right.map((t) => <TabLink key={t.href} tab={t} active={t.match(pathname)} />)}
       </div>
 
-      <Sheet open={choosing} onOpenChange={setChoosing}>
+      <Sheet
+        open={choosing}
+        onOpenChange={(open) => {
+          setChoosing(open);
+          // Reopening lands on the list again. The comparison is read once and
+          // then in the way; nobody wants the explainer every time they log.
+          if (!open) setComparing(false);
+        }}
+      >
         <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
           <div className="mx-auto mt-1 mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
-          <SheetHeader><SheetTitle className="text-2xl font-bold">Log a game</SheetTitle></SheetHeader>
-          <div className="space-y-2 px-4 pt-2 pb-6">
-            {LOGGABLE.map(({ href, icon: Icon, label, hint }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setChoosing(false)}
-                className="flex items-center gap-3 rounded-xl border border-border/70 p-3 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
-                  <Icon className="size-5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">{label}</span>
-                  <span className="block text-xs text-muted-foreground">{hint}</span>
-                </span>
-              </Link>
-            ))}
+          <SheetHeader>
+            <div className="flex items-center gap-2">
+              {comparing && (
+                <button
+                  type="button"
+                  onClick={() => setComparing(false)}
+                  aria-label="Back to Log a game"
+                  className="-ml-1 flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ArrowLeft className="size-5" aria-hidden />
+                </button>
+              )}
+              <SheetTitle className="text-2xl font-bold">
+                {comparing ? 'What’s the difference?' : 'Log a game'}
+              </SheetTitle>
+              {!comparing && (
+                <button
+                  type="button"
+                  onClick={() => setComparing(true)}
+                  aria-label="What’s the difference?"
+                  className="ml-auto flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Info className="size-5" aria-hidden />
+                </button>
+              )}
+            </div>
+            <SheetDescription className="sr-only">
+              {comparing
+                ? 'Three ways to log a game, and where each one shows up.'
+                : 'Choose what kind of game to log.'}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pt-2 pb-6">
+            {comparing ? <KindsComparison /> : (
+              <div className="space-y-2">
+                {LOG_KINDS.map(({ href, icon: Icon, label, shape, counts }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setChoosing(false)}
+                    className="flex items-center gap-3 rounded-xl border border-border/70 p-3 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                      <Icon className="size-5" aria-hidden />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold">{label}</span>
+                      <span className="block text-xs text-muted-foreground">{shape}</span>
+                      {/* The line the shape alone never answered: two of these
+                          three deliberately stay out of your record. */}
+                      <span className="mt-0.5 block text-xs font-medium text-primary/80">{counts}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>
