@@ -8,7 +8,7 @@ export function OverallStats({ o }: { o: OverallStatsDTO }) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Overall</h2>
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          No tournaments logged yet — freeplay sessions aren’t counted here.
+          No tournaments logged yet — sessions aren’t counted here.
         </p>
       </section>
     );

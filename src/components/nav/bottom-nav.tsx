@@ -21,7 +21,7 @@ const TABS: Tab[] = [
 /** What the centre button can start. Order is by how often it is reached for. */
 const LOGGABLE = [
   { href: '/tournaments/new', icon: Trophy, label: 'New Tournament', hint: 'An event you play several rounds of' },
-  { href: '/freeplay/new', icon: Shuffle, label: 'New Freeplay', hint: 'Several games, changing deck as you go' },
+  { href: '/sessions/new', icon: Shuffle, label: 'New Session', hint: 'Several games, changing deck as you go' },
   { href: '/matches/new', icon: Swords, label: 'New Match', hint: 'A single game, on its own' },
 ];
 

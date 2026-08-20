@@ -19,24 +19,23 @@ import { useIsMounted } from '@/lib/use-is-mounted';
 import { cn } from '@/lib/utils';
 import type { TournamentType, TournamentSummaryDTO } from '@/lib/dto';
 import { isFreeplay, TOURNAMENT_TYPES, FREEPLAY_TYPES } from '@/lib/tournament-kinds';
+import { segmentFromTab, type Segment } from './segment';
 
-type Segment = 'tournaments' | 'freeplay' | 'matches';
-
-// Freeplay and match are segments of their own, not filters within this one —
+// Sessions and match are segments of their own, not filters within this one —
 // but each segment filters within itself. A match has one type, so it has none.
 const CHIP_TYPES: Record<Segment, TournamentType[]> = {
   tournaments: TOURNAMENT_TYPES,
-  freeplay: FREEPLAY_TYPES,
+  sessions: FREEPLAY_TYPES,
   matches: [],
 };
 
 /**
  * The three kinds of thing you can log, and what each segment says about itself.
- * Tournaments is the catch-all: anything that is not freeplay or a match.
+ * Tournaments is the catch-all: anything that is not a session or a match.
  */
 const SEGMENTS: { key: Segment; noun: string; plural: string; add: string; href: string }[] = [
   { key: 'tournaments', noun: 'tournament', plural: 'tournaments', add: 'New Tournament', href: '/tournaments/new' },
-  { key: 'freeplay', noun: 'session', plural: 'sessions', add: 'New Freeplay', href: '/freeplay/new' },
+  { key: 'sessions', noun: 'session', plural: 'sessions', add: 'New Session', href: '/sessions/new' },
   { key: 'matches', noun: 'match', plural: 'matches', add: 'New Match', href: '/matches/new' },
 ];
 
@@ -78,13 +77,11 @@ export function TournamentList() {
   // and the thing you just logged would be nowhere in sight.
   const params = useSearchParams();
   const tab = params?.get('tab');
-  const [segment, setSegment] = useState<Segment>(
-    tab === 'matches' ? 'matches' : tab === 'freeplay' ? 'freeplay' : 'tournaments',
-  );
+  const [segment, setSegment] = useState<Segment>(segmentFromTab(tab));
   const onMatches = segment === 'matches';
   const current = SEGMENTS.find((s) => s.key === segment)!;
   // The filter belongs to the segment, not to the page. Carrying "Regionals"
-  // into Freeplay would show an empty list with nothing on screen to explain it.
+  // into Sessions would show an empty list with nothing on screen to explain it.
   const selectSegment = (key: Segment) => {
     setSegment(key);
     setFilter('all');
@@ -95,7 +92,7 @@ export function TournamentList() {
 
   const belongs = (t: { type: TournamentType }) =>
     segment === 'matches' ? t.type === MATCH_TYPE
-      : segment === 'freeplay' ? isFreeplay(t.type)
+      : segment === 'sessions' ? isFreeplay(t.type)
       : t.type !== MATCH_TYPE && !isFreeplay(t.type);
   const inSegment = data?.filter(belongs) ?? [];
   const shown = chips.length > 0
@@ -195,7 +192,7 @@ export function TournamentList() {
         ))}
         {data && inSegment.length > 0 && shown.length === 0 && (
           <div className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
-            No {tournamentTypeLabel(filter as TournamentType)} {plural} yet.
+            Nothing filed under {tournamentTypeLabel(filter as TournamentType)} yet.
           </div>
         )}
         {data && inSegment.length === 0 && (
