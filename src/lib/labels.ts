@@ -10,7 +10,7 @@ export const TOURNAMENT_TYPE_LABELS: Record<TournamentType, string> = {
   // One label, two stored values: the same event read differently depending on
   // which segment it was logged in.
   ranked_sim: 'Ranked Simulator',
-  freeplay: 'Freeplay',
+  freeplay: 'Session',
   freeplay_sim: 'Ranked Simulator',
   freeplay_sim_casual: 'Casual Simulator',
   freeplay_friend: 'Friend Battle',

@@ -7,6 +7,12 @@ describe('tournamentTypeLabel', () => {
     expect(tournamentTypeLabel('extra_grand_battle')).toBe('Extra Grand Battle');
     expect(tournamentTypeLabel('local')).toBe('Local');
   });
+
+  // The stored value stays `freeplay` — only the label moved, in step with
+  // the segment it lives in being renamed to Sessions.
+  it('labels the catch-all freeplay type "Session"', () => {
+    expect(tournamentTypeLabel('freeplay')).toBe('Session');
+  });
 });
 
 describe('metaLabel', () => {

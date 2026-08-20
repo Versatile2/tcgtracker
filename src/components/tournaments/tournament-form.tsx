@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { isFreeplay, FREEPLAY_TYPES, TOURNAMENT_TYPES } from '@/lib/tournament-kinds';
 
 // A match is reached through its own tab — it is a single game, not an event.
-// Freeplay is no longer a single type but a segment with its own two choices,
+// Sessions are no longer a single type but a segment with eight of its own,
 // because the same simulator session can be logged either way and it is the
 // segment, not the label, that decides whether it counts competitively.
 
@@ -92,7 +92,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
    * Per segment, because the two have nothing to say to each other. A Regional
    * logged last week must not open the session form on Ranked Simulator — which
    * is why this used to skip the reordering on the freeplay side entirely. At
-   * eight session types, always landing on plain Freeplay costs a scroll and a
+   * eight session types, always landing on plain Session costs a scroll and a
    * tap for every gauntlet and every ladder night.
    */
   const segment: TypeSegment = freeplayMode ? 'freeplay' : 'tournament';
@@ -157,7 +157,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
       <h1 className="text-3xl font-bold tracking-tight">
         {editing
           ? (freeplayMode ? 'Edit Session' : 'Edit Tournament')
-          : (freeplayMode ? 'New Freeplay Session' : 'New Tournament')}
+          : (freeplayMode ? 'New Session' : 'New Tournament')}
       </h1>
 
       <div className="space-y-2">
@@ -207,7 +207,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
 
       {freeplayMode && (
         <p className="text-sm text-muted-foreground">
-          You’ll pick a deck on each round — a freeplay session has no fixed leader.
+          You’ll pick a deck on each round — a session has no fixed leader.
         </p>
       )}
 
