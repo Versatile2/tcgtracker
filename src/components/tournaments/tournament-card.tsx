@@ -3,14 +3,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Lock, ChevronDown, CloudOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { TypeGlyph } from './type-glyph';
+import { TypeBadge } from './type-badge';
 import { cn } from '@/lib/utils';
 import { useLongPress } from '@/lib/use-long-press';
 import { formatPlayedOn } from '@/lib/format-date';
 import { formatRecord } from '@/lib/record';
-import { tournamentTypeLabel, roundKindLabel, deckCountLabel } from '@/lib/labels';
+import { roundKindLabel, deckCountLabel } from '@/lib/labels';
 import { placementLabel } from '@/lib/placement';
 import { rankTier } from '@/lib/rank';
 import { RankBadge, rankSkin } from '@/components/rank/rank-badge';
@@ -58,7 +58,7 @@ export function TournamentCard({
             : <LeaderAvatar name={leaderName} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{tournamentTypeLabel(t.type)}</Badge>
+              <TypeBadge type={t.type} />
               {isDraft ? (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                   <span className="size-1.5 rounded-full bg-primary" />
