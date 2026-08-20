@@ -5,7 +5,7 @@ import { Lock, ChevronDown, CloudOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
-import { FreeplayGlyph } from './freeplay-glyph';
+import { TypeGlyph } from './type-glyph';
 import { cn } from '@/lib/utils';
 import { useLongPress } from '@/lib/use-long-press';
 import { formatPlayedOn } from '@/lib/format-date';
@@ -54,7 +54,7 @@ export function TournamentCard({
           className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-transform select-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] [-webkit-touch-callout:none]"
         >
           {isFreeplay(t.type)
-            ? <FreeplayGlyph size="md" />
+            ? <TypeGlyph type={t.type} size="md" />
             : <LeaderAvatar name={leaderName} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">

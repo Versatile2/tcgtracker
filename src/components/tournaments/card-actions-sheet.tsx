@@ -6,7 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
-import { FreeplayGlyph } from './freeplay-glyph';
+import { TypeGlyph } from './type-glyph';
 import { useTournamentWrites } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatPlayedOn } from '@/lib/format-date';
@@ -106,7 +106,7 @@ function Body({
       {/* Identity first: it must be obvious which event is about to change. */}
       <div className="flex items-center gap-3 px-4 pb-3">
         {freeplay
-          ? <FreeplayGlyph size="md" />
+          ? <TypeGlyph type={t.type} size="md" />
           : <LeaderAvatar name={leader?.name ?? '—'} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
         <div className="min-w-0">
           <p className="truncate font-semibold">{t.name ?? tournamentTypeLabel(t.type)}</p>

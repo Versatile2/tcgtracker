@@ -14,7 +14,7 @@ import { RoundFormSheet } from './round-form-sheet';
 import { FinishDialog } from './finish-dialog';
 import { RoundItem } from './round-item';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
-import { FreeplayGlyph } from './freeplay-glyph';
+import { TypeGlyph } from './type-glyph';
 import {
   useTournament, useLeaders, useMetas, useTournamentWrites, useRoundWrites,
 } from '@/components/query-hooks';
@@ -108,7 +108,7 @@ export function TournamentDetail({ id }: { id: string }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           {isFreeplay(t.type)
-            ? <FreeplayGlyph size="lg" />
+            ? <TypeGlyph type={t.type} size="lg" />
             : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
           <div className="min-w-0">
           <div className="flex items-center gap-2">

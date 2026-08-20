@@ -1,7 +1,8 @@
-import { Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TYPE_ICONS } from '@/lib/type-glyph';
+import type { TournamentType } from '@/lib/dto';
 
-// Matches LeaderAvatar's 5:7 card footprint so a freeplay card sits flush in a
+// Matches LeaderAvatar's 5:7 card footprint so a session card sits flush in a
 // list beside normal leader avatars.
 const SIZES = {
   sm: 'w-6 h-[2.1rem] rounded-[0.2rem]',
@@ -13,10 +14,23 @@ const ICON = { sm: 'size-3', md: 'size-5', lg: 'size-7' } as const;
 
 /**
  * Stands in for the leader avatar on a freeplay session, which has no single
- * leader. An icon rather than an emoji: the previous 🎴 depended on the platform
- * having that codepoint and rendered as a blank box where it did not.
+ * leader. It draws the session's own type rather than one shared symbol: at
+ * eight session types, a list of identical shuffle icons said only "not a
+ * tournament", which the reader already knew from the tab they were on.
+ *
+ * An icon rather than an emoji: the original 🎴 depended on the platform having
+ * that codepoint and rendered as a blank box where it did not.
  */
-export function FreeplayGlyph({ size = 'md', className }: { size?: keyof typeof SIZES; className?: string }) {
+export function TypeGlyph({ type, size = 'md', className }: {
+  type: TournamentType;
+  size?: keyof typeof SIZES;
+  className?: string;
+}) {
+  // Indexing the Record directly rather than calling typeIcon(): the React
+  // Compiler lint rule cannot prove a function call returns a stable
+  // component across renders and flags it as created-during-render, even
+  // though this lookup is deterministic.
+  const Icon = TYPE_ICONS[type];
   return (
     <div
       aria-hidden
@@ -25,7 +39,7 @@ export function FreeplayGlyph({ size = 'md', className }: { size?: keyof typeof 
         SIZES[size], className,
       )}
     >
-      <Shuffle className={ICON[size]} />
+      <Icon className={ICON[size]} />
     </div>
   );
 }
