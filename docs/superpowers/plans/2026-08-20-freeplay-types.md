@@ -642,8 +642,10 @@ describe('type glyphs', () => {
   it('covers every type the app can offer', () => {
     // The Record already enforces this at compile time. Stated here for anyone
     // tempted to widen the type: a type without a glyph renders an empty slot.
+    // toBeDefined, not toBeTypeOf('function'): lucide icons are forwardRef
+    // objects, so a type check here would assert the wrong thing.
     for (const t of [...TOURNAMENT_TYPES, ...FREEPLAY_TYPES, MATCH_TYPE]) {
-      expect(typeIcon(t)).toBeTypeOf('function');
+      expect(typeIcon(t), `${t} has no glyph`).toBeDefined();
     }
   });
 

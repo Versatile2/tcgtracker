@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
-import { FreeplayGlyph } from '@/components/tournaments/freeplay-glyph';
+import { TypeGlyph } from '@/components/tournaments/type-glyph';
+import { TypeBadge } from '@/components/tournaments/type-badge';
 import { cn } from '@/lib/utils';
 import { formatRecord, computeRecord } from '@/lib/record';
 import { tournamentTypeLabel, roundKindLabel, metaLabel, deckCountLabel } from '@/lib/labels';
@@ -102,7 +103,7 @@ export function TournamentShareCard({
       {/* Header: leader (left), record, event tags (right) */}
       <div className="flex items-start gap-3">
         {isFreeplay(tournament.type)
-          ? <FreeplayGlyph size="lg" />
+          ? <TypeGlyph type={tournament.type} size="lg" />
           : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-bold leading-tight">
@@ -124,7 +125,7 @@ export function TournamentShareCard({
         <div className="min-w-0 shrink-0 text-right">
           <p className="truncate text-sm font-semibold">{eventName}</p>
           <div className="mt-1 flex flex-wrap justify-end gap-1">
-            <Badge variant="secondary">{tournamentTypeLabel(tournament.type)}</Badge>
+            <TypeBadge type={tournament.type} />
             {eventMeta && <Badge variant="outline">{metaLabel(eventMeta)}</Badge>}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{tournament.playedOn}</p>

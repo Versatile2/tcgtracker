@@ -12,6 +12,11 @@ export const TOURNAMENT_TYPE_LABELS: Record<TournamentType, string> = {
   ranked_sim: 'Ranked Simulator',
   freeplay: 'Freeplay',
   freeplay_sim: 'Ranked Simulator',
+  freeplay_sim_casual: 'Casual Simulator',
+  freeplay_friend: 'Friend Battle',
+  freeplay_locals: 'Locals Pickup',
+  freeplay_gauntlet: 'Gauntlet',
+  freeplay_teaching: 'Teaching Game',
   match: 'Match',
 };
 

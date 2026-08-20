@@ -6,7 +6,8 @@ import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
-import { FreeplayGlyph } from './freeplay-glyph';
+import { TypeGlyph } from './type-glyph';
+import { TypeBadge } from './type-badge';
 import { useTournamentWrites } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
 import { formatPlayedOn } from '@/lib/format-date';
@@ -106,13 +107,21 @@ function Body({
       {/* Identity first: it must be obvious which event is about to change. */}
       <div className="flex items-center gap-3 px-4 pb-3">
         {freeplay
-          ? <FreeplayGlyph size="md" />
+          ? <TypeGlyph type={t.type} size="md" />
           : <LeaderAvatar name={leader?.name ?? '—'} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
         <div className="min-w-0">
           <p className="truncate font-semibold">{t.name ?? tournamentTypeLabel(t.type)}</p>
-          <p className="truncate text-sm text-muted-foreground">
-            {formatPlayedOn(t.playedOn)}
-            {placementLabel(t.placement, t.fieldSize) && <> · {placementLabel(t.placement, t.fieldSize)}</>}
+          {/* TypeGlyph above is aria-hidden, and a named session states its type
+              nowhere else in the accessible tree — the badge is what the card and
+              detail header already use to say it in text. Only when named: unnamed
+              falls back to the type label as the title above, and the badge would
+              repeat the exact same word a line down. */}
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            {t.name && <TypeBadge type={t.type} />}
+            <span className="min-w-0 truncate">
+              {formatPlayedOn(t.playedOn)}
+              {placementLabel(t.placement, t.fieldSize) && <> · {placementLabel(t.placement, t.fieldSize)}</>}
+            </span>
           </p>
         </div>
       </div>

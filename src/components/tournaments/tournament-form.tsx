@@ -12,7 +12,7 @@ import { useLeaders, useMetas, useTournamentWrites, useStats } from '@/component
 import { tournamentTypeLabel, metaLabel } from '@/lib/labels';
 import { pickDefaultMetaId } from '@/lib/meta-selection';
 import { recentLeaders } from '@/lib/recent-leaders';
-import { lastTournamentType, rememberTournamentType, orderTypes } from '@/lib/last-tournament-type';
+import { lastType, rememberType, orderTypes, type TypeSegment } from '@/lib/last-type';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { useLogCelebration } from '@/components/celebrate/use-log-celebration';
 import type { TournamentType, TournamentDetailDTO } from '@/lib/dto';
@@ -85,19 +85,23 @@ export function TournamentForm({ kind = 'tournament', initial }: {
   const mounted = useIsMounted();
 
   /*
-   * Open on the type you last created, and lead the strip with it. Same rule as
+   * Open on the type you last logged, and lead the strip with it. Same rule as
    * the leader default: derived, not stored, so a pick simply takes precedence
    * and there is no effect to sequence against.
+   *
+   * Per segment, because the two have nothing to say to each other. A Regional
+   * logged last week must not open the session form on Ranked Simulator — which
+   * is why this used to skip the reordering on the freeplay side entirely. At
+   * eight session types, always landing on plain Freeplay costs a scroll and a
+   * tap for every gauntlet and every ladder night.
    */
-  const lastType = useMemo(() => (mounted && !editing ? lastTournamentType() : null), [mounted, editing]);
-  const offered = freeplayMode ? FREEPLAY_TYPES : TOURNAMENT_TYPES;
-  // A freeplay session always leads with plain Freeplay: the remembered type is
-  // the tournament one, and carrying it across segments would open the session
-  // form on Ranked Simulator because of a Regional logged last week.
-  const orderedTypes = useMemo(
-    () => (freeplayMode ? offered : orderTypes(offered, lastType)),
-    [freeplayMode, offered, lastType],
+  const segment: TypeSegment = freeplayMode ? 'freeplay' : 'tournament';
+  const remembered = useMemo(
+    () => (mounted && !editing ? lastType(segment) : null),
+    [mounted, editing, segment],
   );
+  const offered = freeplayMode ? FREEPLAY_TYPES : TOURNAMENT_TYPES;
+  const orderedTypes = useMemo(() => orderTypes(offered, remembered), [offered, remembered]);
   const type: TournamentType = pickedType ?? orderedTypes[0];
 
   const defaultLeaderId = useMemo(() => {
@@ -126,7 +130,7 @@ export function TournamentForm({ kind = 'tournament', initial }: {
     // the venue has signal — the outbox delivers the tournament when it can.
     // Editing deliberately does not move the remembered type: changing an
     // event's type after the fact says nothing about what will be logged next.
-    if (!freeplayMode) rememberTournamentType(type);
+    rememberType(segment, type);
     // Starting an event is a logging act too, and it can cross a milestone —
     // "Log your first tournament" is earned here, not by the first round. Left
     // uncelebrated, a brand-new player's very first act would pass in silence,
@@ -167,8 +171,8 @@ export function TournamentForm({ kind = 'tournament', initial }: {
               short, and the one you want is almost always the one you used last
               — which leads it. A dropdown hid every option behind a tap.
 
-              Freeplay gets the same strip with its own two options, so a
-              simulator session is chosen exactly the way a Regional is. */}
+              Freeplay gets the same strip with its own eight options, so a
+              gauntlet is chosen exactly the way a Regional is. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Type">
             {orderedTypes.map((ty) => (
               <button

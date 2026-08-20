@@ -8,8 +8,15 @@ import type { TournamentType } from './dto';
  * same kind of event can be logged as a tournament or as a freeplay session and
  * the segment — not the label — is what decides how it counts. So the two ideas
  * are separated: a type says what was played, this set says where it lives.
+ *
+ * `testing` lives here too. It was offered as a tournament type for as long as
+ * freeplay was a single option, which forced a deck-testing night to declare
+ * one leader and put it in the competitive record. It is a session.
  */
-export const FREEPLAY_TYPES: TournamentType[] = ['freeplay', 'freeplay_sim'];
+export const FREEPLAY_TYPES: TournamentType[] = [
+  'freeplay', 'freeplay_sim', 'freeplay_sim_casual', 'freeplay_friend',
+  'freeplay_locals', 'freeplay_gauntlet', 'testing', 'freeplay_teaching',
+];
 
 /** Whether a session belongs to the Freeplay segment: no leader of its own, a deck per round. */
 export const isFreeplay = (type: TournamentType) => FREEPLAY_TYPES.includes(type);
@@ -41,5 +48,5 @@ export const MATCH_TYPE = 'match' as const satisfies TournamentType;
 
 /** Offered when creating a tournament, in the order the strip reads. */
 export const TOURNAMENT_TYPES: TournamentType[] = [
-  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'ranked_sim', 'testing',
+  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'ranked_sim',
 ];
