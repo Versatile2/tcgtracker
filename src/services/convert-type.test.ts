@@ -5,7 +5,7 @@ import { seedReferenceData } from '../db/seed';
 import { rounds, tournaments } from '../db/schema';
 import { createTournament, convertTournamentType, finishTournament } from './tournaments';
 import { addRound } from './rounds';
-import { listLeaders } from './reference';
+import { listLeaders, listMetas } from './reference';
 import { NotFoundError, ValidationError } from '../lib/errors';
 
 const db = getTestDb();
@@ -53,8 +53,9 @@ describe('converting a tournament into a session', () => {
 
   it('keeps placement, field size, name, notes, meta and date', async () => {
     const ls = await listLeaders(db, USER);
+    const metas = await listMetas(db, USER);
     const t = await createTournament(db, USER, {
-      type: 'local', myLeaderId: ls[0].id, playedOn: '2026-08-14',
+      type: 'local', myLeaderId: ls[0].id, metaId: metas[0].id, playedOn: '2026-08-14',
       name: 'Local #4', notes: 'Great venue', placement: 2, fieldSize: 16,
     });
     const converted = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
@@ -62,6 +63,7 @@ describe('converting a tournament into a session', () => {
     expect(converted.notes).toBe('Great venue');
     expect(converted.placement).toBe(2);
     expect(converted.fieldSize).toBe(16);
+    expect(converted.metaId).toBe(metas[0].id);
     expect(converted.playedOn).toBe(t.playedOn);
   });
 
@@ -123,8 +125,9 @@ describe('converting a session into a tournament', () => {
 describe('either direction', () => {
   it('round-trips a tournament unchanged', async () => {
     const { mine, opp } = await anyLeaderIds();
+    const metas = await listMetas(db, USER);
     const t = await createTournament(db, USER, {
-      type: 'local', myLeaderId: mine, playedOn: '2026-08-14',
+      type: 'local', myLeaderId: mine, metaId: metas[0].id, playedOn: '2026-08-14',
       name: 'Local #4', notes: 'Great venue', placement: 2, fieldSize: 16,
     });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
@@ -164,6 +167,13 @@ describe('either direction', () => {
     const m = await createTournament(db, USER, { type: 'match', myLeaderId: mine, playedOn: '2026-08-14' });
     await addRound(db, USER, m.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
     await expect(convertTournamentType(db, USER, m.id, { type: 'freeplay_gauntlet' }))
+      .rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('refuses converting a session into a match', async () => {
+    const { mine } = await anyLeaderIds();
+    const t = await createTournament(db, USER, { type: 'freeplay_gauntlet', playedOn: '2026-08-14' });
+    await expect(convertTournamentType(db, USER, t.id, { type: 'match', myLeaderId: mine }))
       .rejects.toBeInstanceOf(ValidationError);
   });
 

@@ -153,39 +153,46 @@ export async function convertTournamentType(
     throw new ValidationError('That type is already on the same side of freeplay.');
   }
 
-  const rs = await db.select().from(rounds).where(eq(rounds.tournamentId, id));
-  const games = rs.filter((r) => r.kind === 'swiss' || r.kind === 'top_cut');
-  const patch: Partial<typeof tournaments.$inferInsert> = { type: input.type, updatedAt: new Date() };
+  // The leader lives in exactly one of two places — the tournament row or its
+  // rounds — for the length of this function, and the two writes below move it
+  // from one to the other. A crash between them (or a replayed outbox op that
+  // reads a half-applied state) would leave it in neither: rounds cleared, row
+  // still reading as the old segment, with nothing left to promote or push
+  // back down. One transaction makes that state unreachable — a replay always
+  // sees either the pre- or the post-conversion row, never a state in between.
+  return db.transaction(async (tx) => {
+    const rs = await tx.select().from(rounds).where(eq(rounds.tournamentId, id));
+    const games = rs.filter((r) => r.kind === 'swiss' || r.kind === 'top_cut');
+    const patch: Partial<typeof tournaments.$inferInsert> = { type: input.type, updatedAt: new Date() };
 
-  if (isFreeplay(input.type)) {
-    // Down onto the games, off the session. `current.myLeaderId` is always set
-    // here — a non-freeplay tournament cannot exist without one — but the guard
-    // keeps this branch honest if that ever stops being true.
-    if (current.myLeaderId && games.length > 0) {
-      await db.update(rounds)
-        .set({ myLeaderId: current.myLeaderId, updatedAt: new Date() })
-        .where(and(eq(rounds.tournamentId, id), inArray(rounds.kind, GAME_KINDS)));
-    }
-    patch.myLeaderId = null;
-  } else {
-    const decks = computeDeckCount(games);
-    if (decks > 1) {
-      throw new ValidationError('This session played more than one deck, so it cannot become a tournament.');
-    }
-    // Zero decks means no games to promote from — either no rounds at all, or
-    // every round is a bye/no-show — so the offered leader is the only source.
-    const promoted = games.find((r) => r.myLeaderId !== null)?.myLeaderId ?? input.myLeaderId ?? null;
-    if (!promoted) throw new ValidationError('Choose the leader this tournament was played with.');
-    patch.myLeaderId = promoted;
-    if (games.length > 0) {
-      await db.update(rounds)
+    if (isFreeplay(input.type)) {
+      // Down onto the games, off the session. `current.myLeaderId` is always set
+      // here — a non-freeplay tournament cannot exist without one — but the guard
+      // keeps this branch honest if that ever stops being true.
+      if (current.myLeaderId) {
+        await tx.update(rounds)
+          .set({ myLeaderId: current.myLeaderId, updatedAt: new Date() })
+          .where(and(eq(rounds.tournamentId, id), inArray(rounds.kind, GAME_KINDS)));
+      }
+      patch.myLeaderId = null;
+    } else {
+      const decks = computeDeckCount(games);
+      if (decks > 1) {
+        throw new ValidationError('This session played more than one deck, so it cannot become a tournament.');
+      }
+      // Zero decks means no games to promote from — either no rounds at all, or
+      // every round is a bye/no-show — so the offered leader is the only source.
+      const promoted = games.find((r) => r.myLeaderId !== null)?.myLeaderId ?? input.myLeaderId ?? null;
+      if (!promoted) throw new ValidationError('Choose the leader this tournament was played with.');
+      patch.myLeaderId = promoted;
+      await tx.update(rounds)
         .set({ myLeaderId: null, updatedAt: new Date() })
         .where(and(eq(rounds.tournamentId, id), inArray(rounds.kind, GAME_KINDS)));
     }
-  }
 
-  const [row] = await db.update(tournaments).set(patch).where(owned(id, ownerId)).returning();
-  return row;
+    const [row] = await tx.update(tournaments).set(patch).where(owned(id, ownerId)).returning();
+    return row;
+  });
 }
 
 export async function deleteTournament(db: DB, ownerId: string, id: string): Promise<void> {
