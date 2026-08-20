@@ -7,12 +7,19 @@ export const tournamentTypeEnum = z.enum([
   'regionals',
   'extra_grand_battle',
   'pirates_party',
+  // Deck testing. A freeplay-segment type: it records a leader per round, and
+  // it has never belonged in the competitive record.
   'testing',
   // Ranked play on the simulator, logged as an event.
   'ranked_sim',
   'freeplay',
   // The same simulator games logged as a casual session instead.
   'freeplay_sim',
+  'freeplay_sim_casual',
+  'freeplay_friend',
+  'freeplay_locals',
+  'freeplay_gauntlet',
+  'freeplay_teaching',
   'match',
 ]);
 

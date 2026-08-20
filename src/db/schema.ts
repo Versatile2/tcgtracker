@@ -7,6 +7,7 @@ import type { GameLog } from '../lib/dto';
 export const tournamentType = pgEnum('tournament_type', [
   'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay', 'match',
   'ranked_sim', 'freeplay_sim',
+  'freeplay_sim_casual', 'freeplay_friend', 'freeplay_locals', 'freeplay_gauntlet', 'freeplay_teaching',
 ]);
 export const tournamentStatus = pgEnum('tournament_status', ['draft', 'locked']);
 export const roundResult = pgEnum('round_result', ['win', 'loss', 'draw']);
