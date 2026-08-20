@@ -1,11 +1,15 @@
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, inArray, desc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds } from '../db/schema';
 import { computeRecord, computeDeckCount } from '../lib/record';
 import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
-import type { CreateTournamentInput, UpdateTournamentInput } from '../lib/validation/tournament';
-import { isFreeplay } from '../lib/tournament-kinds';
+import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from '../lib/validation/tournament';
+import { isFreeplay, MATCH_TYPE } from '../lib/tournament-kinds';
+
+// Byes and no-shows are not games and carry no leader in either segment —
+// only these two kinds are ever candidates to gain or lose one.
+const GAME_KINDS = ['swiss', 'top_cut'] as const;
 
 type DB = NodePgDatabase<typeof schema>;
 export type Tournament = typeof tournaments.$inferSelect;
@@ -120,6 +124,66 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
   if (input.placement !== undefined) patch.placement = input.placement;
   if (input.fieldSize !== undefined) patch.fieldSize = input.fieldSize;
   if (input.playedOn !== undefined) patch.playedOn = input.playedOn;
+  const [row] = await db.update(tournaments).set(patch).where(owned(id, ownerId)).returning();
+  return row;
+}
+
+/**
+ * Moves an event across the freeplay boundary, carrying its leader with it.
+ *
+ * This is the reshape migration 0011 performs in SQL, as an action: a
+ * tournament owns one leader for the whole event, a session owns one per round,
+ * and changing the type without moving the leader would leave the row in a
+ * shape no query can read. That is why `updateTournament` refuses the same
+ * change — a field edit must not silently rewrite two tables.
+ *
+ * The reverse direction is only offered when it is lossless. Two different
+ * decks cannot collapse into one leader without discarding what was played, so
+ * the caller is refused rather than asked to choose which round to lose.
+ */
+export async function convertTournamentType(
+  db: DB, ownerId: string, id: string, input: ConvertTournamentInput,
+): Promise<Tournament> {
+  const current = await requireOwned(db, ownerId, id);
+  if (current.type === MATCH_TYPE || input.type === MATCH_TYPE) {
+    throw new ValidationError('A match cannot be converted.');
+  }
+  // Not a conversion at all — the caller wants updateTournament.
+  if (isFreeplay(input.type) === isFreeplay(current.type)) {
+    throw new ValidationError('That type is already on the same side of freeplay.');
+  }
+
+  const rs = await db.select().from(rounds).where(eq(rounds.tournamentId, id));
+  const games = rs.filter((r) => r.kind === 'swiss' || r.kind === 'top_cut');
+  const patch: Partial<typeof tournaments.$inferInsert> = { type: input.type, updatedAt: new Date() };
+
+  if (isFreeplay(input.type)) {
+    // Down onto the games, off the session. `current.myLeaderId` is always set
+    // here — a non-freeplay tournament cannot exist without one — but the guard
+    // keeps this branch honest if that ever stops being true.
+    if (current.myLeaderId && games.length > 0) {
+      await db.update(rounds)
+        .set({ myLeaderId: current.myLeaderId, updatedAt: new Date() })
+        .where(and(eq(rounds.tournamentId, id), inArray(rounds.kind, GAME_KINDS)));
+    }
+    patch.myLeaderId = null;
+  } else {
+    const decks = computeDeckCount(games);
+    if (decks > 1) {
+      throw new ValidationError('This session played more than one deck, so it cannot become a tournament.');
+    }
+    // Zero decks means no games to promote from — either no rounds at all, or
+    // every round is a bye/no-show — so the offered leader is the only source.
+    const promoted = games.find((r) => r.myLeaderId !== null)?.myLeaderId ?? input.myLeaderId ?? null;
+    if (!promoted) throw new ValidationError('Choose the leader this tournament was played with.');
+    patch.myLeaderId = promoted;
+    if (games.length > 0) {
+      await db.update(rounds)
+        .set({ myLeaderId: null, updatedAt: new Date() })
+        .where(and(eq(rounds.tournamentId, id), inArray(rounds.kind, GAME_KINDS)));
+    }
+  }
+
   const [row] = await db.update(tournaments).set(patch).where(owned(id, ownerId)).returning();
   return row;
 }
