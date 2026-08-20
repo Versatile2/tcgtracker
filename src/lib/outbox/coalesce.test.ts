@@ -107,6 +107,74 @@ describe('outbox coalescing', () => {
     expect(kinds(q)).toEqual(['tournament.finish']);
   });
 
+  it('does not collapse consecutive converts of the same tournament', () => {
+    // Unlike finish/reopen, a convert reads the tournament's *current* type and
+    // its rounds' *current* leaders to decide what to move where, and it
+    // refuses to run when the destination is already on the current side of
+    // freeplay. Dropping the earlier convert and keeping only the last one (the
+    // finish/reopen trick) would replay the survivor against a state it was
+    // never actually issued against — see the WHY comment in coalesce.ts.
+    const q = queueOf(
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
+    );
+    expect(kinds(q)).toEqual(['tournament.convert', 'tournament.convert']);
+  });
+
+  it('leaves a convert for a different tournament alone', () => {
+    const q = queueOf(
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'freeplay_gauntlet' } },
+    );
+    expect(kinds(q)).toEqual(['tournament.convert', 'tournament.convert']);
+    expect(q.map((e) => e.op.tournamentId)).toEqual([T, T2]);
+  });
+
+  it('leaves a convert appended after an unsent create rather than folding into it', () => {
+    // A convert's effect depends on rounds already queued between the create and
+    // the convert (which decks were logged, what leader they carry); folding it
+    // into the create's payload would skip the very state it reads. Replaying
+    // create, then rounds, then convert, in order, reaches the same place a
+    // truly instantaneous offline conversion would.
+    const q = queueOf(
+      createT(),
+      createR(),
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+    );
+    expect(kinds(q)).toEqual(['tournament.create', 'round.create', 'tournament.convert']);
+    // The create still carries the pre-conversion type; only the trailing
+    // convert op carries the destination.
+    expect(q[0].op).toMatchObject({ payload: { type: 'local' } });
+  });
+
+  it('does not reorder a convert around an intervening tournament update', () => {
+    const q = queueOf(
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
+    );
+    expect(kinds(q)).toEqual(['tournament.convert', 'tournament.update', 'tournament.convert']);
+  });
+
+  it('deleting a never-synced tournament drops its queued convert too', () => {
+    const q = queueOf(
+      createT(),
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      createT(T2),
+      { kind: 'tournament.delete', tournamentId: T },
+    );
+    expect(kinds(q)).toEqual(['tournament.create']);
+    expect(q[0].op.tournamentId).toBe(T2);
+  });
+
+  it('deleting a synced tournament drops its queued convert but keeps the delete', () => {
+    const q = queueOf(
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.delete', tournamentId: T },
+    );
+    expect(kinds(q)).toEqual(['tournament.delete']);
+  });
+
   it('merges a round update into a still-queued round create', () => {
     const q = queueOf(createR(), {
       kind: 'round.update',

@@ -56,6 +56,26 @@ export function patchTournament(qc: QueryClient, id: string, patch: Partial<Tour
   );
 }
 
+/**
+ * Mirrors the leader-promotion half of `convertTournamentType` (converting
+ * into a tournament), so the optimistic patch can show the right leader
+ * immediately instead of a stale null until the refetch lands. Only reachable
+ * when decks played <= 1 — the service rejects the conversion otherwise — so
+ * any game round's leader is the *same* id and which one `find` picks first
+ * does not matter, same as on the server.
+ *
+ * Without a cached detail (converting from a list card whose tournament was
+ * never opened) there is no round data to read, so this falls back to the
+ * offered leader exactly as the server does when it has nothing to promote
+ * from.
+ */
+export function promotedLeaderId(qc: QueryClient, tournamentId: string, offered: string | null): string | null {
+  const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(tournamentId));
+  if (!detail) return offered;
+  const fromRounds = detail.rounds.find((r) => (r.kind === 'swiss' || r.kind === 'top_cut') && r.myLeaderId !== null)?.myLeaderId;
+  return fromRounds ?? offered;
+}
+
 export function dropTournament(qc: QueryClient, id: string) {
   qc.removeQueries({ queryKey: keys.tournament(id) });
   qc.setQueryData<TournamentSummaryDTO[]>(keys.tournaments, (list = []) => list.filter((t) => t.id !== id));

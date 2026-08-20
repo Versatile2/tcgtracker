@@ -1,5 +1,5 @@
 import type { CreateRoundInput, UpdateRoundInput } from '@/lib/validation/round';
-import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validation/tournament';
+import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from '@/lib/validation/tournament';
 
 /** Create payloads inside the outbox always carry their client-generated id. */
 export type CreateTournamentPayload = CreateTournamentInput & { id: string };
@@ -16,6 +16,7 @@ export type OutboxOp =
   | { kind: 'tournament.delete'; tournamentId: string }
   | { kind: 'tournament.finish'; tournamentId: string }
   | { kind: 'tournament.reopen'; tournamentId: string }
+  | { kind: 'tournament.convert'; tournamentId: string; payload: ConvertTournamentInput }
   | { kind: 'round.create'; tournamentId: string; roundId: string; payload: CreateRoundPayload }
   | { kind: 'round.update'; tournamentId: string; roundId: string; payload: UpdateRoundInput }
   | { kind: 'round.delete'; tournamentId: string; roundId: string };

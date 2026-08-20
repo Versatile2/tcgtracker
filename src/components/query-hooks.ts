@@ -6,9 +6,10 @@ import { keys } from '@/lib/query-keys';
 import { roundFieldsFromInput } from '@/lib/round-values';
 import * as cache from '@/lib/outbox/optimistic';
 import { useOutbox } from '@/lib/outbox/use-outbox';
+import { isFreeplay } from '@/lib/tournament-kinds';
 import type { RoundDTO, TournamentDetailDTO } from '@/lib/dto';
 import type { CreateRoundInput, UpdateRoundInput } from '@/lib/validation/round';
-import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validation/tournament';
+import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from '@/lib/validation/tournament';
 
 export const useTournaments = () => useQuery({ queryKey: keys.tournaments, queryFn: apiClient.listTournaments });
 export const useTournament = (id: string) => useQuery({ queryKey: keys.tournament(id), queryFn: () => apiClient.getTournament(id) });
@@ -88,6 +89,26 @@ export function useTournamentWrites() {
     [qc, push]
   );
 
+  const convert = useCallback(
+    (id: string, payload: ConvertTournamentInput) => {
+      // The card must change segment on the tap, not on the flush. Going to
+      // freeplay always clears the tournament's own leader — it moves onto the
+      // rounds, mirroring the server unconditionally. Going the other way
+      // promotes a leader from the cached rounds when the detail is loaded
+      // (same rule the server applies), else falls back to what was offered.
+      // The rounds themselves are not rewritten here: the list only reads the
+      // tournament row, so the per-round leader swap is left for the detail
+      // view to pick up on its next fetch rather than duplicating that logic
+      // twice.
+      cache.patchTournament(qc, id, {
+        type: payload.type,
+        myLeaderId: isFreeplay(payload.type) ? null : cache.promotedLeaderId(qc, id, payload.myLeaderId ?? null),
+      });
+      push({ kind: 'tournament.convert', tournamentId: id, payload });
+    },
+    [qc, push]
+  );
+
   return useMemo(
     () => ({
       create,
@@ -95,8 +116,9 @@ export function useTournamentWrites() {
       remove,
       finish: (id: string) => setStatus(id, 'locked'),
       reopen: (id: string) => setStatus(id, 'draft'),
+      convert,
     }),
-    [create, update, remove, setStatus]
+    [create, update, remove, setStatus, convert]
   );
 }
 

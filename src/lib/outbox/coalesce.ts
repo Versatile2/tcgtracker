@@ -23,6 +23,25 @@ export function enqueue(queue: OutboxEntry[], entry: OutboxEntry): OutboxEntry[]
     case 'tournament.reopen':
       // Only the final state matters; drop earlier status flips for this one.
       return [...queue.filter((e) => !(isStatusOp(e.op) && e.op.tournamentId === op.tournamentId)), entry];
+    case 'tournament.convert':
+      // Deliberately NOT collapsed, unlike finish/reopen above. A convert is not
+      // a pure "set this field" op: the server reads the tournament's *current*
+      // type and its rounds' *current* leaders to decide what to move where, and
+      // it refuses to run at all when the destination is already on the same
+      // side of freeplay the tournament is already on. Two converts for the same
+      // tournament can only ever alternate sides (freeplay -> non-freeplay ->
+      // freeplay, ...), so dropping the earlier one and keeping only the last —
+      // the finish/reopen trick — would replay the survivor against a state it
+      // was never actually issued against: either its own side-of-freeplay guard
+      // rejects it outright (net effect lands back on the side the tournament
+      // started on), or, if it doesn't reject, it recomputes the leader move from
+      // rounds that the dropped op never touched, silently losing a leader. The
+      // queue has no record of what the type was *before* the earlier convert —
+      // the op only carries the destination — so there is no way to compute an
+      // equivalent single op here even in principle. Every convert is kept and
+      // replayed in order; the cost is a few extra round trips for the rare case
+      // of repeated offline conversions, not a corrupted or rejected write.
+      return [...queue, entry];
     case 'round.update':
       return mergeRoundUpdate(queue, entry, op);
     case 'round.delete':

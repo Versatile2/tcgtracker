@@ -3,7 +3,7 @@ import type {
   StatsDTO, MatchupStatsDTO, AchievementsResponseDTO,
 } from './dto';
 import type { LeaderArtInput } from './validation/leader-art';
-import type { CreateTournamentInput, UpdateTournamentInput } from './validation/tournament';
+import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from './validation/tournament';
 import type { CreateRoundInput, UpdateRoundInput } from './validation/round';
 
 export class ApiError extends Error {
@@ -36,6 +36,7 @@ export const apiClient = {
   deleteTournament: (id: string) => request<{ ok: true }>(`/api/tournaments/${id}`, { method: 'DELETE' }),
   finishTournament: (id: string) => request<TournamentSummaryDTO>(`/api/tournaments/${id}/finish`, { method: 'POST' }),
   reopenTournament: (id: string) => request<TournamentSummaryDTO>(`/api/tournaments/${id}/reopen`, { method: 'POST' }),
+  convertTournament: (id: string, b: ConvertTournamentInput) => request<TournamentSummaryDTO>(`/api/tournaments/${id}/convert`, { method: 'POST', body: JSON.stringify(b) }),
 
   addRound: (tid: string, b: CreateRoundInput) => request<RoundDTO>(`/api/tournaments/${tid}/rounds`, { method: 'POST', body: JSON.stringify(b) }),
   updateRound: (id: string, b: UpdateRoundInput) => request<RoundDTO>(`/api/rounds/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
