@@ -84,5 +84,11 @@ describe('testing tournaments become freeplay sessions', () => {
 
     const rows = await db.select().from(rounds).where(eq(rounds.tournamentId, tournamentId));
     expect(rows[0].myLeaderId).toBe(myLeader.id);
+
+    // The first statement re-carries a leader that is already there; the
+    // second re-clears a column that is already null. Only the first is
+    // covered above — this covers the second.
+    const [t] = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId));
+    expect(t.myLeaderId).toBeNull();
   });
 });

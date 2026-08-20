@@ -159,13 +159,23 @@ export function TournamentList() {
         {current.add}
       </Link>
 
-      {/* Type chips filter within the segment; matches have one type, so none. */}
+      {/* Type chips filter within the segment; matches have one type, so none.
+          Same radiogroup pattern as the type strip in the form — both are "pick
+          one from a set of chips", and this row used to be the one picker in
+          the app that said so only by background colour. */}
       {chips.length > 0 && (
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-          <button onClick={() => setFilter('all')}
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-2" role="radiogroup" aria-label={`Filter ${plural}`}>
+          <button
+            role="radio"
+            aria-checked={filter === 'all'}
+            onClick={() => setFilter('all')}
             className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === 'all' ? 'bg-primary text-primary-foreground' : 'border border-border/50 bg-card/60 supports-backdrop-filter:backdrop-blur-md'}`}>All</button>
           {chips.map((ty) => (
-            <button key={ty} onClick={() => setFilter(ty)}
+            <button
+              key={ty}
+              role="radio"
+              aria-checked={filter === ty}
+              onClick={() => setFilter(ty)}
               className={`inline-flex min-h-10 items-center whitespace-nowrap rounded-full px-4 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${filter === ty ? 'bg-primary text-primary-foreground' : 'border border-border/50 bg-card/60 supports-backdrop-filter:backdrop-blur-md'}`}>
               {tournamentTypeLabel(ty)}
             </button>

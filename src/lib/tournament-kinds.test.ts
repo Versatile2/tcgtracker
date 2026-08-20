@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isFreeplay, FREEPLAY_TYPES, CASUAL_TYPES, TOURNAMENT_TYPES, MATCH_TYPE } from './tournament-kinds';
+import { tournamentType } from '../db/schema';
 import type { TournamentType } from './dto';
 
 /*
@@ -65,5 +66,19 @@ describe('tournament kinds', () => {
       'freeplay', 'freeplay_sim', 'freeplay_sim_casual', 'freeplay_friend',
       'freeplay_locals', 'freeplay_gauntlet', 'testing', 'freeplay_teaching',
     ]);
+  });
+
+  // TOURNAMENT_TYPES and FREEPLAY_TYPES are what every type strip and filter
+  // row actually renders from — the TournamentType union, the Zod enum and the
+  // two label Records can all agree on a value and it would still never appear
+  // in a picker if nobody had also added it to one of these two arrays. The
+  // type-glyph test cannot catch that: it iterates these same arrays, so a type
+  // missing from both is missing from its own check too. The database enum is
+  // the one declaration site independent of these lists, so it is the source
+  // of truth this partition is checked against.
+  it('partitions every stored type between the two segments and match', () => {
+    const partition = [...TOURNAMENT_TYPES, ...FREEPLAY_TYPES, MATCH_TYPE].sort();
+    const stored = [...tournamentType.enumValues].sort();
+    expect(partition).toEqual(stored);
   });
 });
