@@ -21,7 +21,7 @@ import type { TournamentType, TournamentSummaryDTO } from '@/lib/dto';
 import { isFreeplay, TOURNAMENT_TYPES, FREEPLAY_TYPES } from '@/lib/tournament-kinds';
 import { segmentFromTab, type Segment } from './segment';
 
-// Sessions and match are segments of their own, not filters within this one —
+// Sessions and matches are segments of their own, not filters within this one —
 // but each segment filters within itself. A match has one type, so it has none.
 const CHIP_TYPES: Record<Segment, TournamentType[]> = {
   tournaments: TOURNAMENT_TYPES,

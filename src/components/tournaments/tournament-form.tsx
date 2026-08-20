@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { isFreeplay, FREEPLAY_TYPES, TOURNAMENT_TYPES } from '@/lib/tournament-kinds';
 
 // A match is reached through its own tab — it is a single game, not an event.
-// Freeplay is no longer a single type but a segment with its own two choices,
+// Sessions are no longer a single type but a segment with eight of its own,
 // because the same simulator session can be logged either way and it is the
 // segment, not the label, that decides whether it counts competitively.
 
