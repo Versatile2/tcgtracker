@@ -68,6 +68,7 @@ export const executeOp: OpExecutor = (op) => {
     case 'tournament.delete': return apiClient.deleteTournament(op.tournamentId);
     case 'tournament.finish': return apiClient.finishTournament(op.tournamentId);
     case 'tournament.reopen': return apiClient.reopenTournament(op.tournamentId);
+    case 'tournament.convert': return apiClient.convertTournament(op.tournamentId, op.payload);
     case 'round.create': return apiClient.addRound(op.tournamentId, op.payload);
     case 'round.update': return apiClient.updateRound(op.roundId, op.payload);
     case 'round.delete': return apiClient.deleteRound(op.roundId);

@@ -10,6 +10,7 @@ import type { OutboxEntry, OutboxOp } from './types';
 const calls: string[] = [];
 let createTournament = vi.fn(async () => {});
 let addRound = vi.fn(async () => {});
+let convertTournament = vi.fn(async () => {});
 
 vi.mock('@/lib/api-client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api-client')>();
@@ -19,6 +20,7 @@ vi.mock('@/lib/api-client', async (importOriginal) => {
       createTournament: (...a: unknown[]) => { calls.push('createTournament'); return createTournament(...(a as [])); },
       addRound: (...a: unknown[]) => { calls.push('addRound'); return addRound(...(a as [])); },
       finishTournament: async () => { calls.push('finishTournament'); },
+      convertTournament: (...a: unknown[]) => { calls.push('convertTournament'); return convertTournament(...(a as [])); },
     },
   };
 });
@@ -40,6 +42,11 @@ const addRoundOp = (n: number): OutboxOp => ({
   roundId: roundId(n),
   payload: { id: roundId(n), kind: 'swiss', opponentLeaderId: LEADER, result: 'win' },
 });
+const convertTournamentOp: OutboxOp = {
+  kind: 'tournament.convert',
+  tournamentId: T,
+  payload: { type: 'freeplay_gauntlet' },
+};
 
 let seq = 0;
 function push(op: OutboxOp) {
@@ -64,6 +71,7 @@ beforeEach(() => {
   seq = 0;
   createTournament = vi.fn(async () => {});
   addRound = vi.fn(async () => {});
+  convertTournament = vi.fn(async () => {});
   qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
 });
@@ -149,5 +157,43 @@ describe('offline logging round trip', () => {
     await runFlush(qc);
     expect(calls).toEqual([]);
     expect(invalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('converting a tournament offline', () => {
+  it('delivers a conversion after its rounds, in order, with the right payload', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    push(createTournamentOp);
+    push(addRoundOp(1));
+    push(addRoundOp(2));
+    push(convertTournamentOp);
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+
+    await runFlush(qc);
+
+    expect(calls).toEqual(['createTournament', 'addRound', 'addRound', 'convertTournament']);
+    expect(convertTournament).toHaveBeenCalledWith(T, { type: 'freeplay_gauntlet' });
+    expect(readOutbox()).toEqual([]);
+  });
+});
+
+describe('rolling back a failed write', () => {
+  it('invalidates even when the only entry in a drain fails permanently', async () => {
+    // A convert that fails validation (e.g. a session that played two decks,
+    // which the service refuses to collapse into one leader) is an ordinary
+    // way to hit this: nothing sends, but the optimistic patch already shows
+    // the tournament converted. Without an invalidate here, the card would sit
+    // in the wrong segment indefinitely even though the toast says it failed.
+    convertTournament = vi.fn(async () => {
+      throw new ApiError(400, 'This session played more than one deck, so it cannot become a tournament.');
+    });
+    push(convertTournamentOp);
+    const invalidate = vi.spyOn(qc, 'invalidateQueries');
+
+    await runFlush(qc);
+
+    expect(calls).toEqual(['convertTournament']);
+    expect(readOutbox()).toEqual([]); // a permanent failure is dropped, not retried
+    expect(invalidate).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,7 +8,7 @@ import * as cache from '@/lib/outbox/optimistic';
 import { useOutbox } from '@/lib/outbox/use-outbox';
 import type { RoundDTO, TournamentDetailDTO } from '@/lib/dto';
 import type { CreateRoundInput, UpdateRoundInput } from '@/lib/validation/round';
-import type { CreateTournamentInput, UpdateTournamentInput } from '@/lib/validation/tournament';
+import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from '@/lib/validation/tournament';
 
 export const useTournaments = () => useQuery({ queryKey: keys.tournaments, queryFn: apiClient.listTournaments });
 export const useTournament = (id: string) => useQuery({ queryKey: keys.tournament(id), queryFn: () => apiClient.getTournament(id) });
@@ -88,6 +88,18 @@ export function useTournamentWrites() {
     [qc, push]
   );
 
+  const convert = useCallback(
+    (id: string, payload: ConvertTournamentInput) => {
+      // The card must change segment on the tap, not on the flush — leader and
+      // all, on both the tournament row and its cached rounds, mirroring the
+      // server exactly. See `convertTournament`'s own comment for why leaving
+      // the rounds behind is not an option.
+      cache.convertTournament(qc, id, payload);
+      push({ kind: 'tournament.convert', tournamentId: id, payload });
+    },
+    [qc, push]
+  );
+
   return useMemo(
     () => ({
       create,
@@ -95,8 +107,9 @@ export function useTournamentWrites() {
       remove,
       finish: (id: string) => setStatus(id, 'locked'),
       reopen: (id: string) => setStatus(id, 'draft'),
+      convert,
     }),
-    [create, update, remove, setStatus]
+    [create, update, remove, setStatus, convert]
   );
 }
 

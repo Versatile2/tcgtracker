@@ -85,5 +85,16 @@ export const updateTournamentSchema = z.object({
   if (bad) ctx.addIssue({ code: 'custom', path: ['placement'], message: bad });
 });
 
+/**
+ * A conversion is its own input, not a patch: it carries only the destination
+ * type and — for a session with no rounds to promote a leader from — the leader
+ * the tournament will own. Everything else about the row is preserved.
+ */
+export const convertTournamentSchema = z.object({
+  type: tournamentTypeEnum,
+  myLeaderId: z.uuid().optional(),
+});
+
 export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
 export type UpdateTournamentInput = z.infer<typeof updateTournamentSchema>;
+export type ConvertTournamentInput = z.infer<typeof convertTournamentSchema>;

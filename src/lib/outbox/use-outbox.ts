@@ -84,6 +84,13 @@ export async function runFlush(qc: QueryClient): Promise<void> {
     clearTimeout(syncedTimer);
     syncedTimer = setTimeout(() => setPhase('idle'), 2500);
   } else {
+    // Nothing sent, but a permanent failure still needs the optimistic patch
+    // undone: the op that failed is now gone from the queue, yet its cache
+    // patch (e.g. a convert that flipped a card's segment before the server
+    // rejected it) is still sitting there with nothing else to correct it. A
+    // refetch is how this codebase rolls back an optimistic write, so it has
+    // to run here too — not only on a drain that sent something.
+    if (failures.length > 0) await qc.invalidateQueries();
     setPhase('idle');
   }
 
