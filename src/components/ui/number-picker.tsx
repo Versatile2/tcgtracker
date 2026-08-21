@@ -1,20 +1,18 @@
 'use client';
-import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 /**
- * Pick a number by tapping rather than typing.
+ * Type a number, or tap one of the likely answers.
  *
- * A phone keyboard for "2" is a poor trade at a venue, so the likely answers are
- * offered as chips in a strip — the same idiom the leader and type strips
- * already use, so there is one way to choose things in this app rather than
- * three.
+ * The field comes first and is always there. Chips sit under it as a shortcut,
+ * not as the way in: a strip cannot enumerate every turnout, and hiding the
+ * keyboard behind an "Other" chip made the common real answer — 47 players —
+ * the slowest one to give.
  *
- * The strip cannot enumerate everything, so it carries an "Other" chip that
- * reveals a plain field. Without it a 47-player turnout would simply be
- * unrecordable, and a picker that cannot express a real answer is worse than
- * the keyboard it replaced.
+ * That "Other" chip is gone, and with it the mode it implied. A chip is simply
+ * lit when it matches what the field holds, so tapping 16 and typing 16 leave
+ * the control in the same state instead of two states that merely look alike.
  */
 export function NumberPicker({
   id,
@@ -32,24 +30,37 @@ export function NumberPicker({
   ariaLabel: string;
   placeholder?: string;
 }) {
-  const inList = value != null && options.includes(value);
-  const [other, setOther] = useState(value != null && !inList);
+  const set = (raw: string) =>
+    onChange(raw.trim() === '' ? null : Math.max(1, Number.parseInt(raw, 10) || 1));
 
   return (
     <div className="space-y-2">
+      <Input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={1}
+        value={value ?? ''}
+        onChange={(e) => set(e.target.value)}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className="h-12 text-base" />
+
       {/* Bleeds past the p-4 both hosts share, so chips scroll to the edge of
           the screen rather than stopping short of it — the same treatment the
           leader and type strips get. */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label={ariaLabel}>
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label={`${ariaLabel} — common answers`}>
         {options.map((n) => {
-          const active = !other && value === n;
+          // Derived from the value, not from which control was last touched, so
+          // typing 16 lights the 16 chip exactly as tapping it would.
+          const active = value === n;
           return (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={active}
-              onClick={() => { setOther(false); onChange(n); }}
+              onClick={() => onChange(n)}
               className={cn(
                 'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full px-3 text-sm tabular-nums transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 active
@@ -61,33 +72,7 @@ export function NumberPicker({
             </button>
           );
         })}
-        <button
-          type="button"
-          role="radio"
-          aria-checked={other}
-          onClick={() => { setOther(true); }}
-          className={cn(
-            'inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            other
-              ? 'bg-primary font-semibold text-primary-foreground'
-              : 'border border-border/50 bg-card/60 supports-backdrop-filter:backdrop-blur-md',
-          )}
-        >
-          Other
-        </button>
       </div>
-
-      {other && (
-        <Input
-          id={id}
-          type="number"
-          inputMode="numeric"
-          min={1}
-          value={value ?? ''}
-          onChange={(e) => onChange(e.target.value.trim() === '' ? null : Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
-          placeholder={placeholder}
-          className="h-12 text-base" />
-      )}
     </div>
   );
 }

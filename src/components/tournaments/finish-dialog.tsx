@@ -1,9 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
-  NumberPicker, COMMON_FIELD_SIZES, MAX_PICKABLE_PLACEMENT, placementOptions,
+  NumberPicker, COMMON_FIELD_SIZES, placementOptions,
 } from '@/components/ui/number-picker';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -37,8 +36,6 @@ export function FinishDialog({
 
   const p = placement;
   const f = players;
-  /** Empty means unknown, not zero — a placement is often learned later. */
-  const toNum = (v: string) => (v.trim() === '' ? null : Math.max(1, Number.parseInt(v, 10) || 1));
   const issue = placementIssue({ placement: p, fieldSize: f });
   const preview = placementLabel(p, f);
 
@@ -51,8 +48,8 @@ export function FinishDialog({
 
         <div className="mt-1 space-y-4">
           {/* Asked first, and it is not politeness: the turnout is what sizes
-              the strip below. Answering it up front means the positions
-              offered are the positions that existed. */}
+              the position chips below it. Answering it up front means the
+              positions offered are the positions that existed. */}
           <div className="space-y-1.5">
             <span className="text-sm font-medium">How many played</span>
             <NumberPicker
@@ -65,27 +62,17 @@ export function FinishDialog({
           </div>
           <div className="space-y-1.5">
             <span className="text-sm font-medium">Where you finished</span>
-            {/* Above 32 players, finding your position in a strip is slower than
-                typing it — so the picker gives way to a field. */}
-            {f !== null && f > MAX_PICKABLE_PLACEMENT ? (
-              <Input
-                id="fin-placement"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={placement ?? ''}
-                onChange={(e) => setPlacement(toNum(e.target.value))}
-                placeholder="e.g. 12"
-                className="h-12 text-base" />
-            ) : (
-              <NumberPicker
-                id="fin-placement"
-                value={placement}
-                onChange={setPlacement}
-                options={placementOptions(f)}
-                ariaLabel="Where you finished"
-                placeholder="e.g. 12" />
-            )}
+            {/* No large-field special case any more: the picker's own field is
+                always present, so a 247th place is typed here exactly as it was
+                when this branched, and the chips below stay a shortcut for the
+                positions most people actually record. */}
+            <NumberPicker
+              id="fin-placement"
+              value={placement}
+              onChange={setPlacement}
+              options={placementOptions(f)}
+              ariaLabel="Where you finished"
+              placeholder="e.g. 12" />
           </div>
         </div>
 
