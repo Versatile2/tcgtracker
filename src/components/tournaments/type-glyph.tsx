@@ -13,7 +13,7 @@ const SIZES = {
 const ICON = { sm: 'size-3', md: 'size-5', lg: 'size-7' } as const;
 
 /**
- * Stands in for the leader avatar on a freeplay session, which has no single
+ * Stands in for the leader avatar on a session, which has no single
  * leader. It draws the session's own type rather than one shared symbol: at
  * eight session types, a list of identical shuffle icons said only "not a
  * tournament", which the reader already knew from the tab they were on.

@@ -41,9 +41,9 @@ export function useTournamentWrites() {
       const detail: TournamentDetailDTO = {
         id,
         type: input.type,
-        // Freeplay omits myLeaderId entirely (the schema rejects it being
+        // Session omits myLeaderId entirely (the schema rejects it being
         // present); every other type requires it. The DTO models the
-        // freeplay case as `null`.
+        // session case as `null`.
         myLeaderId: input.myLeaderId ?? null,
         metaId: input.metaId ?? null,
         name: input.name ?? null,

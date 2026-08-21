@@ -10,7 +10,7 @@ beforeEach(() => window.localStorage.clear());
 describe('the last type', () => {
   it('is null before anything is created', () => {
     expect(lastType('tournament')).toBeNull();
-    expect(lastType('freeplay')).toBeNull();
+    expect(lastType('session')).toBeNull();
   });
 
   it('remembers the most recent one', () => {
@@ -24,16 +24,16 @@ describe('the last type', () => {
     // A Regional logged last week must not open the session form on Ranked
     // Simulator, and a gauntlet must not lead the tournament strip.
     rememberType('tournament', 'regionals');
-    rememberType('freeplay', 'freeplay_gauntlet');
+    rememberType('session', 'session_gauntlet');
     expect(lastType('tournament')).toBe('regionals');
-    expect(lastType('freeplay')).toBe('freeplay_gauntlet');
+    expect(lastType('session')).toBe('session_gauntlet');
   });
 
   it('uses the crewstat- prefix the product fixes', () => {
     rememberType('tournament', 'local');
-    rememberType('freeplay', 'freeplay_friend');
+    rememberType('session', 'session_friend');
     expect(window.localStorage.getItem('crewstat-last-tournament-type')).toBe('local');
-    expect(window.localStorage.getItem('crewstat-last-freeplay-type')).toBe('freeplay_friend');
+    expect(window.localStorage.getItem('crewstat-last-session-type')).toBe('session_friend');
   });
 });
 
@@ -52,10 +52,10 @@ describe('orderTypes', () => {
   });
 
   it('ignores a type that is no longer offered', () => {
-    // Testing was a tournament type until it moved to the freeplay segment; a
+    // Testing was a tournament type until it moved to the session segment; a
     // player who created one last must not get an empty lead chip.
     expect(orderTypes(TYPES, 'testing')).toEqual(TYPES);
-    expect(orderTypes(TYPES, 'freeplay')).toEqual(TYPES);
+    expect(orderTypes(TYPES, 'session')).toEqual(TYPES);
     expect(orderTypes(TYPES, 'match')).toEqual(TYPES);
   });
 

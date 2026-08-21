@@ -6,9 +6,11 @@
  */
 export type Segment = 'tournaments' | 'sessions' | 'matches';
 
-// A stale `?tab=freeplay` link — an old bookmark, a cached PWA shell — must
-// still land on the renamed segment, so the alias is permanent, not a shim to
-// delete later.
+// Stale `?tab=` links — an old bookmark, a cached PWA shell — must still land
+// on the renamed segment, so these aliases are permanent, not shims to delete
+// later. `freeplay` is the pre-2026-08-19 value and is deliberately the one
+// place in `src/` that still spells the retired word; `session-guard.test.ts`
+// allows it by name.
 export function segmentFromTab(tab: string | null | undefined): Segment {
   if (tab === 'matches') return 'matches';
   if (tab === 'sessions' || tab === 'freeplay') return 'sessions';

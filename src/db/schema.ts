@@ -5,9 +5,9 @@ import type { GameLog } from '../lib/dto';
 // exactly one round, so it inherits the leader invariant, the outbox and every
 // stats query rather than needing a table of its own.
 export const tournamentType = pgEnum('tournament_type', [
-  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'freeplay', 'match',
-  'ranked_sim', 'freeplay_sim',
-  'freeplay_sim_casual', 'freeplay_friend', 'freeplay_locals', 'freeplay_gauntlet', 'freeplay_teaching',
+  'local', 'treasure_cup', 'regionals', 'extra_grand_battle', 'pirates_party', 'testing', 'session', 'match',
+  'ranked_sim', 'session_sim',
+  'session_sim_casual', 'session_friend', 'session_locals', 'session_gauntlet', 'session_teaching',
 ]);
 export const tournamentStatus = pgEnum('tournament_status', ['draft', 'locked']);
 export const roundResult = pgEnum('round_result', ['win', 'loss', 'draw']);
@@ -60,7 +60,7 @@ export const tournaments = pgTable('tournaments', {
   id: uuid('id').primaryKey().defaultRandom(),
   ownerId: text('owner_id').notNull(),
   type: tournamentType('type').notNull(),
-  // Null for freeplay, where the leader is recorded per round instead.
+  // Null for session, where the leader is recorded per round instead.
   myLeaderId: uuid('my_leader_id').references(() => leaders.id),
   metaId: uuid('meta_id').references(() => metas.id),
   name: text('name'),
@@ -85,8 +85,8 @@ export const rounds = pgTable('rounds', {
   kind: roundKind('round_kind').notNull().default('swiss'),
   // Null for bye / no_show (no opponent).
   opponentLeaderId: uuid('opponent_leader_id').references(() => leaders.id),
-  // Set only on freeplay rounds, where the leader changes per round; null
-  // otherwise, and null on freeplay byes / no-shows (not games).
+  // Set only on session rounds, where the leader changes per round; null
+  // otherwise, and null on session byes / no-shows (not games).
   myLeaderId: uuid('my_leader_id').references(() => leaders.id),
   opponentMetaId: uuid('opponent_meta_id').references(() => metas.id),
   result: roundResult('result').notNull(),

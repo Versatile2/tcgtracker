@@ -120,7 +120,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
       <NavBar backLabel="Back" onBack={() => router.back()} />
       <main className="mx-auto max-w-xl space-y-5 p-4 pb-6">
         <div className="flex items-start justify-between gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">{editing ? 'Edit Match' : 'New Match'}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{editing ? 'Edit Free Play' : 'New Free Play'}</h1>
           {editing && (
             <button type="button" onClick={remove} aria-label="Delete match"
               className="-mr-1 rounded-md p-2 text-muted-foreground outline-none transition-colors hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring">
@@ -202,7 +202,7 @@ export function MatchForm({ initial }: { initial?: TournamentDetailDTO }) {
         </div>
 
         <Button onClick={save} disabled={!valid} className="h-14 w-full text-base">
-          {editing ? 'Save Match' : 'Log Match'}
+          {editing ? 'Save Free Play' : 'Log Free Play'}
         </Button>
       </main>
     </>

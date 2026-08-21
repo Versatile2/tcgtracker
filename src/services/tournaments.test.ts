@@ -118,32 +118,32 @@ describe('tournament service', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('requires a leader for a non-freeplay tournament', async () => {
+  it('requires a leader for a non-session tournament', async () => {
     await expect(createTournament(db, USER, {
       type: 'local', playedOn: '2026-08-14',
     } as never)).rejects.toThrow();
   });
 
-  it('rejects a leader on a freeplay tournament', async () => {
+  it('rejects a leader on a session tournament', async () => {
     const { mine } = await anyLeaderIds();
     await expect(createTournament(db, USER, {
-      type: 'freeplay', myLeaderId: mine, playedOn: '2026-08-14',
+      type: 'session', myLeaderId: mine, playedOn: '2026-08-14',
     })).rejects.toThrow();
   });
 
-  it('stores a freeplay tournament with no leader', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('stores a session tournament with no leader', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     expect(t.myLeaderId).toBeNull();
   });
 
-  it('refuses to change a tournament into or out of freeplay', async () => {
+  it('refuses to change a tournament into or out of session', async () => {
     const { mine } = await anyLeaderIds();
     const classic = await createTournament(db, USER, {
       type: 'local', myLeaderId: mine, playedOn: '2026-08-14',
     });
-    await expect(updateTournament(db, USER, classic.id, { type: 'freeplay' })).rejects.toThrow();
+    await expect(updateTournament(db, USER, classic.id, { type: 'session' })).rejects.toThrow();
 
-    const free = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const free = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     await expect(updateTournament(db, USER, free.id, { type: 'local' })).rejects.toThrow();
 
     // A classic-to-classic change still works.
@@ -151,21 +151,21 @@ describe('tournament service', () => {
     expect(ok.type).toBe('regionals');
   });
 
-  it('rejects assigning a leader to a freeplay tournament via a partial patch with no type field', async () => {
+  it('rejects assigning a leader to a session tournament via a partial patch with no type field', async () => {
     const { mine } = await anyLeaderIds();
-    const free = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+    const free = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     await expect(updateTournament(db, USER, free.id, { myLeaderId: mine })).rejects.toThrow();
   });
 
-  it('still allows a plain leader change on a non-freeplay tournament', async () => {
+  it('still allows a plain leader change on a non-session tournament', async () => {
     const ls = await listLeaders(db, USER);
     const classic = await createTournament(db, USER, { type: 'local', myLeaderId: ls[0].id, playedOn: '2026-08-14' });
     const updated = await updateTournament(db, USER, classic.id, { myLeaderId: ls[1].id });
     expect(updated.myLeaderId).toBe(ls[1].id);
   });
 
-  it('reports the distinct deck count for a freeplay session', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('reports the distinct deck count for a session', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     const zoro = await leaderId('Roronoa Zoro');
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: zoro });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Sanji'), result: 'loss', myLeaderId: zoro });
@@ -184,8 +184,8 @@ describe('tournament service', () => {
     expect(list.find((x) => x.id === t.id)?.deckCount).toBe(0);
   });
 
-  it('getTournament reports the distinct deck count for a freeplay session', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('getTournament reports the distinct deck count for a session', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     const zoro = await leaderId('Roronoa Zoro');
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: zoro });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId('Sanji'), result: 'loss', myLeaderId: zoro });

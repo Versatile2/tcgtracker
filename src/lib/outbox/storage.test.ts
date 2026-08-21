@@ -19,6 +19,75 @@ beforeEach(() => {
   resetOutboxCache();
 });
 
+/**
+ * A queue exactly as it was written by the bundle before migration 0012: the
+ * old `freeplay*` spelling, serialised into localStorage and untouched by the
+ * cache buster, which clears the query cache and not this.
+ *
+ * Written as raw JSON rather than through `writeOutbox` because these values no
+ * longer typecheck — which is the point.
+ */
+const legacyQueue = (type: string, kind = 'tournament.create') => JSON.stringify([{
+  opId: 'legacy',
+  createdAt: 1,
+  attempts: 0,
+  op: { kind, tournamentId: T, payload: { id: T, type, playedOn: '2026-08-01' } },
+}]);
+
+describe('outbox type migration (0012)', () => {
+  it('rewrites a session create queued under the old spelling', () => {
+    window.localStorage.setItem(OUTBOX_KEY, legacyQueue('freeplay_locals'));
+    const [entry] = readOutbox();
+    // Without this the server rejects the payload on flush and the game is lost.
+    expect((entry.op as { payload: { type: string } }).payload.type).toBe('session_locals');
+  });
+
+  it('rewrites every renamed value, and nothing else', () => {
+    const cases = [
+      ['freeplay', 'session'],
+      ['freeplay_sim', 'session_sim'],
+      ['freeplay_sim_casual', 'session_sim_casual'],
+      ['freeplay_friend', 'session_friend'],
+      ['freeplay_locals', 'session_locals'],
+      ['freeplay_gauntlet', 'session_gauntlet'],
+      ['freeplay_teaching', 'session_teaching'],
+      // Never renamed: already named for what it is, and a tournament type.
+      ['testing', 'testing'],
+      ['local', 'local'],
+      ['match', 'match'],
+    ];
+    for (const [before, after] of cases) {
+      window.localStorage.setItem(OUTBOX_KEY, legacyQueue(before));
+      resetOutboxCache();
+      expect([before, (readOutbox()[0].op as { payload: { type: string } }).payload.type])
+        .toEqual([before, after]);
+    }
+  });
+
+  it('rewrites updates and converts, not just creates', () => {
+    for (const kind of ['tournament.update', 'tournament.convert']) {
+      window.localStorage.setItem(OUTBOX_KEY, legacyQueue('freeplay_friend', kind));
+      resetOutboxCache();
+      expect([kind, (readOutbox()[0].op as { payload: { type: string } }).payload.type])
+        .toEqual([kind, 'session_friend']);
+    }
+  });
+
+  it('leaves an already-migrated queue alone, and returns it stably', () => {
+    window.localStorage.setItem(OUTBOX_KEY, legacyQueue('session_locals'));
+    expect((readOutbox()[0].op as { payload: { type: string } }).payload.type).toBe('session_locals');
+    // Same reference, or useSyncExternalStore re-renders forever.
+    expect(readOutbox()).toBe(readOutbox());
+  });
+
+  it('keeps a queued convert instead of discarding it', () => {
+    // `tournament.convert` was missing from OP_KINDS, so `isEntry` rejected it
+    // and an offline conversion vanished on the next read.
+    window.localStorage.setItem(OUTBOX_KEY, legacyQueue('local', 'tournament.convert'));
+    expect(readOutbox()).toHaveLength(1);
+  });
+});
+
 describe('outbox storage', () => {
   it('starts empty', () => {
     expect(readOutbox()).toEqual([]);

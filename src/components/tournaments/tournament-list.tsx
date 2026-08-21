@@ -20,14 +20,14 @@ import { useProgress } from '@/components/progress/use-progress';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import { cn } from '@/lib/utils';
 import type { TournamentType, TournamentSummaryDTO } from '@/lib/dto';
-import { isFreeplay, TOURNAMENT_TYPES, FREEPLAY_TYPES } from '@/lib/tournament-kinds';
+import { isSession, TOURNAMENT_TYPES, SESSION_TYPES } from '@/lib/tournament-kinds';
 import { segmentFromTab, type Segment } from './segment';
 
 // Sessions and matches are segments of their own, not filters within this one —
 // but each segment filters within itself. A match has one type, so it has none.
 const CHIP_TYPES: Record<Segment, TournamentType[]> = {
   tournaments: TOURNAMENT_TYPES,
-  sessions: FREEPLAY_TYPES,
+  sessions: SESSION_TYPES,
   matches: [],
 };
 
@@ -35,10 +35,10 @@ const CHIP_TYPES: Record<Segment, TournamentType[]> = {
  * The three kinds of thing you can log, and what each segment says about itself.
  * Tournaments is the catch-all: anything that is not a session or a match.
  */
-const SEGMENTS: { key: Segment; noun: string; plural: string; add: string; href: string }[] = [
-  { key: 'tournaments', noun: 'tournament', plural: 'tournaments', add: 'New Tournament', href: '/tournaments/new' },
-  { key: 'sessions', noun: 'session', plural: 'sessions', add: 'New Session', href: '/sessions/new' },
-  { key: 'matches', noun: 'match', plural: 'matches', add: 'New Match', href: '/matches/new' },
+const SEGMENTS: { key: Segment; label: string; noun: string; plural: string; add: string; href: string }[] = [
+  { key: 'tournaments', label: 'Tournaments', noun: 'tournament', plural: 'tournaments', add: 'New Tournament', href: '/tournaments/new' },
+  { key: 'sessions', label: 'Sessions', noun: 'session', plural: 'sessions', add: 'New Session', href: '/sessions/new' },
+  { key: 'matches', label: 'Free Play', noun: 'free play', plural: 'free play', add: 'New Free Play', href: '/matches/new' },
 ];
 
 export function TournamentList() {
@@ -94,8 +94,8 @@ export function TournamentList() {
 
   const belongs = (t: { type: TournamentType }) =>
     segment === 'matches' ? t.type === MATCH_TYPE
-      : segment === 'sessions' ? isFreeplay(t.type)
-      : t.type !== MATCH_TYPE && !isFreeplay(t.type);
+      : segment === 'sessions' ? isSession(t.type)
+      : t.type !== MATCH_TYPE && !isSession(t.type);
   const inSegment = data?.filter(belongs) ?? [];
   const shown = chips.length > 0
     ? inSegment.filter((t) => filter === 'all' || t.type === filter)
@@ -139,11 +139,11 @@ export function TournamentList() {
             aria-selected={segment === s.key}
             onClick={() => selectSegment(s.key)}
             className={cn(
-              'h-10 flex-1 rounded-lg text-sm font-semibold capitalize transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'h-10 flex-1 rounded-lg text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
               segment === s.key ? 'bg-background shadow-sm' : 'text-muted-foreground',
             )}
           >
-            {s.key}
+            {s.label}
           </button>
         ))}
       </div>

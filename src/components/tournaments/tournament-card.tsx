@@ -15,7 +15,7 @@ import { placementLabel } from '@/lib/placement';
 import { rankTier } from '@/lib/rank';
 import { RankBadge, rankSkin } from '@/components/rank/rank-badge';
 import type { TournamentSummaryDTO, LeaderDTO } from '@/lib/dto';
-import { isFreeplay } from '@/lib/tournament-kinds';
+import { isSession } from '@/lib/tournament-kinds';
 
 const resultPill: Record<'win' | 'loss' | 'draw', { label: string; className: string }> = {
   win: { label: 'Win', className: 'bg-emerald-600 text-white' },
@@ -53,7 +53,7 @@ export function TournamentCard({
           {...press}
           className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none transition-transform select-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] [-webkit-touch-callout:none]"
         >
-          {isFreeplay(t.type)
+          {isSession(t.type)
             ? <TypeGlyph type={t.type} size="md" />
             : <LeaderAvatar name={leaderName} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
           <div className="min-w-0 flex-1">
@@ -76,7 +76,7 @@ export function TournamentCard({
                 : <p className="mt-0.5 text-xs font-semibold text-muted-foreground">{placed}</p>
             )}
             <div className={cn('flex items-baseline gap-1.5 text-sm text-muted-foreground', hasName ? 'mt-0.5' : 'mt-1')}>
-              {!isFreeplay(t.type) && (
+              {!isSession(t.type) && (
                 // No set code here, unlike the leader picker and the opponent
                 // breakdown. Those exist to tell 15 same-named printings apart;
                 // this is a list of your own events, where you know which deck you
@@ -87,7 +87,7 @@ export function TournamentCard({
               {/* Never truncated: the date is short and was the thing being
                   silently dropped when everything shared one truncating line. */}
               <span className="shrink-0">{formatPlayedOn(t.playedOn)}</span>
-              {isFreeplay(t.type) && t.deckCount > 0 && (
+              {isSession(t.type) && t.deckCount > 0 && (
                 <span className="shrink-0">· {deckCountLabel(t.deckCount)}</span>
               )}
             </div>

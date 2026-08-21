@@ -45,7 +45,7 @@ const addRoundOp = (n: number): OutboxOp => ({
 const convertTournamentOp: OutboxOp = {
   kind: 'tournament.convert',
   tournamentId: T,
-  payload: { type: 'freeplay_gauntlet' },
+  payload: { type: 'session_gauntlet' },
 };
 
 let seq = 0;
@@ -172,7 +172,7 @@ describe('converting a tournament offline', () => {
     await runFlush(qc);
 
     expect(calls).toEqual(['createTournament', 'addRound', 'addRound', 'convertTournament']);
-    expect(convertTournament).toHaveBeenCalledWith(T, { type: 'freeplay_gauntlet' });
+    expect(convertTournament).toHaveBeenCalledWith(T, { type: 'session_gauntlet' });
     expect(readOutbox()).toEqual([]);
   });
 });

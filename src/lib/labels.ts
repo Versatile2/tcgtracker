@@ -10,14 +10,14 @@ export const TOURNAMENT_TYPE_LABELS: Record<TournamentType, string> = {
   // One label, two stored values: the same event read differently depending on
   // which segment it was logged in.
   ranked_sim: 'Ranked Simulator',
-  freeplay: 'Session',
-  freeplay_sim: 'Ranked Simulator',
-  freeplay_sim_casual: 'Casual Simulator',
-  freeplay_friend: 'Friend Battle',
-  freeplay_locals: 'Locals Pickup',
-  freeplay_gauntlet: 'Gauntlet',
-  freeplay_teaching: 'Teaching Game',
-  match: 'Match',
+  session: 'Session',
+  session_sim: 'Ranked Simulator',
+  session_sim_casual: 'Casual Simulator',
+  session_friend: 'Friend Battle',
+  session_locals: 'Locals Pickup',
+  session_gauntlet: 'Gauntlet',
+  session_teaching: 'Teaching Game',
+  match: 'Free Play',
 };
 
 export function tournamentTypeLabel(type: TournamentType): string {
@@ -50,7 +50,7 @@ export function metaLabel(meta: { name: string; code?: string | null }): string 
   return meta.code ?? meta.name;
 }
 
-/** "5 decks" / "1 deck" — the distinct-deck count for a freeplay session. */
+/** "5 decks" / "1 deck" — the distinct-deck count for a session. */
 export function deckCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'deck' : 'decks'}`;
 }

@@ -5,7 +5,7 @@ import { tournaments, rounds } from '../db/schema';
 import { computeRecord, computeDeckCount } from '../lib/record';
 import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
 import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from '../lib/validation/tournament';
-import { isFreeplay, MATCH_TYPE } from '../lib/tournament-kinds';
+import { isSession, MATCH_TYPE } from '../lib/tournament-kinds';
 
 // Byes and no-shows are not games and carry no leader in either segment —
 // only these two kinds are ever candidates to gain or lose one.
@@ -32,15 +32,15 @@ async function requireOwned(db: DB, ownerId: string, id: string): Promise<Tourna
 }
 
 export async function createTournament(db: DB, ownerId: string, input: CreateTournamentInput): Promise<Tournament> {
-  // Exactly one leader source per session: freeplay records the leader per
+  // Exactly one leader source per session: session records the leader per
   // round instead and has none of its own; every other type requires one.
   // The zod schema carries the same rule for callers that go through it (the
   // API route), but this service is also called directly (e.g. from tests),
   // so it must enforce the rule itself too.
-  if (isFreeplay(input.type) && input.myLeaderId !== undefined) {
-    throw new ValidationError('A freeplay session has no leader of its own.');
+  if (isSession(input.type) && input.myLeaderId !== undefined) {
+    throw new ValidationError('A session has no leader of its own.');
   }
-  if (!isFreeplay(input.type) && input.myLeaderId === undefined) {
+  if (!isSession(input.type) && input.myLeaderId === undefined) {
     throw new ValidationError('Choose your leader.');
   }
   // A client-supplied id makes the create idempotent: replaying a queued
@@ -95,11 +95,11 @@ export async function getTournament(db: DB, ownerId: string, id: string): Promis
 
 export async function updateTournament(db: DB, ownerId: string, id: string, input: UpdateTournamentInput): Promise<Tournament> {
   const current = await requireOwned(db, ownerId, id);
-  // The leader invariant cannot survive a type switch: going to freeplay would
+  // The leader invariant cannot survive a type switch: going to session would
   // orphan the session leader, and leaving it would leave rounds owning leaders
   // the tournament should own.
-  if (input.type !== undefined && isFreeplay(input.type) !== isFreeplay(current.type)) {
-    throw new ValidationError('A session cannot be changed into or out of freeplay.');
+  if (input.type !== undefined && isSession(input.type) !== isSession(current.type)) {
+    throw new ValidationError('A session cannot be changed into or out of session.');
   }
   // Same shape, different invariant: a match holds exactly one round, so a
   // five-round tournament cannot become one without silently orphaning four —
@@ -108,12 +108,12 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
     throw new ValidationError('A match cannot be changed into a tournament, or a tournament into a match.');
   }
   // Also guard the type-omitted case: a patch that only touches myLeaderId
-  // still has to respect an already-freeplay tournament having no leader of
+  // still has to respect an already-session tournament having no leader of
   // its own — this is the same one-leader-per-session rule, just reached
-  // without a type change. (A freeplay tournament's own myLeaderId is always
+  // without a type change. (A session tournament's own myLeaderId is always
   // already null, so an explicit `null` here is a no-op, not a violation.)
-  if (isFreeplay(current.type) && input.myLeaderId !== undefined && input.myLeaderId !== null) {
-    throw new ValidationError('A freeplay session has no leader of its own.');
+  if (isSession(current.type) && input.myLeaderId !== undefined && input.myLeaderId !== null) {
+    throw new ValidationError('A session has no leader of its own.');
   }
   const patch: Partial<typeof tournaments.$inferInsert> = { updatedAt: new Date() };
   if (input.type !== undefined) patch.type = input.type;
@@ -129,7 +129,7 @@ export async function updateTournament(db: DB, ownerId: string, id: string, inpu
 }
 
 /**
- * Moves an event across the freeplay boundary, carrying its leader with it.
+ * Moves an event across the session boundary, carrying its leader with it.
  *
  * This is the reshape migration 0011 performs in SQL, as an action: a
  * tournament owns one leader for the whole event, a session owns one per round,
@@ -159,8 +159,8 @@ export async function convertTournamentType(
     return current;
   }
   // Not a conversion at all — the caller wants updateTournament.
-  if (isFreeplay(input.type) === isFreeplay(current.type)) {
-    throw new ValidationError('That type is already on the same side of freeplay.');
+  if (isSession(input.type) === isSession(current.type)) {
+    throw new ValidationError('That type is already on the same side of session.');
   }
 
   // The leader lives in exactly one of two places — the tournament row or its
@@ -175,9 +175,9 @@ export async function convertTournamentType(
     const games = rs.filter((r) => r.kind === 'swiss' || r.kind === 'top_cut');
     const patch: Partial<typeof tournaments.$inferInsert> = { type: input.type, updatedAt: new Date() };
 
-    if (isFreeplay(input.type)) {
+    if (isSession(input.type)) {
       // Down onto the games, off the session. `current.myLeaderId` is always set
-      // here — a non-freeplay tournament cannot exist without one — but the guard
+      // here — a non-session tournament cannot exist without one — but the guard
       // keeps this branch honest if that ever stops being true.
       if (current.myLeaderId) {
         await tx.update(rounds)

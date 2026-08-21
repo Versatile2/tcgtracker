@@ -1,7 +1,7 @@
 import type { TournamentType } from './dto';
 
 /** The two strips that remember what you picked last. */
-export type TypeSegment = 'tournament' | 'freeplay';
+export type TypeSegment = 'tournament' | 'session';
 
 /**
  * The type you last created, per segment. Players run the same kind of thing
@@ -11,7 +11,7 @@ export type TypeSegment = 'tournament' | 'freeplay';
  * Two keys rather than one because the segments have nothing to say to each
  * other: a Regional logged last week must not open the session form on Ranked
  * Simulator. That used to be prevented by refusing to remember anything on the
- * freeplay side at all, which was fine at two options and useless at eight.
+ * session side at all, which was fine at two options and useless at eight.
  *
  * Local, like the recent-leaders list, and for the same reasons: no round trip,
  * works with no signal, and it is a preference about this device rather than
@@ -21,7 +21,7 @@ export type TypeSegment = 'tournament' | 'freeplay';
  */
 const KEYS: Record<TypeSegment, string> = {
   tournament: 'crewstat-last-tournament-type',
-  freeplay: 'crewstat-last-freeplay-type',
+  session: 'crewstat-last-session-type',
 };
 
 /** Null when nothing is remembered, or when storage is unreadable. */
@@ -52,7 +52,7 @@ export function rememberType(segment: TypeSegment, type: TournamentType): void {
  * selection: reordering on every tap would slide the next choice out from under
  * the player's finger. The lead is settled when the screen opens and stays put.
  *
- * An unknown or no-longer-offered type (testing, once it moved to the freeplay
+ * An unknown or no-longer-offered type (testing, once it moved to the session
  * segment) is ignored rather than prepended.
  */
 export function orderTypes(types: TournamentType[], lead: TournamentType | null): TournamentType[] {

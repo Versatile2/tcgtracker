@@ -151,15 +151,15 @@ describe('round service', () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
-  it('requires a leader on a freeplay swiss round', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('requires a leader on a session swiss round', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     await expect(addRound(db, USER, t.id, {
       kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win',
     })).rejects.toThrow();
   });
 
-  it('stores a per-round leader on a freeplay round', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('stores a per-round leader on a session round', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     const mine = await leaderId('Roronoa Zoro');
     const r = await addRound(db, USER, t.id, {
       kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: mine,
@@ -167,7 +167,7 @@ describe('round service', () => {
     expect(r.myLeaderId).toBe(mine);
   });
 
-  it('rejects a per-round leader on a non-freeplay round', async () => {
+  it('rejects a per-round leader on a non-session round', async () => {
     const t = await createTournament(db, USER, {
       type: 'local', myLeaderId: await leaderId('Roronoa Zoro'), playedOn: '2026-08-14',
     });
@@ -177,14 +177,14 @@ describe('round service', () => {
     })).rejects.toThrow();
   });
 
-  it('accepts a freeplay bye with no leader', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('accepts a session bye with no leader', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     const r = await addRound(db, USER, t.id, { kind: 'bye', notes: null });
     expect(r.myLeaderId).toBeNull();
   });
 
-  it('rejects updating a freeplay swiss round without myLeaderId', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('rejects updating a session swiss round without myLeaderId', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     const mine = await leaderId('Roronoa Zoro');
     const r = await addRound(db, USER, t.id, {
       kind: 'swiss', opponentLeaderId: await leaderId('Nami'), result: 'win', myLeaderId: mine,
@@ -194,8 +194,8 @@ describe('round service', () => {
     })).rejects.toThrow();
   });
 
-  it('updating a freeplay swiss round with myLeaderId stores it', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay', playedOn: '2026-08-14' });
+  it('updating a session swiss round with myLeaderId stores it', async () => {
+    const t = await createTournament(db, USER, { type: 'session', playedOn: '2026-08-14' });
     const mine = await leaderId('Roronoa Zoro');
     const other = await leaderId('Sanji');
     const r = await addRound(db, USER, t.id, {

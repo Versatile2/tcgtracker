@@ -23,7 +23,7 @@ async function runMigration() {
   }
 }
 
-describe('testing tournaments become freeplay sessions', () => {
+describe('testing tournaments become sessions', () => {
   beforeEach(async () => {
     await resetDb();
     await seedReferenceData(db);

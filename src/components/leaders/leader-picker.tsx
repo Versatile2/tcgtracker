@@ -257,7 +257,7 @@ export function LeaderPicker({
   suggestionsPending?: boolean;
   /**
    * Set false where the parent already renders the current choice and its own
-   * "change" control — the freeplay "Playing as" header does. Without this the
+   * "change" control — the session "Playing as" header does. Without this the
    * picker collapses onto the same leader the parent is already showing, and
    * switching decks costs two taps instead of one.
    */
@@ -406,7 +406,7 @@ export function LeaderPicker({
   }
 
   // One presentation for a chosen leader, wherever the choice was made: the
-  // compact row the freeplay "Playing as" header used to hand-roll. Selection is
+  // compact row the session "Playing as" header used to hand-roll. Selection is
   // a settled fact, so it reads as a tidy line rather than a card on display.
   if (collapsed && selected) {
     // Only a card printed more than once has anything to choose between; every

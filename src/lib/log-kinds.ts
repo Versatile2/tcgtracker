@@ -74,8 +74,8 @@ export const LOG_KINDS: LogKind[] = [
   },
   {
     key: 'matches',
-    noun: 'match',
-    label: 'New Match',
+    noun: 'free play',
+    label: 'New Free Play',
     href: '/matches/new',
     icon: Swords,
     shape: 'A single game, on its own',

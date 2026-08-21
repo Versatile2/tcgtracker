@@ -5,7 +5,7 @@ import { tournaments, rounds } from '../db/schema';
 import { NotFoundError, ConflictError, ValidationError } from '../lib/errors';
 import type { CreateRoundInput, UpdateRoundInput } from '../lib/validation/round';
 import { roundFieldsFromInput as valuesForKind } from '../lib/round-values';
-import { isFreeplay } from '../lib/tournament-kinds';
+import { isSession } from '../lib/tournament-kinds';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Round = typeof rounds.$inferSelect;
@@ -31,16 +31,16 @@ async function requireOwnedRound(db: DB, ownerId: string, roundId: string) {
 }
 
 // Exactly one leader source per real game: the session owns it for classic
-// tournaments, the round owns it for freeplay. Byes / no-shows are exempt —
+// tournaments, the round owns it for session. Byes / no-shows are exempt —
 // they are not games and feed no statistic.
 function assertLeaderInvariant(tournament: typeof tournaments.$inferSelect, input: CreateRoundInput | UpdateRoundInput) {
   if (input.kind === 'swiss' || input.kind === 'top_cut') {
-    const freeplay = isFreeplay(tournament.type);
-    if (freeplay && !input.myLeaderId) {
+    const session = isSession(tournament.type);
+    if (session && !input.myLeaderId) {
       throw new ValidationError('Choose which deck you played this round.');
     }
-    if (!freeplay && input.myLeaderId) {
-      throw new ValidationError('Only a freeplay round records its own leader.');
+    if (!session && input.myLeaderId) {
+      throw new ValidationError('Only a session round records its own leader.');
     }
   }
 }

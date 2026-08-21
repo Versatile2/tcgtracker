@@ -43,7 +43,7 @@ export function RoundItem({
 
   const row = (
     <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
-      {/* Only freeplay rounds carry their own leader; a classic tournament's leader
+      {/* Only session rounds carry their own leader; a classic tournament's leader
           is fixed for the event and is stated once in the page header. */}
       {myLeader && <LeaderAvatar name={myLeader.name} colors={myLeader.colors} setCode={myLeader.setCode} size="md" />}
       <div className="min-w-0 flex-1">

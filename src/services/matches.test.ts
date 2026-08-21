@@ -40,7 +40,7 @@ describe('a match', () => {
     expect(t.myLeaderId).not.toBeNull();
   });
 
-  it('needs a leader of its own, like any non-freeplay session', async () => {
+  it('needs a leader of its own, like any non-session row', async () => {
     await expect(createTournament(db, USER, { type: 'match', playedOn: '2026-08-18' }))
       .rejects.toThrow(ValidationError);
   });
@@ -82,7 +82,7 @@ describe('a match and the competitive record', () => {
   });
 
   it('is absent from the per-meta breakdown', async () => {
-    // Excluded even though freeplay is included here: the per-meta breakdown
+    // Excluded even though session is included here: the per-meta breakdown
     // reports the competitive record, and a casual game is not part of it —
     // regardless of whether a meta was recorded on it.
     const perMeta = await getPerMetaStats(db, USER);

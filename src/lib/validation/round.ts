@@ -41,7 +41,7 @@ const swissRound = z.object({
   result: resultEnum,
   playOrder: playOrderEnum.nullable().optional(),
   wonDieRoll: z.boolean().nullable().optional(),
-  // Set only on a freeplay round, where the leader changes per round instead
+  // Set only on a session round, where the leader changes per round instead
   // of being fixed on the tournament. The service enforces which is required.
   myLeaderId: z.uuid().nullable().optional(),
   notes,

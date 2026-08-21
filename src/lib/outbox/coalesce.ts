@@ -28,11 +28,11 @@ export function enqueue(queue: OutboxEntry[], entry: OutboxEntry): OutboxEntry[]
       // a pure "set this field" op: the server reads the tournament's *current*
       // type and its rounds' *current* leaders to decide what to move where, and
       // it refuses to run at all when the destination is already on the same
-      // side of freeplay the tournament is already on. Two converts for the same
-      // tournament can only ever alternate sides (freeplay -> non-freeplay ->
-      // freeplay, ...), so dropping the earlier one and keeping only the last —
+      // side of session the tournament is already on. Two converts for the same
+      // tournament can only ever alternate sides (session -> non-session ->
+      // session, ...), so dropping the earlier one and keeping only the last —
       // the finish/reopen trick — would replay the survivor against a state it
-      // was never actually issued against: either its own side-of-freeplay guard
+      // was never actually issued against: either its own side-of-session guard
       // rejects it outright (net effect lands back on the side the tournament
       // started on), or, if it doesn't reject, it recomputes the leader move from
       // rounds that the dropped op never touched, silently losing a leader. The
@@ -64,9 +64,9 @@ const findRoundCreate = (queue: OutboxEntry[], roundId: string) =>
  * after `at` — position-relative, not "anywhere in the queue". `at` is always
  * the index of the create the caller is about to fold into, so what this
  * asks is: does anything between that create and the tail cross the
- * freeplay boundary? A create's payload — or a round create's payload — only
+ * session boundary? A create's payload — or a round create's payload — only
  * makes sense for the leader segment the tournament was in at the point it
- * was authored: a freeplay round carries its own leader, a classic one must
+ * was authored: a session round carries its own leader, a classic one must
  * not. If a convert sits between the create and the edit being folded, the
  * two were authored on opposite sides of the boundary and folding would carry
  * the edit's leader shape back to a spot that predates the convert that made

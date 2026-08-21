@@ -19,15 +19,15 @@ type WinLoss = 'win' | 'loss';
 type PlayOrder = 'first' | 'second';
 
 export function RoundFormSheet({
-  open, onOpenChange, initial, onSubmit, onDelete, isFreeplay, defaultMyLeaderId,
+  open, onOpenChange, initial, onSubmit, onDelete, isSession, defaultMyLeaderId,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
   onDelete?: () => Promise<void> | void;
-  isFreeplay: boolean;
-  /** Previous round's leader, inherited by a new freeplay round. Null on the first. */
+  isSession: boolean;
+  /** Previous round's leader, inherited by a new session round. Null on the first. */
   defaultMyLeaderId: string | null;
 }) {
   return (
@@ -35,20 +35,20 @@ export function RoundFormSheet({
       <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto">
         <div className="mx-auto mt-1 mb-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" aria-hidden />
         {/* Keyed by open+initial so all step/form state re-initializes each time the sheet opens. */}
-        <RoundSheetBody key={open ? (initial?.id ?? 'new') : 'closed'} onOpenChange={onOpenChange} initial={initial} onSubmit={onSubmit} onDelete={onDelete} isFreeplay={isFreeplay} defaultMyLeaderId={defaultMyLeaderId} />
+        <RoundSheetBody key={open ? (initial?.id ?? 'new') : 'closed'} onOpenChange={onOpenChange} initial={initial} onSubmit={onSubmit} onDelete={onDelete} isSession={isSession} defaultMyLeaderId={defaultMyLeaderId} />
       </SheetContent>
     </Sheet>
   );
 }
 
 function RoundSheetBody({
-  onOpenChange, initial, onSubmit, onDelete, isFreeplay, defaultMyLeaderId,
+  onOpenChange, initial, onSubmit, onDelete, isSession, defaultMyLeaderId,
 }: {
   onOpenChange: (o: boolean) => void;
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
   onDelete?: () => Promise<void> | void;
-  isFreeplay: boolean;
+  isSession: boolean;
   defaultMyLeaderId: string | null;
 }) {
   const [step, setStep] = useState<'type' | 'form'>(initial ? 'form' : 'type');
@@ -77,7 +77,7 @@ function RoundSheetBody({
       onOpenChange={onOpenChange}
       onSubmit={onSubmit}
       onDelete={onDelete}
-      isFreeplay={isFreeplay}
+      isSession={isSession}
       defaultMyLeaderId={defaultMyLeaderId}
     />
   );
@@ -147,7 +147,7 @@ function TypeCard({ icon: Icon, kind, onPick, disabled }: { icon: LucideIcon; ki
 
 /** Two mutually exclusive options, both always visible. `null` renders neither as active. */
 function RoundFormBody({
-  kind, onBack, onOpenChange, initial, onSubmit, onDelete, isFreeplay, defaultMyLeaderId,
+  kind, onBack, onOpenChange, initial, onSubmit, onDelete, isSession, defaultMyLeaderId,
 }: {
   kind: 'swiss' | 'top_cut';
   onBack?: () => void;
@@ -155,7 +155,7 @@ function RoundFormBody({
   initial?: RoundDTO;
   onSubmit: (data: CreateRoundInput) => Promise<void>;
   onDelete?: () => Promise<void> | void;
-  isFreeplay: boolean;
+  isSession: boolean;
   defaultMyLeaderId: string | null;
 }) {
   const { data: leaders } = useLeaders();
@@ -192,7 +192,7 @@ function RoundFormBody({
   const valid = (kind === 'swiss'
     ? Boolean(oppLeaderId && result)
     : Boolean(oppLeaderId && isCompletedBo3(games)))
-    && (!isFreeplay || Boolean(myLeaderId));
+    && (!isSession || Boolean(myLeaderId));
 
   // Custom leaders are the one write that cannot be queued offline: the name
   // uniqueness check happens server-side, so a replayed create could strand the
@@ -207,8 +207,8 @@ function RoundFormBody({
       // getOpponentStats would then coalesce the round into the tournament's
       // meta, rewriting history). See roundToInput in tournament-detail.tsx.
       const payload: CreateRoundInput = kind === 'swiss'
-        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, ...(isFreeplay ? { myLeaderId } : {}), result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
-        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, ...(isFreeplay ? { myLeaderId } : {}), games, notes: notes.trim() || null };
+        ? { kind: 'swiss', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, ...(isSession ? { myLeaderId } : {}), result: result!, playOrder, wonDieRoll, notes: notes.trim() || null }
+        : { kind: 'top_cut', opponentLeaderId: oppLeaderId, opponentMetaId: initial?.opponentMetaId ?? null, ...(isSession ? { myLeaderId } : {}), games, notes: notes.trim() || null };
       await onSubmit(payload);
       onOpenChange(false);
     } finally {
@@ -243,7 +243,7 @@ function RoundFormBody({
       </SheetHeader>
 
       <div className="space-y-5 px-4 pb-4">
-        {isFreeplay && (
+        {isSession && (
           // Sits inside the form beside its twin rather than above the sheet's
           // own heading, where it used to live as a session-level banner. Now
           // that it is a titled field, the two decks read as a pair: yours, then

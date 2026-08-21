@@ -4,7 +4,7 @@ import { NavBar } from '@/components/nav/nav-bar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTournament } from '@/components/query-hooks';
 import { TournamentForm } from './tournament-form';
-import { isFreeplay } from '@/lib/tournament-kinds';
+import { isSession } from '@/lib/tournament-kinds';
 
 /**
  * Loads a tournament, then hands it to the form that created it.
@@ -42,7 +42,7 @@ export function TournamentEdit({ id }: { id: string }) {
         <NavBar backLabel="Back" onBack={back} />
         <main className="mx-auto max-w-xl space-y-3 p-4">
           <p className="text-sm text-muted-foreground">
-            This {isFreeplay(data.type) ? 'session' : 'tournament'} is finished. Reopen it to make changes.
+            This {isSession(data.type) ? 'session' : 'tournament'} is finished. Reopen it to make changes.
           </p>
         </main>
       </>

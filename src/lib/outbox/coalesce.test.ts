@@ -26,16 +26,16 @@ const createR = (roundId = R, tournamentId = T): OutboxOp => ({
   payload: { id: roundId, kind: 'swiss', opponentLeaderId: LEADER, result: 'win' },
 });
 
-// The mirror of createT/createR: a session (freeplay) tournament whose round
+// The mirror of createT/createR: a session (session) tournament whose round
 // carries its own leader, the shape that only makes sense on that side of the
 // boundary.
-const createFreeplayT = (id = T): OutboxOp => ({
+const createSessionT = (id = T): OutboxOp => ({
   kind: 'tournament.create',
   tournamentId: id,
-  payload: { id, type: 'freeplay_gauntlet', playedOn: '2026-08-07' },
+  payload: { id, type: 'session_gauntlet', playedOn: '2026-08-07' },
 });
 
-const createFreeplayR = (roundId = R, tournamentId = T): OutboxOp => ({
+const createSessionR = (roundId = R, tournamentId = T): OutboxOp => ({
   kind: 'round.create',
   tournamentId,
   roundId,
@@ -127,11 +127,11 @@ describe('outbox coalescing', () => {
     // Unlike finish/reopen, a convert reads the tournament's *current* type and
     // its rounds' *current* leaders to decide what to move where, and it
     // refuses to run when the destination is already on the current side of
-    // freeplay. Dropping the earlier convert and keeping only the last one (the
+    // session. Dropping the earlier convert and keeping only the last one (the
     // finish/reopen trick) would replay the survivor against a state it was
     // never actually issued against — see the WHY comment in coalesce.ts.
     const q = queueOf(
-      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
       { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
     );
     expect(kinds(q)).toEqual(['tournament.convert', 'tournament.convert']);
@@ -139,8 +139,8 @@ describe('outbox coalescing', () => {
 
   it('leaves a convert for a different tournament alone', () => {
     const q = queueOf(
-      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
-      { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'session_gauntlet' } },
     );
     expect(kinds(q)).toEqual(['tournament.convert', 'tournament.convert']);
     expect(q.map((e) => e.op.tournamentId)).toEqual([T, T2]);
@@ -155,7 +155,7 @@ describe('outbox coalescing', () => {
     const q = queueOf(
       createT(),
       createR(),
-      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
     );
     expect(kinds(q)).toEqual(['tournament.create', 'round.create', 'tournament.convert']);
     // The create still carries the pre-conversion type; only the trailing
@@ -165,7 +165,7 @@ describe('outbox coalescing', () => {
 
   it('does not reorder a convert around an intervening tournament update', () => {
     const q = queueOf(
-      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
       { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
       { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
     );
@@ -175,7 +175,7 @@ describe('outbox coalescing', () => {
   it('deleting a never-synced tournament drops its queued convert too', () => {
     const q = queueOf(
       createT(),
-      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
       createT(T2),
       { kind: 'tournament.delete', tournamentId: T },
     );
@@ -185,7 +185,7 @@ describe('outbox coalescing', () => {
 
   it('deleting a synced tournament drops its queued convert but keeps the delete', () => {
     const q = queueOf(
-      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+      { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
       { kind: 'tournament.delete', tournamentId: T },
     );
     expect(kinds(q)).toEqual(['tournament.delete']);
@@ -237,7 +237,7 @@ describe('outbox coalescing', () => {
     it('declines to fold a tournament update into its create when a convert is queued between them', () => {
       const q = queueOf(
         createT(),
-        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
         { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
       );
       expect(kinds(q)).toEqual(['tournament.create', 'tournament.convert', 'tournament.update']);
@@ -249,12 +249,12 @@ describe('outbox coalescing', () => {
 
     it('declines to fold the mirror case: an update after a queued convert to classic', () => {
       const q = queueOf(
-        createFreeplayT(),
+        createSessionT(),
         { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
         { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
       );
       expect(kinds(q)).toEqual(['tournament.create', 'tournament.convert', 'tournament.update']);
-      expect(q[0].op).toMatchObject({ payload: { type: 'freeplay_gauntlet', id: T } });
+      expect(q[0].op).toMatchObject({ payload: { type: 'session_gauntlet', id: T } });
       const createPayload = (q[0].op as Extract<OutboxOp, { kind: 'tournament.create' }>).payload;
       expect(createPayload.name).toBeUndefined();
     });
@@ -263,7 +263,7 @@ describe('outbox coalescing', () => {
       const q = queueOf(
         createT(),
         createT(T2),
-        { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'session_gauntlet' } },
         { kind: 'tournament.update', tournamentId: T, payload: { name: 'Renamed' } },
       );
       expect(kinds(q)).toEqual(['tournament.create', 'tournament.create', 'tournament.convert']);
@@ -275,7 +275,7 @@ describe('outbox coalescing', () => {
       const q = queueOf(
         createT(),
         createR(),
-        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'tournament.convert', tournamentId: T, payload: { type: 'session_gauntlet' } },
         { kind: 'round.update', tournamentId: T, roundId: R, payload: { kind: 'swiss', opponentLeaderId: LEADER, result: 'loss' } },
       );
       expect(kinds(q)).toEqual(['tournament.create', 'round.create', 'tournament.convert', 'round.update']);
@@ -289,8 +289,8 @@ describe('outbox coalescing', () => {
 
     it('declines to fold the mirror case: a round update after a queued convert to classic', () => {
       const q = queueOf(
-        createFreeplayT(),
-        createFreeplayR(),
+        createSessionT(),
+        createSessionR(),
         { kind: 'tournament.convert', tournamentId: T, payload: { type: 'local', myLeaderId: LEADER } },
         { kind: 'round.update', tournamentId: T, roundId: R, payload: { kind: 'swiss', opponentLeaderId: LEADER, result: 'loss' } },
       );
@@ -305,7 +305,7 @@ describe('outbox coalescing', () => {
         createT(),
         createR(),
         createT(T2),
-        { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'freeplay_gauntlet' } },
+        { kind: 'tournament.convert', tournamentId: T2, payload: { type: 'session_gauntlet' } },
         { kind: 'round.update', tournamentId: T, roundId: R, payload: { kind: 'swiss', opponentLeaderId: LEADER, result: 'loss' } },
       );
       expect(kinds(q)).toEqual(['tournament.create', 'round.create', 'tournament.create', 'tournament.convert']);

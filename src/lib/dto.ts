@@ -7,15 +7,15 @@ export type GameLog = { result: 'win' | 'loss'; playOrder: 'first' | 'second' | 
 export type RoundDTO = {
   id: string; tournamentId: string; roundNumber: number; kind: RoundKind;
   opponentLeaderId: string | null; opponentMetaId: string | null;
-  // Set only on a freeplay swiss/top_cut round; null otherwise (including on
-  // freeplay byes/no-shows, which are not games).
+  // Set only on a session swiss/top_cut round; null otherwise (including on
+  // session byes/no-shows, which are not games).
   myLeaderId: string | null;
   result: 'win' | 'loss' | 'draw'; playOrder: 'first' | 'second' | null;
   wonDieRoll: boolean | null;
   games: GameLog[] | null; notes: string | null;
 };
 export type RecordDTO = { wins: number; losses: number; draws: number };
-export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing' | 'ranked_sim' | 'freeplay' | 'freeplay_sim' | 'freeplay_sim_casual' | 'freeplay_friend' | 'freeplay_locals' | 'freeplay_gauntlet' | 'freeplay_teaching' | 'match';
+export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing' | 'ranked_sim' | 'session' | 'session_sim' | 'session_sim_casual' | 'session_friend' | 'session_locals' | 'session_gauntlet' | 'session_teaching' | 'match';
 // playOrder rides along so the client can evaluate achievements from its own
 // cache — without it, unlocks could only be discovered on the next server read.
 export type MatchSummaryDTO = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: RoundKind; playOrder: 'first' | 'second' | null };

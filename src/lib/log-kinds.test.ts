@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { LOG_KINDS, STAT_SURFACES, logKind, type LogKindKey } from './log-kinds';
-import { CASUAL_TYPES, FREEPLAY_TYPES, MATCH_TYPE, TOURNAMENT_TYPES } from './tournament-kinds';
+import { CASUAL_TYPES, SESSION_TYPES, MATCH_TYPE, TOURNAMENT_TYPES } from './tournament-kinds';
 import type { TournamentType } from './dto';
 import type { Segment } from '../components/tournaments/segment';
 
@@ -20,13 +20,13 @@ import type { Segment } from '../components/tournaments/segment';
 /** The types that live in each segment, as `tournament-list.tsx` splits them. */
 const TYPES_IN: Record<LogKindKey, TournamentType[]> = {
   tournaments: TOURNAMENT_TYPES,
-  sessions: FREEPLAY_TYPES,
+  sessions: SESSION_TYPES,
   matches: [MATCH_TYPE],
 };
 
 // Derived the way the services derive them, not copied from the copy.
 const inCompetitiveRecord = (t: TournamentType) => !CASUAL_TYPES.includes(t);
-// `aggregateByMeta` excludes matches whichever way its freeplay switch is set.
+// `aggregateByMeta` excludes matches whichever way its session switch is set.
 const inPerMetaBreakdown = (t: TournamentType) => t !== MATCH_TYPE;
 // Opponent and matchup stats are the whole reason casual games are logged.
 const inMatchupStats = () => true;

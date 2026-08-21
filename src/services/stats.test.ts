@@ -184,9 +184,9 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(rows.map((r) => r.name).sort()).toEqual(['No meta', 'OP02']);
   });
 
-  it('attributes a freeplay round to the round leader, not the session', async () => {
+  it('attributes a session round to the round leader, not the session', async () => {
     const [t] = await db.insert(tournaments).values({
-      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: await metaId('OP02 Paramount War'),
+      ownerId: USER, type: 'session', myLeaderId: null, metaId: await metaId('OP02 Paramount War'),
       playedOn: '2026-08-14', status: 'locked',
     }).returning();
     await db.insert(rounds).values({
@@ -205,7 +205,7 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(m.opponents.some((o) => o.name === 'Nami')).toBe(true);
 
     // ...including the colour breakdown, which must coalesce the same way as
-    // opponents/turnOrder — otherwise a freeplay-only deck shows an
+    // opponents/turnOrder — otherwise a session-only deck shows an
     // internally inconsistent matchups screen (opponents present, colours
     // empty). Nami (OP03-040, the printing `leaderId` resolves to) is blue.
     expect(m.colorBreakdown.length).toBeGreaterThan(0);
@@ -214,9 +214,9 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(blue?.wins).toBe(1);
   });
 
-  it('keeps freeplay out of the overall record but inside per-meta', async () => {
+  it('keeps session out of the overall record but inside per-meta', async () => {
     const [t] = await db.insert(tournaments).values({
-      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: await metaId('OP02 Paramount War'),
+      ownerId: USER, type: 'session', myLeaderId: null, metaId: await metaId('OP02 Paramount War'),
       playedOn: '2026-08-14', status: 'locked',
     }).returning();
     await db.insert(rounds).values({
@@ -234,7 +234,7 @@ describe('stats service — overall/per-meta/played-leaders', () => {
     expect(per.find((p) => p.name === 'OP02')?.wins).toBe(1);
 
     // By opponent needs no change at all — it is keyed by the opponent's
-    // leader, never mine. This pins that it keeps counting freeplay.
+    // leader, never mine. This pins that it keeps counting session.
     const opp = await getOpponentStats(db, USER);
     expect(opp.find((x) => x.name === 'Nami')?.games).toBe(1);
   });

@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { RoundDTO, TournamentDetailDTO, TournamentSummaryDTO } from '@/lib/dto';
 import { keys } from '@/lib/query-keys';
 import { computeRecord, computeDeckCount } from '@/lib/record';
-import { isFreeplay } from '@/lib/tournament-kinds';
+import { isSession } from '@/lib/tournament-kinds';
 
 /**
  * Apply a pending write to the query cache immediately. The cache is persisted
@@ -99,12 +99,12 @@ export function convertTournament(
   payload: { type: TournamentDetailDTO['type']; myLeaderId?: string | null }
 ) {
   const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(tournamentId));
-  const toFreeplay = isFreeplay(payload.type);
+  const toSession = isSession(payload.type);
 
   if (!detail) {
     patchTournament(qc, tournamentId, {
       type: payload.type,
-      myLeaderId: toFreeplay ? null : (payload.myLeaderId ?? null),
+      myLeaderId: toSession ? null : (payload.myLeaderId ?? null),
     });
     return;
   }
@@ -112,13 +112,13 @@ export function convertTournament(
   // Computed from the pre-conversion cache, before rounds/tournament below are
   // rewritten — same rule `promotedLeaderId` documents for the server's own
   // promotion step.
-  const myLeaderId = toFreeplay ? null : promotedLeaderId(qc, tournamentId, payload.myLeaderId ?? null);
-  // Going to freeplay pushes the tournament's own (pre-conversion) leader down
+  const myLeaderId = toSession ? null : promotedLeaderId(qc, tournamentId, payload.myLeaderId ?? null);
+  // Going to session pushes the tournament's own (pre-conversion) leader down
   // onto the games; coming back clears them, mirroring the two branches of
   // convertTournamentType.
   const pushedDown = detail.myLeaderId;
   const rounds = detail.rounds.map((r) =>
-    r.kind === 'swiss' || r.kind === 'top_cut' ? { ...r, myLeaderId: toFreeplay ? pushedDown : null } : r
+    r.kind === 'swiss' || r.kind === 'top_cut' ? { ...r, myLeaderId: toSession ? pushedDown : null } : r
   );
 
   putDetail(qc, { ...detail, type: payload.type, myLeaderId, rounds });

@@ -8,10 +8,10 @@ describe('tournamentTypeLabel', () => {
     expect(tournamentTypeLabel('local')).toBe('Local');
   });
 
-  // The stored value stays `freeplay` — only the label moved, in step with
+  // The stored value stays `session` — only the label moved, in step with
   // the segment it lives in being renamed to Sessions.
-  it('labels the catch-all freeplay type "Session"', () => {
-    expect(tournamentTypeLabel('freeplay')).toBe('Session');
+  it('labels the catch-all session type "Session"', () => {
+    expect(tournamentTypeLabel('session')).toBe('Session');
   });
 });
 

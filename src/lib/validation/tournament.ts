@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isFreeplay } from '../tournament-kinds';
+import { isSession } from '../tournament-kinds';
 
 export const tournamentTypeEnum = z.enum([
   'local',
@@ -7,19 +7,19 @@ export const tournamentTypeEnum = z.enum([
   'regionals',
   'extra_grand_battle',
   'pirates_party',
-  // Deck testing. A freeplay-segment type: it records a leader per round, and
+  // Deck testing. A session-segment type: it records a leader per round, and
   // it has never belonged in the competitive record.
   'testing',
   // Ranked play on the simulator, logged as an event.
   'ranked_sim',
-  'freeplay',
+  'session',
   // The same simulator games logged as a casual session instead.
-  'freeplay_sim',
-  'freeplay_sim_casual',
-  'freeplay_friend',
-  'freeplay_locals',
-  'freeplay_gauntlet',
-  'freeplay_teaching',
+  'session_sim',
+  'session_sim_casual',
+  'session_friend',
+  'session_locals',
+  'session_gauntlet',
+  'session_teaching',
   'match',
 ]);
 
@@ -53,7 +53,7 @@ export const createTournamentSchema = z.object({
   // immediately. Omitted by non-offline callers; the database defaults it.
   id: z.uuid().optional(),
   type: tournamentTypeEnum,
-  // Required for every type except freeplay, which records the leader per
+  // Required for every type except session, which records the leader per
   // round instead and has none of its own. Enforced below.
   myLeaderId: z.uuid().optional(),
   metaId: z.uuid().optional(),
@@ -64,10 +64,10 @@ export const createTournamentSchema = z.object({
 }).superRefine((v, ctx) => {
   const bad = placementIssue(v);
   if (bad) ctx.addIssue({ code: 'custom', path: ['placement'], message: bad });
-  if (isFreeplay(v.type) && v.myLeaderId !== undefined) {
-    ctx.addIssue({ code: 'custom', path: ['myLeaderId'], message: 'A freeplay session has no leader of its own.' });
+  if (isSession(v.type) && v.myLeaderId !== undefined) {
+    ctx.addIssue({ code: 'custom', path: ['myLeaderId'], message: 'A session has no leader of its own.' });
   }
-  if (!isFreeplay(v.type) && v.myLeaderId === undefined) {
+  if (!isSession(v.type) && v.myLeaderId === undefined) {
     ctx.addIssue({ code: 'custom', path: ['myLeaderId'], message: 'Choose your leader.' });
   }
 });

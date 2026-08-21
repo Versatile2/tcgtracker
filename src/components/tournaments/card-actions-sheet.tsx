@@ -16,7 +16,7 @@ import { placementLabel } from '@/lib/placement';
 import { MATCH_TYPE } from '@/lib/tournament-kinds';
 import { cn } from '@/lib/utils';
 import type { LeaderDTO, TournamentSummaryDTO } from '@/lib/dto';
-import { isFreeplay } from '@/lib/tournament-kinds';
+import { isSession } from '@/lib/tournament-kinds';
 
 /**
  * What you can do to an event without opening it.
@@ -88,10 +88,10 @@ function Body({
   const [confirming, setConfirming] = useState(false);
 
   const isMatch = t.type === MATCH_TYPE;
-  const freeplay = isFreeplay(t.type);
+  const session = isSession(t.type);
   const drafting = t.status === 'draft';
   const leader = t.myLeaderId ? resolveLeader(t.myLeaderId) : undefined;
-  const noun = isMatch ? 'match' : freeplay ? 'session' : 'tournament';
+  const noun = isMatch ? 'free play' : session ? 'session' : 'tournament';
 
   const actions: Action[] = [
     // Absent on a finished tournament: /tournaments/[id]/edit refuses one, and
@@ -111,7 +111,7 @@ function Body({
     // at most one distinct deck across its rounds: with two or more, no single
     // leader exists for the tournament this would become, and a menu should
     // not offer a door that is locked.
-    ...(isMatch ? [] : freeplay
+    ...(isMatch ? [] : session
       ? (t.deckCount <= 1 ? [{
           key: 'convert', icon: Trophy, label: 'Convert to tournament',
           run: () => onConvert(),
@@ -123,7 +123,7 @@ function Body({
     // A match is a single game with no draft state worth toggling.
     ...(isMatch ? [] : [drafting
       ? {
-        key: 'finish', icon: Lock, label: freeplay ? 'Finish session' : 'Finish',
+        key: 'finish', icon: Lock, label: session ? 'Finish session' : 'Finish',
         run: () => { close(); writes.finish(t.id); },
       } as Action
       : {
@@ -141,7 +141,7 @@ function Body({
 
       {/* Identity first: it must be obvious which event is about to change. */}
       <div className="flex items-center gap-3 px-4 pb-3">
-        {freeplay
+        {session
           ? <TypeGlyph type={t.type} size="md" />
           : <LeaderAvatar name={leader?.name ?? '—'} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
         <div className="min-w-0">

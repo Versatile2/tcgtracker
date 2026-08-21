@@ -30,7 +30,7 @@ describe('converting a tournament into a session', () => {
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'loss' });
 
-    const converted = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+    const converted = await convertTournamentType(db, USER, t.id, { type: 'session_gauntlet' });
     expect(converted.myLeaderId).toBeNull();
     const rs = await roundsFor(t.id);
     expect(rs.every((r) => r.myLeaderId === mine)).toBe(true);
@@ -43,7 +43,7 @@ describe('converting a tournament into a session', () => {
     await addRound(db, USER, t.id, { kind: 'bye' });
     await addRound(db, USER, t.id, { kind: 'no_show' });
 
-    await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+    await convertTournamentType(db, USER, t.id, { type: 'session_gauntlet' });
     const rs = await roundsFor(t.id);
     const bye = rs.find((r) => r.kind === 'bye');
     const noShow = rs.find((r) => r.kind === 'no_show');
@@ -58,7 +58,7 @@ describe('converting a tournament into a session', () => {
       type: 'local', myLeaderId: ls[0].id, metaId: metas[0].id, playedOn: '2026-08-14',
       name: 'Local #4', notes: 'Great venue', placement: 2, fieldSize: 16,
     });
-    const converted = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+    const converted = await convertTournamentType(db, USER, t.id, { type: 'session_gauntlet' });
     expect(converted.name).toBe('Local #4');
     expect(converted.notes).toBe('Great venue');
     expect(converted.placement).toBe(2);
@@ -73,7 +73,7 @@ describe('converting a tournament into a session', () => {
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
     await finishTournament(db, USER, t.id);
 
-    const converted = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+    const converted = await convertTournamentType(db, USER, t.id, { type: 'session_gauntlet' });
     expect(converted.status).toBe('locked');
   });
 });
@@ -81,7 +81,7 @@ describe('converting a tournament into a session', () => {
 describe('converting a session into a tournament', () => {
   it('promotes the single deck onto the session and clears the rounds', async () => {
     const { mine, opp } = await anyLeaderIds();
-    const t = await createTournament(db, USER, { type: 'freeplay_gauntlet', playedOn: '2026-08-14' });
+    const t = await createTournament(db, USER, { type: 'session_gauntlet', playedOn: '2026-08-14' });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win', myLeaderId: mine });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'loss', myLeaderId: mine });
 
@@ -93,7 +93,7 @@ describe('converting a session into a tournament', () => {
 
   it('refuses a session that played two or more decks', async () => {
     const { mine, opp, other } = await anyLeaderIds();
-    const t = await createTournament(db, USER, { type: 'freeplay_gauntlet', playedOn: '2026-08-14' });
+    const t = await createTournament(db, USER, { type: 'session_gauntlet', playedOn: '2026-08-14' });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win', myLeaderId: mine });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'loss', myLeaderId: other });
 
@@ -102,14 +102,14 @@ describe('converting a session into a tournament', () => {
 
   it('takes the leader it is given when the session has no rounds', async () => {
     const { mine } = await anyLeaderIds();
-    const t = await createTournament(db, USER, { type: 'freeplay_gauntlet', playedOn: '2026-08-14' });
+    const t = await createTournament(db, USER, { type: 'session_gauntlet', playedOn: '2026-08-14' });
     const converted = await convertTournamentType(db, USER, t.id, { type: 'local', myLeaderId: mine });
     expect(converted.myLeaderId).toBe(mine);
   });
 
   it('takes the leader it is given when every round is a bye', async () => {
     const { mine } = await anyLeaderIds();
-    const t = await createTournament(db, USER, { type: 'freeplay_gauntlet', playedOn: '2026-08-14' });
+    const t = await createTournament(db, USER, { type: 'session_gauntlet', playedOn: '2026-08-14' });
     await addRound(db, USER, t.id, { kind: 'bye' });
     await addRound(db, USER, t.id, { kind: 'no_show' });
     const converted = await convertTournamentType(db, USER, t.id, { type: 'local', myLeaderId: mine });
@@ -117,7 +117,7 @@ describe('converting a session into a tournament', () => {
   });
 
   it('refuses a session with no rounds and no leader offered', async () => {
-    const t = await createTournament(db, USER, { type: 'freeplay_gauntlet', playedOn: '2026-08-14' });
+    const t = await createTournament(db, USER, { type: 'session_gauntlet', playedOn: '2026-08-14' });
     await expect(convertTournamentType(db, USER, t.id, { type: 'local' })).rejects.toBeInstanceOf(ValidationError);
   });
 });
@@ -137,7 +137,7 @@ describe('either direction', () => {
     const before = (await db.select().from(tournaments).where(eq(tournaments.id, t.id)))[0];
     const roundsBefore = await roundsFor(t.id);
 
-    await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+    await convertTournamentType(db, USER, t.id, { type: 'session_gauntlet' });
     await convertTournamentType(db, USER, t.id, { type: 'local' });
 
     const after = (await db.select().from(tournaments).where(eq(tournaments.id, t.id)))[0];
@@ -158,7 +158,7 @@ describe('either direction', () => {
   it('refuses another owner', async () => {
     const { mine } = await anyLeaderIds();
     const t = await createTournament(db, USER, { type: 'local', myLeaderId: mine, playedOn: '2026-08-14' });
-    await expect(convertTournamentType(db, 'user_b', t.id, { type: 'freeplay_gauntlet' }))
+    await expect(convertTournamentType(db, 'user_b', t.id, { type: 'session_gauntlet' }))
       .rejects.toBeInstanceOf(NotFoundError);
   });
 
@@ -166,13 +166,13 @@ describe('either direction', () => {
     const { mine, opp } = await anyLeaderIds();
     const m = await createTournament(db, USER, { type: 'match', myLeaderId: mine, playedOn: '2026-08-14' });
     await addRound(db, USER, m.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
-    await expect(convertTournamentType(db, USER, m.id, { type: 'freeplay_gauntlet' }))
+    await expect(convertTournamentType(db, USER, m.id, { type: 'session_gauntlet' }))
       .rejects.toBeInstanceOf(ValidationError);
   });
 
   it('refuses converting a session into a match', async () => {
     const { mine } = await anyLeaderIds();
-    const t = await createTournament(db, USER, { type: 'freeplay_gauntlet', playedOn: '2026-08-14' });
+    const t = await createTournament(db, USER, { type: 'session_gauntlet', playedOn: '2026-08-14' });
     await expect(convertTournamentType(db, USER, t.id, { type: 'match', myLeaderId: mine }))
       .rejects.toBeInstanceOf(ValidationError);
   });
@@ -195,8 +195,8 @@ describe('either direction', () => {
     const t = await createTournament(db, USER, { type: 'local', myLeaderId: mine, playedOn: '2026-08-14' });
     await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: opp, result: 'win' });
 
-    const converted = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
-    const replayed = await convertTournamentType(db, USER, t.id, { type: 'freeplay_gauntlet' });
+    const converted = await convertTournamentType(db, USER, t.id, { type: 'session_gauntlet' });
+    const replayed = await convertTournamentType(db, USER, t.id, { type: 'session_gauntlet' });
 
     expect(replayed).toEqual(converted);
     const rs = await roundsFor(t.id);
@@ -206,7 +206,7 @@ describe('either direction', () => {
   it('still refuses a same-side type change that is not a replay of the current type', async () => {
     // Distinguishes the no-op branch above from a genuine caller error: this
     // request never happened before (local -> regionals), it just happens to
-    // land on the same side of freeplay the tournament is already on. That is
+    // land on the same side of session the tournament is already on. That is
     // still not a conversion, and must still be rejected rather than silently
     // renaming the type.
     const { mine } = await anyLeaderIds();

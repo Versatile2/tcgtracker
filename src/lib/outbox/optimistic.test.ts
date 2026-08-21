@@ -9,9 +9,9 @@ const ZORO = '55555555-5555-4555-8555-555555555555';
 const NAMI = '66666666-6666-4666-8666-666666666666';
 const roundId = (n: number) => `3333333${n}-3333-4333-8333-333333333333`;
 
-const freeplayDetail: TournamentDetailDTO = {
+const sessionDetail: TournamentDetailDTO = {
   id: T,
-  type: 'freeplay',
+  type: 'session',
   myLeaderId: null,
   metaId: null,
   name: null,
@@ -64,7 +64,7 @@ beforeEach(() => {
 
 describe('optimistic cache deck count', () => {
   it('recomputes deckCount as offline rounds are added, in both the list and detail caches', () => {
-    addTournament(qc, freeplayDetail);
+    addTournament(qc, sessionDetail);
     addRound(qc, T, swissRound(1, ZORO));
     addRound(qc, T, swissRound(2, NAMI));
     // A repeat deck does not double-count.
@@ -84,13 +84,13 @@ describe('promotedLeaderId', () => {
   // leader that silently changes on the card once the flush lands.
 
   it('promotes the leader from round data when the payload carries none', () => {
-    addTournament(qc, freeplayDetail);
+    addTournament(qc, sessionDetail);
     addRound(qc, T, swissRound(1, ZORO));
     expect(promotedLeaderId(qc, T, null)).toBe(ZORO);
   });
 
   it('falls back to the offered leader when no round carries one', () => {
-    addTournament(qc, freeplayDetail);
+    addTournament(qc, sessionDetail);
     // A bye/no-show-only session, or one with no rounds logged yet — nothing
     // for the server to promote from either, so it uses what was offered.
     addRound(qc, T, { ...swissRound(1, ZORO), myLeaderId: null });
@@ -98,7 +98,7 @@ describe('promotedLeaderId', () => {
   });
 
   it('ignores byes and no-shows as leader sources', () => {
-    addTournament(qc, freeplayDetail);
+    addTournament(qc, sessionDetail);
     // Byes/no-shows never actually carry a leader in real data (see the
     // RoundDTO comment), but the promotion rule filters by round *kind*, not
     // by whether myLeaderId happens to be set. Force one to carry a leader
@@ -108,7 +108,7 @@ describe('promotedLeaderId', () => {
   });
 
   it('returns null when there is nothing to promote and nothing offered', () => {
-    addTournament(qc, freeplayDetail);
+    addTournament(qc, sessionDetail);
     expect(promotedLeaderId(qc, T, null)).toBeNull();
   });
 
@@ -130,10 +130,10 @@ describe('convertTournament', () => {
     addRound(qc, T, { ...swissRound(1, ZORO), myLeaderId: null });
     addRound(qc, T, { ...swissRound(2, ZORO), myLeaderId: null });
 
-    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+    convertTournament(qc, T, { type: 'session_gauntlet' });
 
     const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
-    expect(detail?.type).toBe('freeplay_gauntlet');
+    expect(detail?.type).toBe('session_gauntlet');
     expect(detail?.myLeaderId).toBeNull();
     expect(detail?.rounds.every((r) => r.myLeaderId === ZORO)).toBe(true);
     // The rounds now carry the leader, so the deck count is not 0.
@@ -147,14 +147,14 @@ describe('convertTournament', () => {
     addTournament(qc, localDetail);
     addRound(qc, T, { ...swissRound(1, ZORO), myLeaderId: null, kind: 'bye' });
 
-    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+    convertTournament(qc, T, { type: 'session_gauntlet' });
 
     const detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
     expect(detail?.rounds[0].myLeaderId).toBeNull();
   });
 
   it('session to classic: promotes the round leader onto the tournament row and clears the games', () => {
-    addTournament(qc, freeplayDetail);
+    addTournament(qc, sessionDetail);
     addRound(qc, T, swissRound(1, ZORO));
     addRound(qc, T, swissRound(2, ZORO));
 
@@ -169,7 +169,7 @@ describe('convertTournament', () => {
   });
 
   it('session to classic: falls back to the offered leader when no round has one to promote', () => {
-    addTournament(qc, freeplayDetail);
+    addTournament(qc, sessionDetail);
     addRound(qc, T, { ...swissRound(1, ZORO), kind: 'bye' });
 
     convertTournament(qc, T, { type: 'local', myLeaderId: NAMI });
@@ -186,7 +186,7 @@ describe('convertTournament', () => {
     addTournament(qc, localDetail);
     addRound(qc, T, { ...swissRound(1, ZORO), myLeaderId: null });
 
-    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+    convertTournament(qc, T, { type: 'session_gauntlet' });
     let detail = qc.getQueryData<TournamentDetailDTO>(keys.tournament(T));
     expect(detail?.deckCount).toBe(1);
 
@@ -204,10 +204,10 @@ describe('convertTournament', () => {
     void _rounds;
     qc.setQueryData<TournamentSummaryDTO[]>(keys.tournaments, [{ ...summary, record: { wins: 0, losses: 0, draws: 0 } }]);
 
-    convertTournament(qc, T, { type: 'freeplay_gauntlet' });
+    convertTournament(qc, T, { type: 'session_gauntlet' });
 
     const list = qc.getQueryData<TournamentSummaryDTO[]>(keys.tournaments);
-    expect(list?.find((t) => t.id === T)?.type).toBe('freeplay_gauntlet');
+    expect(list?.find((t) => t.id === T)?.type).toBe('session_gauntlet');
     expect(list?.find((t) => t.id === T)?.myLeaderId).toBeNull();
   });
 });

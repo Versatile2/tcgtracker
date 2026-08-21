@@ -31,7 +31,7 @@ export function MatchDetail({ id }: { id: string }) {
     return (
       <>
         <NavBar backLabel="Back" onBack={() => router.push('/?tab=matches')} />
-        <main className="mx-auto max-w-xl p-4"><p className="text-destructive">Couldn’t load this match.</p></main>
+        <main className="mx-auto max-w-xl p-4"><p className="text-destructive">Couldn’t load this free play.</p></main>
       </>
     );
   }

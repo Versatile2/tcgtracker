@@ -97,9 +97,9 @@ describe('export service', () => {
     expect(csv.split('\r\n')[1]).toContain('W(first);L;W(second)');
   });
 
-  it('exports a freeplay round with the round own leader', async () => {
+  it('exports a session round with the round own leader', async () => {
     const [t] = await db.insert(tournaments).values({
-      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: null,
+      ownerId: USER, type: 'session', myLeaderId: null, metaId: null,
       playedOn: '2026-08-14', status: 'locked',
     }).returning();
     await db.insert(rounds).values({
@@ -114,9 +114,9 @@ describe('export service', () => {
     expect(row!.myLeader).toBe('Edward Newgate');
   });
 
-  it('keeps a freeplay session with zero rounds, with an empty leader cell', async () => {
+  it('keeps a session with zero rounds, with an empty leader cell', async () => {
     const [t] = await db.insert(tournaments).values({
-      ownerId: USER, type: 'freeplay', myLeaderId: null, metaId: null,
+      ownerId: USER, type: 'session', myLeaderId: null, metaId: null,
       playedOn: '2026-08-14', status: 'draft',
     }).returning();
     const rows = await exportRounds(db, USER);

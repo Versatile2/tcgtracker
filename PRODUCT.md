@@ -40,7 +40,7 @@ Used primarily on a phone as an installable PWA, at live tournaments and locals,
 - Appearance: light/dark theme plus a selectable accent color.
 - Export & sharing: rendered PNG cards (stats, tournament, achievement), plus a free CSV export of every tournament and round (one row per round). There is no paid tier.
 - Offline PWA. Tournaments and rounds can be **created and edited with no connection**: writes go to a durable queue, apply to the UI at once, and are delivered when the network returns. Custom leaders/metas are the one write that still needs a connection.
-- Terminology: **leader** (a deck's leader card), **meta** (card set / format, e.g. OP01–OP16 — this term replaced the older "set"), **round** (one match within a tournament), tournament **type**.
+- Terminology: **leader** (a deck's leader card), **meta** (card set / format, e.g. OP01–OP16 — this term replaced the older "set"), **round** (one match within a tournament), tournament **type**. The three things a player can log are a **tournament**, a **session** (several games, deck changing between them, stored as `session*`) and **free play** (a single game on its own, stored as `match`).
 - Technical constraints: Next.js 16 App Router + TypeScript + Tailwind v4, Clerk auth (currently a **dev** instance), Neon Postgres + Drizzle. Auth middleware lives at `src/proxy.ts` (Next 16 renamed the `middleware` convention to `proxy`; it must sit beside `app/`, i.e. inside `src/`). `localStorage` keys use the `crewstat-*` prefix and **must not be renamed** (doing so would reset existing users' data). GitHub repo and Vercel project are named `tcgtracker`.
 
 ## Brand Commitments
@@ -53,7 +53,7 @@ Used primarily on a phone as an installable PWA, at live tournaments and locals,
 ## Evidence on Hand
 
 - Live app: https://tcgtracker-three.vercel.app
-- **No logged data currently exists.** The former ~11 demo tournaments / ~46 rounds were deleted on 2026-08-07 when the invented leader catalog was replaced with the real one (the old leaders had no sane mapping onto real cards). Screenshots and demos need data logged first.
+- **Production carries real logged data** as of 2026-08-21: 24 tournaments across all three segments, 11 of them sessions. (The ~11 demo tournaments / ~46 rounds were deleted on 2026-08-07 when the invented leader catalog was replaced with the real one; the claim that nothing exists dates from then and is no longer true. Any migration touching `tournaments` now touches live rows.)
 - Seeded reference data: **132 real OPTCG leader printings** (boosters + starter decks, keyed by set code) and metas OP01–OP16 with their real set names, generated from optcgapi.com — see `docs/superpowers/specs/2026-08-07-real-card-data-design.md`.
 - Leader card art is Bandai's official promotional scan and carries a visible "SAMPLE" watermark. Every public source serves the same watermarked file; there is no clean-art version to switch to.
 - No testimonials, user counts, ratings, pricing, or press exist — future work must not fabricate any of these.

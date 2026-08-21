@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { LeaderPicker } from '@/components/leaders/leader-picker';
 import { useLeaders, useStats, useTournamentWrites } from '@/components/query-hooks';
 import { tournamentTypeLabel } from '@/lib/labels';
-import { FREEPLAY_TYPES, TOURNAMENT_TYPES, isFreeplay } from '@/lib/tournament-kinds';
+import { SESSION_TYPES, TOURNAMENT_TYPES, isSession } from '@/lib/tournament-kinds';
 import { cn } from '@/lib/utils';
 import type { TournamentType, TournamentSummaryDTO } from '@/lib/dto';
 
@@ -53,8 +53,8 @@ function Body({ t, close, onConverted }: {
 
   // The direction is a fact about the row, not a choice — a session converts
   // to a tournament and a tournament to a session, never sideways.
-  const toTournament = isFreeplay(t.type);
-  const offered = toTournament ? TOURNAMENT_TYPES : FREEPLAY_TYPES;
+  const toTournament = isSession(t.type);
+  const offered = toTournament ? TOURNAMENT_TYPES : SESSION_TYPES;
   const [pickedType, setPickedType] = useState<TournamentType>(offered[0]);
 
   // Zero decks means no round carries a leader to promote, and the tournament

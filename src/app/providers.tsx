@@ -13,8 +13,11 @@ const WEEK = 1000 * 60 * 60 * 24 * 7;
 // Bump when the persisted query/response shapes change so stale localStorage
 // caches from an older deploy are discarded on load instead of hydrating with
 // an outdated shape. 'v2' = the meta/leader rework (perSet→perMeta,
-// bestSet→bestMeta, leader moved off rounds).
-const CACHE_BUSTER = 'glt-v2-meta-leader';
+// bestSet→bestMeta, leader moved off rounds). 'v3' = migration 0012 renamed the
+// stored session types off `freeplay*`; a v2 cache holds rows whose `type` no
+// longer has a label, which renders a blank type badge rather than anything
+// obviously broken, for the whole week the cache lives.
+const CACHE_BUSTER = 'glt-v3-session-types';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new QueryClient({

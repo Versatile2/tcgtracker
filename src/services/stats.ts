@@ -2,7 +2,7 @@ import { and, eq, ne, desc, notInArray, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { tournaments, rounds, leaders, metas } from '../db/schema';
-import { CASUAL_TYPES, FREEPLAY_TYPES, MATCH_TYPE } from '../lib/tournament-kinds';
+import { CASUAL_TYPES, SESSION_TYPES, MATCH_TYPE } from '../lib/tournament-kinds';
 
 type DB = NodePgDatabase<typeof schema>;
 
@@ -11,7 +11,7 @@ const rate = (wins: number, total: number): number => (total > 0 ? wins / total 
 
 /**
  * Which leader the player used for a round. Classic tournaments own the leader;
- * freeplay records it per round. The invariant guarantees exactly one of the two
+ * session records it per round. The invariant guarantees exactly one of the two
  * is set for any real game, so this never resolves to null.
  */
 const playedLeaderId = sql<string>`coalesce(${rounds.myLeaderId}, ${tournaments.myLeaderId})`;
@@ -29,9 +29,9 @@ export type PerMetaStat = {
 };
 
 // Shared per-meta aggregation used by both getPerMetaStats and getOverallStats (bestMeta).
-// Overall excludes freeplay (it is not part of the competitive record) while the
+// Overall excludes session (it is not part of the competitive record) while the
 // per-meta breakdown includes it, so this cannot be computed once and shared.
-async function aggregateByMeta(db: DB, ownerId: string, opts: { includeFreeplay: boolean }) {
+async function aggregateByMeta(db: DB, ownerId: string, opts: { includeSessions: boolean }) {
   const rows = await db
     .select({
       metaId: tournaments.metaId,
@@ -49,14 +49,14 @@ async function aggregateByMeta(db: DB, ownerId: string, opts: { includeFreeplay:
     .where(and(
       eq(tournaments.ownerId, ownerId),
       sql`${rounds.kind} not in ('bye', 'no_show')`,
-      // Excluded whichever way the freeplay switch is set, unlike everywhere
+      // Excluded whichever way the session switch is set, unlike everywhere
       // else where the two casual types are treated alike. A match can now
       // carry a meta, so this is no longer about missing data: the per-meta
       // breakdown reports the competitive record, and a casual game is not part
       // of it. Its meta still counts where matches do belong — the per-opponent
       // breakdown below.
       ne(tournaments.type, MATCH_TYPE),
-      ...(opts.includeFreeplay ? [] : [notInArray(tournaments.type, FREEPLAY_TYPES)]),
+      ...(opts.includeSessions ? [] : [notInArray(tournaments.type, SESSION_TYPES)]),
     ))
     .groupBy(tournaments.metaId, metas.name, metas.code);
   return rows.map((r) => {
@@ -74,7 +74,7 @@ async function aggregateByMeta(db: DB, ownerId: string, opts: { includeFreeplay:
 }
 
 export async function getPerMetaStats(db: DB, ownerId: string): Promise<PerMetaStat[]> {
-  const rows = await aggregateByMeta(db, ownerId, { includeFreeplay: true });
+  const rows = await aggregateByMeta(db, ownerId, { includeSessions: true });
   return rows
     .map(({ metaId, name, tournaments, wins, losses, draws, winRate }) => ({ metaId, name, tournaments, wins, losses, draws, winRate }))
     .sort((a, b) => b.winRate - a.winRate || a.name.localeCompare(b.name));
@@ -91,7 +91,7 @@ export async function getPlayedLeaders(db: DB, ownerId: string): Promise<{ id: s
 }
 
 export async function getOverallStats(db: DB, ownerId: string): Promise<OverallStats> {
-  const byMeta = await aggregateByMeta(db, ownerId, { includeFreeplay: false });
+  const byMeta = await aggregateByMeta(db, ownerId, { includeSessions: false });
   const wins = byMeta.reduce((s, r) => s + r.wins, 0);
   const losses = byMeta.reduce((s, r) => s + r.losses, 0);
   const draws = byMeta.reduce((s, r) => s + r.draws, 0);
