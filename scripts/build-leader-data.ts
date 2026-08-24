@@ -7,6 +7,11 @@
  * `next build`, so the app has no runtime dependency on optcgapi (their docs ask
  * callers not to hammer the API). Everything it produces is committed:
  *
+ * Promo leaders come from a third endpoint (`allPromos`) alongside the booster
+ * and starter-deck ones. Most promos are alternate printings of a card already
+ * in a set — they share its card_set_id and fold in as extra art — but a handful
+ * of `P-xxx` leaders exist only there, and were invisible until this pulled them.
+ *
  *   src/db/seed-data.ts      leaders (name/colors/setCode) + metas
  *   src/lib/leader-images.ts every printing of every leader, keyed by set code
  *   public/leaders/*.webp    240px-wide card thumbnails, one per printing
@@ -80,17 +85,58 @@ export function groupPrintings(cards: ApiCard[]): Map<string, ApiCard[]> {
 }
 
 /**
+ * Leaders the API describes but has no art for, and which no other printing
+ * rescues.
+ *
+ * `groupPrintings` drops art-less rows, which is right nearly always: they are
+ * duplicate promo packagings of a card whose base printing carries the picture,
+ * so nothing is lost. The exception is a card whose *every* row lacks art — drop
+ * those and the leader vanishes from the app altogether, which is worse than
+ * showing it without a picture. `P-700`, the six-colour Release Event Luffy
+ * handed out at events, is exactly that case.
+ *
+ * These are seeded but get no LEADER_ART entry, so `LEADER_IMAGE_CODES` excludes
+ * them and the picker falls back to its colour field — the same treatment a
+ * custom leader gets. If Bandai publishes the scan later, the next run picks it
+ * up and the card gains its art with no further change here.
+ *
+ * One row per set code, preferring the base printing so the name and colours
+ * come from the card rather than from a packaging variant.
+ */
+export function leadersWithoutArt(cards: ApiCard[], printings: Map<string, ApiCard[]>): ApiCard[] {
+  const found = new Map<string, ApiCard>();
+  for (const c of cards) {
+    if (c.card_type !== 'Leader') continue;
+    if (printings.has(c.card_set_id)) continue;
+    const existing = found.get(c.card_set_id);
+    // The base printing's image id is the set code; prefer it when present, and
+    // otherwise keep the first row so the output does not depend on input order.
+    if (!existing || (existing.card_image_id !== c.card_set_id && c.card_image_id === c.card_set_id)) {
+      found.set(c.card_set_id, c);
+    }
+  }
+  return [...found.values()].sort((a, b) => a.card_set_id.localeCompare(b.card_set_id));
+}
+
+/**
  * Bandai's card_name carries a trailing disambiguator and packs initials against
  * the surrounding names. We show the set code separately, so strip the
  * disambiguator and unpack the dots:
  *   "Monkey.D.Luffy (003)"      → "Monkey D. Luffy"
  *   "Trafalgar Law - OP14-001"  → "Trafalgar Law"
+ *   "Uta - P-011 (…-Uta-)"      → "Uta (…-Uta-)"
  *   "Eustass\"Captain\"Kid (099)" → "Eustass \"Captain\" Kid"
+ *
+ * The promo code needs its own rule and its own anchor: it is one letter, not
+ * the two-to-four a set code has, and it can sit mid-name with the packaging
+ * trailing it rather than at the end. The packaging itself stays — it is the
+ * only thing telling three six-colour Luffys apart in a list.
  */
 export function cleanLeaderName(raw: string): string {
   let n = raw
     .replace(/\s*\((?:\d+|SPR|Parallel|Alternate Art|[A-Z]{2,4}\d{2}-\d+)\)/g, '')
     .replace(/\s*-\s*[A-Z]{2,4}\d{2}-\d+\s*$/, '')
+    .replace(/\s*-\s*P-\d+(?=\s|$)/, '')
     .trim();
 
   // A dot after a lone initial keeps it ("D." ); a dot after a full word is just
@@ -135,19 +181,23 @@ const BANNER = (src: string) =>
 
 async function main() {
   console.log('Fetching card data…');
-  const [setCards, stCards, sets] = await Promise.all([
+  const [setCards, stCards, promoCards, sets] = await Promise.all([
     getJson<ApiCard[]>(`${API}/allSetCards/`),
     getJson<ApiCard[]>(`${API}/allSTCards/`),
+    getJson<ApiCard[]>(`${API}/allPromos/`),
     getJson<ApiSet[]>(`${API}/allSets/`),
   ]);
 
+  const pool = [...setCards, ...stCards, ...promoCards];
   // Every printing, grouped under its set code and ordered base-first.
-  const printings = groupPrintings([...setCards, ...stCards]);
+  const printings = groupPrintings(pool);
   // The base printing carries the name and colours for the seeded leader row:
   // it is the one printing guaranteed not to be titled "… (Parallel)".
-  const cards = [...printings.values()].map((list) => list[0]);
+  const withArt = [...printings.values()].map((list) => list[0]);
+  const artless = leadersWithoutArt(pool, printings);
+  const cards = [...withArt, ...artless].sort((a, b) => a.card_set_id.localeCompare(b.card_set_id));
   const all = [...printings.values()].flat();
-  console.log(`  ${cards.length} leaders, ${all.length} printings`);
+  console.log(`  ${cards.length} leaders (${artless.length} with no art), ${all.length} printings`);
 
   await mkdir(IMAGE_DIR, { recursive: true });
   let downloaded = 0;

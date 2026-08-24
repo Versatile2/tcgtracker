@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupPrintings, cleanLeaderName, type ApiCard } from '../scripts/build-leader-data';
+import { groupPrintings, cleanLeaderName, leadersWithoutArt, type ApiCard } from '../scripts/build-leader-data';
 
 /** A leader row shaped like optcgapi's, with only the fields the script reads. */
 function card(setId: string, imageId: string | null, name = 'Someone'): ApiCard {
@@ -88,5 +88,93 @@ describe('cleanLeaderName', () => {
     expect(cleanLeaderName('Yamato (Alternate Art)')).toBe('Yamato');
     expect(cleanLeaderName('Roronoa Zoro (001) (Parallel)')).toBe('Roronoa Zoro');
     expect(cleanLeaderName('Monkey.D.Luffy (SPR)')).toBe('Monkey D. Luffy');
+  });
+});
+
+/*
+ * Promo leaders arrive from a third endpoint. Nearly all of them are extra
+ * printings of a card that already exists, and fold in under its set code — but
+ * a few live only there, and one of those has no art at all.
+ */
+describe('promo leaders', () => {
+  const promo = (setId: string, imageId: string | null, name: string, color = 'Green') => ({
+    ...card(setId, imageId, name), card_color: color,
+  });
+
+  it('folds a promo printing into the card it is a printing of', () => {
+    const out = groupPrintings([
+      card('ST13-003', 'ST13-003', 'Monkey.D.Luffy (Premium Card Collection)'),
+      promo('ST13-003', 'ST13-003_pr1', 'Monkey.D.Luffy (BVB x One Piece Campaign)'),
+      promo('ST13-003', 'ST13-003_pr2', 'Monkey.D.Luffy (2nd Anniversary Tournament)'),
+    ]);
+    // One card in the picker, three arts to choose between — not three leaders.
+    expect([...out.keys()]).toEqual(['ST13-003']);
+    expect(out.get('ST13-003')!.map((c) => c.card_image_id))
+      .toEqual(['ST13-003', 'ST13-003_pr1', 'ST13-003_pr2']);
+  });
+
+  it('keeps a promo-only leader that no set contains', () => {
+    const out = groupPrintings([card('OP01-001', 'OP01-001'), promo('P-086', 'P-086', 'Trafalgar Law')]);
+    expect([...out.keys()]).toContain('P-086');
+  });
+
+  it('carries a six-colour leader through as six colours', () => {
+    // The all-colour Release Event leaders are the only cards shaped like this,
+    // and a parser that assumed one or two colours would silently truncate them.
+    const six = promo('P-900', 'P-900', 'Monkey.D.Luffy', 'Blue Green Purple Red Black Yellow');
+    expect(six.card_color.split(/\s+/)).toHaveLength(6);
+  });
+});
+
+describe('promo names', () => {
+  it('strips a promo code that trails the name', () => {
+    expect(cleanLeaderName('Nami - P-117')).toBe('Nami');
+  });
+
+  it('strips one sitting mid-name, ahead of the packaging', () => {
+    expect(cleanLeaderName('Uta - P-011 (Premium Card Collection -Uta-)'))
+      .toBe('Uta (Premium Card Collection -Uta-)');
+  });
+
+  it('keeps the packaging, which is the only thing telling the Luffys apart', () => {
+    // Three six-colour Monkey D. Luffys exist; without this they read alike.
+    expect(cleanLeaderName('Monkey.D.Luffy (Release Event Leader)'))
+      .toBe('Monkey D. Luffy (Release Event Leader)');
+  });
+
+  it('does not eat a hyphen that is part of a name', () => {
+    expect(cleanLeaderName('Sakazuki (Pirates Party Vol. 7)')).toContain('Sakazuki');
+  });
+});
+
+describe('leadersWithoutArt', () => {
+  const rows = [
+    card('OP01-001', 'OP01-001'),
+    // A promo packaging with no art, of a card whose base printing has some.
+    { ...card('OP01-001', null, 'Roronoa Zoro (Alternate Art)') },
+    // A leader with no art anywhere: drop it and the card leaves the app.
+    { ...card('P-700', 'P-700', 'Monkey.D.Luffy (Release Event Leader)'), card_image: null },
+  ];
+
+  it('rescues a leader that has no art in any printing', () => {
+    const kept = leadersWithoutArt(rows, groupPrintings(rows));
+    expect(kept.map((c) => c.card_set_id)).toEqual(['P-700']);
+  });
+
+  it('leaves alone a card whose art arrives on another printing', () => {
+    // OP01-001 has an art-less row too, but its base printing carries the
+    // picture — rescuing it as well would seed the same leader twice.
+    const kept = leadersWithoutArt(rows, groupPrintings(rows));
+    expect(kept.map((c) => c.card_set_id)).not.toContain('OP01-001');
+  });
+
+  it('gets no entry in LEADER_ART, which is what makes the colour field show', () => {
+    expect(groupPrintings(rows).has('P-700')).toBe(false);
+  });
+
+  it('does not depend on the order the rows arrive in', () => {
+    const shuffled = [rows[2], rows[0], rows[1]];
+    expect(leadersWithoutArt(shuffled, groupPrintings(shuffled)).map((c) => c.card_set_id))
+      .toEqual(['P-700']);
   });
 });

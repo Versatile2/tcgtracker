@@ -14,12 +14,27 @@ export const LEADER_COLOR_HEX: Record<string, string> = {
 
 const NEUTRAL = '#6b7280';
 
-/** CSS background for a leader avatar: solid for mono-color, split gradient for dual. */
+/**
+ * CSS background for a leader avatar: solid for mono-colour, a split gradient
+ * for everything else.
+ *
+ * The two-colour case keeps its soft 8% seam, which is what 130-odd dual-colour
+ * leaders already look like. Three or more get even hard-edged bands instead:
+ * the promo Release Event leaders carry all six colours, and this previously
+ * read `cs[0]` and `cs[1]` alone — so a six-colour Luffy drew as plain
+ * blue-and-green and threw the other four away.
+ *
+ * Hard stops rather than a blend, because six colours blended across one square
+ * is brown.
+ */
 export function leaderBackground(colors: string[] | undefined): string {
   const cs = (colors ?? []).map((c) => LEADER_COLOR_HEX[c] ?? NEUTRAL);
   if (cs.length === 0) return NEUTRAL;
   if (cs.length === 1) return cs[0];
-  return `linear-gradient(135deg, ${cs[0]} 0%, ${cs[0]} 46%, ${cs[1]} 54%, ${cs[1]} 100%)`;
+  if (cs.length === 2) return `linear-gradient(135deg, ${cs[0]} 0%, ${cs[0]} 46%, ${cs[1]} 54%, ${cs[1]} 100%)`;
+  const band = 100 / cs.length;
+  const stops = cs.flatMap((c, i) => [`${c} ${(i * band).toFixed(2)}%`, `${c} ${((i + 1) * band).toFixed(2)}%`]);
+  return `linear-gradient(135deg, ${stops.join(', ')})`;
 }
 
 /** Legible initial color for the given background (dark on yellow, white otherwise). */
