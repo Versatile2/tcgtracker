@@ -2,6 +2,7 @@
 // (see getLeaderImage); custom user-created leaders have no card art and fall
 // back to a color-tinted initial derived from their OPTCG colors.
 import { LEADER_ART, LEADER_DECK_CODES } from './leader-images';
+import { CLEAN_ART } from './clean-art';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
@@ -58,14 +59,20 @@ export function leaderInitial(name: string): string {
  * preference left behind by a renumbered set code degrades to the base art
  * instead of a broken image.
  *
- * Refresh the files with `npm run data:leaders`.
+ * Two folders back this, and the printing decides which: a hand-collected clean
+ * scan in `clean/` when one exists, and the generated SAMPLE-watermarked one
+ * otherwise. The fallback is per printing rather than per card, so a leader
+ * whose base art was collected but whose Parallel was not still shows both —
+ * one clean, one watermarked — instead of hiding the printing that was missed.
+ *
+ * Refresh with `npm run data:leaders`, then `import-clean-art.ts`.
  */
 export function getLeaderImage(setCode: string | null | undefined, art?: string | null): string | null {
   if (!setCode) return null;
   const printings = LEADER_ART[setCode];
   if (!printings) return null;
   const chosen = art && printings.includes(art) ? art : printings[0];
-  return `/leaders/${chosen}.webp`;
+  return CLEAN_ART.has(chosen) ? `/leaders/clean/${chosen}.webp` : `/leaders/${chosen}.webp`;
 }
 
 /** Every bundled printing of a card, base first. Empty for custom leaders. */

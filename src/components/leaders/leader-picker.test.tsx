@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { getLeaderImage } from '@/lib/leader-visual';
 
 // The provider needs a query client and a Clerk session; what these tests care
 // about is only what the picker asks it for and what it hands back.
@@ -151,10 +152,13 @@ describe('the printing picker on the settled leader', () => {
     renderPicker(YAMATO.id);
     fireEvent.click(trigger()!);
     expect(thumbnails().map((b) => b.querySelector('img')?.getAttribute('src'))).toEqual([
-      '/leaders/OP06-022.webp',
-      '/leaders/OP06-022_p1.webp',
-      '/leaders/OP06-022_p2.webp',
-      '/leaders/OP06-022_p3.webp',
+      // Resolved rather than written out: each printing is served from clean/
+      // or the generated bundle depending on whether a clean scan exists, and
+      // this test is about every printing being shown, not about where from.
+      getLeaderImage('OP06-022', 'OP06-022'),
+      getLeaderImage('OP06-022', 'OP06-022_p1'),
+      getLeaderImage('OP06-022', 'OP06-022_p2'),
+      getLeaderImage('OP06-022', 'OP06-022_p3'),
     ]);
   });
 
