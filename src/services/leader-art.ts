@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { leaderArt } from '../db/schema';
-import { LEADER_ART } from '../lib/leader-images';
+import { printingsOf } from '../lib/printings';
 import { ValidationError } from '../lib/errors';
 import type { LeaderArtInput } from '../lib/validation/leader-art';
 
@@ -25,8 +25,10 @@ export async function listLeaderArt(db: DB, ownerId: string): Promise<LeaderArtM
  * then render as a 404 image everywhere that leader appears.
  */
 export async function setLeaderArt(db: DB, ownerId: string, input: LeaderArtInput): Promise<LeaderArtMap> {
-  const printings = LEADER_ART[input.setCode];
-  if (!printings) throw new ValidationError('No card art for that leader.');
+  // Both sources of printings, exactly as the picker offers them — a collected
+  // printing optcgapi does not list is still a printing the player can choose.
+  const printings = printingsOf(input.setCode);
+  if (!printings.length) throw new ValidationError('No card art for that leader.');
   if (!printings.includes(input.art)) throw new ValidationError('That art is not a printing of this leader.');
 
   if (input.art === printings[0]) {

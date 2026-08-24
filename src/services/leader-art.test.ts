@@ -3,6 +3,8 @@ import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { listLeaderArt, setLeaderArt } from './leader-art';
 import { ValidationError } from '../lib/errors';
 import { LEADER_ART } from '../lib/leader-images';
+import { EXTRA_ART } from '../lib/clean-art';
+import { printingsOf } from '../lib/printings';
 
 const db = getTestDb();
 afterAll(closeTestDb);
@@ -56,5 +58,29 @@ describe('leader art', () => {
   it('rejects a set code with no bundled art', async () => {
     await expect(setLeaderArt(db, 'user_a', { setCode: 'NOPE-001', art: 'NOPE-001' }))
       .rejects.toThrow(ValidationError);
+  });
+});
+
+/*
+ * The picker offers `printingsOf`, so the server must accept exactly that list.
+ * Validating against optcgapi's alone would show a player a collected printing
+ * and then refuse to remember it.
+ */
+describe('what the server accepts', () => {
+  beforeEach(resetDb);
+
+  it('accepts every printing the picker offers', async () => {
+    for (const art of printingsOf(CODE)) {
+      await expect(setLeaderArt(db, 'user_a', { setCode: CODE, art })).resolves.toBeDefined();
+    }
+  });
+
+  it('is the same list the picker uses, not a second copy of it', () => {
+    expect(printingsOf(CODE)).toEqual([...LEADER_ART[CODE], ...(EXTRA_ART[CODE] ?? [])]);
+  });
+
+  it('still refuses a printing of no card at all', async () => {
+    await expect(setLeaderArt(db, 'user_a', { setCode: CODE, art: `${CODE}_c99` }))
+      .rejects.toBeInstanceOf(ValidationError);
   });
 });

@@ -1,8 +1,9 @@
 // Visual helpers for leader avatars. Real card art is bundled in public/leaders/
 // (see getLeaderImage); custom user-created leaders have no card art and fall
 // back to a color-tinted initial derived from their OPTCG colors.
-import { LEADER_ART, LEADER_DECK_CODES } from './leader-images';
+import { LEADER_DECK_CODES } from './leader-images';
 import { CLEAN_ART } from './clean-art';
+import { printingsOf } from './printings';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
@@ -69,15 +70,15 @@ export function leaderInitial(name: string): string {
  */
 export function getLeaderImage(setCode: string | null | undefined, art?: string | null): string | null {
   if (!setCode) return null;
-  const printings = LEADER_ART[setCode];
-  if (!printings) return null;
+  const printings = printingsOf(setCode);
+  if (!printings.length) return null;
   const chosen = art && printings.includes(art) ? art : printings[0];
   return CLEAN_ART.has(chosen) ? `/leaders/clean/${chosen}.webp` : `/leaders/${chosen}.webp`;
 }
 
 /** Every bundled printing of a card, base first. Empty for custom leaders. */
 export function leaderPrintings(setCode: string | null | undefined): readonly string[] {
-  return (setCode && LEADER_ART[setCode]) || [];
+  return printingsOf(setCode);
 }
 
 /**

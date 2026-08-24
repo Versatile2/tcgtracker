@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { leaderBackground, leaderTextColor, getLeaderImage, LEADER_COLOR_HEX } from './leader-visual';
-import { CLEAN_ART } from './clean-art';
+import { CLEAN_ART, EXTRA_ART } from './clean-art';
+import { printingsOf, mergePrintings } from './printings';
 import { LEADER_ART } from './leader-images';
 
 /*
@@ -90,5 +91,42 @@ describe('getLeaderImage', () => {
   it('ignores a printing preference that is not this card\u2019s', () => {
     const code = Object.keys(LEADER_ART).find((c) => LEADER_ART[c].length > 0)!;
     expect(getLeaderImage(code, 'OP99-999_p9')).toContain(LEADER_ART[code][0]);
+  });
+});
+
+/*
+ * The collection can list printings optcgapi does not — it is a shelf of real
+ * cards, the API is one vendor's index of them. Whether it currently does is a
+ * fact about today's folder, so the merge is tested as a function and the wiring
+ * is tested against whatever the folder holds.
+ */
+describe('merging collected printings with bundled ones', () => {
+  it('appends extras after the bundled printings', () => {
+    expect(mergePrintings(['A', 'A_p1'], ['A_c3'])).toEqual(['A', 'A_p1', 'A_c3']);
+  });
+
+  it('keeps the base printing first, so no fallback changes', () => {
+    // getLeaderImage falls back to printings[0]; an extra jumping the queue
+    // would silently change the art shown to everyone who chose nothing.
+    expect(mergePrintings(['A', 'A_p1'], ['A_c3'])[0]).toBe('A');
+  });
+
+  it('returns the bundled list untouched when there are no extras', () => {
+    const bundled = ['A', 'A_p1'];
+    expect(mergePrintings(bundled, [])).toBe(bundled);
+  });
+
+  it('matches what the app actually resolves today', () => {
+    const code = Object.keys(LEADER_ART)[0];
+    expect(printingsOf(code)).toEqual(mergePrintings(LEADER_ART[code], EXTRA_ART[code] ?? []));
+  });
+
+  it('gives every extra a suffix optcgapi does not use, so nothing can collide', () => {
+    for (const [c, ids] of Object.entries(EXTRA_ART)) {
+      for (const id of ids) {
+        expect([id, /_c\d+$/.test(id)]).toEqual([id, true]);
+        expect([id, LEADER_ART[c].includes(id)]).toEqual([id, false]);
+      }
+    }
   });
 });
