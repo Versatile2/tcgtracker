@@ -18,7 +18,17 @@ export type RecordDTO = { wins: number; losses: number; draws: number };
 export type TournamentType = 'local' | 'treasure_cup' | 'regionals' | 'extra_grand_battle' | 'pirates_party' | 'testing' | 'ranked_sim' | 'session' | 'session_sim' | 'session_sim_casual' | 'session_friend' | 'session_locals' | 'session_gauntlet' | 'session_teaching' | 'match';
 // playOrder rides along so the client can evaluate achievements from its own
 // cache — without it, unlocks could only be discovered on the next server read.
-export type MatchSummaryDTO = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: RoundKind; playOrder: 'first' | 'second' | null };
+export type MatchSummaryDTO = {
+  opponentLeaderId: string | null;
+  /** The deck played this round. Set on session rounds, null elsewhere — the
+   *  tournament's own `myLeaderId` covers those. */
+  myLeaderId: string | null;
+  /** This round's meta, when it carries one; falls back to the tournament's. */
+  opponentMetaId: string | null;
+  result: 'win' | 'loss' | 'draw';
+  kind: RoundKind;
+  playOrder: 'first' | 'second' | null;
+};
 export type TournamentSummaryDTO = {
   id: string; type: TournamentType; myLeaderId: string | null; metaId: string | null; name: string | null; notes: string | null;
   placement: number | null; fieldSize: number | null;

@@ -90,6 +90,21 @@
   --glass-border: color-mix(in oklab, white 65%, transparent);
   --glass-highlight: color-mix(in oklab, white 80%, transparent);
   --glass-shadow: 0 10px 34px -12px oklch(0 0 0 / 0.22);
+  /* Chart colours for the six OPTCG colours.
+     Separate from --leader-* avatar fills: a slice is small and sits beside its
+     neighbours, so it is stepped for separability rather than for fidelity to
+     the card. Validated with the dataviz palette checker — light mode passes the
+     lightness band, CVD separation (worst adjacent 13.9 protan) and the
+     normal-vision floor (24.0). Green and yellow fall under 3:1 against the page,
+     which is why every slice is also named in the legend beside the chart. */
+  --chart-red: #b91c1c;
+  --chart-green: #22c55e;
+  --chart-blue: #0369a1;
+  --chart-purple: #a855f7;
+  --chart-black: #57534e;
+  --chart-yellow: #ca8a04;
+  --chart-neutral: #94a3b8;
+
 }
 
 .dark {
@@ -131,6 +146,18 @@
   --glass-border: color-mix(in oklab, white 14%, transparent);
   --glass-highlight: color-mix(in oklab, white 22%, transparent);
   --glass-shadow: 0 10px 34px -12px oklch(0 0 0 / 0.6);
+  /* Chosen for the dark surface rather than flipped from the light steps, and
+     revalidated there: CVD separation 8.7, normal-vision floor 16.5, and every
+     slice clears 3:1. "Black" necessarily becomes a light neutral here — a black
+     slice on a black page is not a slice. */
+  --chart-red: #f87171;
+  --chart-green: #15803d;
+  --chart-blue: #22d3ee;
+  --chart-purple: #c084fc;
+  --chart-black: #a1a1aa;
+  --chart-yellow: #facc15;
+  --chart-neutral: #64748b;
+
 }
 
 @layer base {

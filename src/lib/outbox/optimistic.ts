@@ -18,10 +18,19 @@ const summaryOf = (detail: TournamentDetailDTO): TournamentSummaryDTO => {
   return {
     ...rest,
     record: computeRecord(rounds),
-    // playOrder included deliberately: the client evaluates achievements from
-    // this cache the moment a round is logged, and without it a round that has
-    // not yet reached the server would be invisible to the Underdog rule.
-    matches: rounds.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind, playOrder: r.playOrder })),
+    // Every field the server sends, deliberately: the client evaluates
+    // achievements and statistics from this cache the moment a round is logged,
+    // so anything omitted here is a round that is invisible offline until the
+    // outbox drains. playOrder feeds the Underdog rule; myLeaderId and
+    // opponentMetaId feed the by-colour and by-meta breakdowns.
+    matches: rounds.map((r) => ({
+      opponentLeaderId: r.opponentLeaderId,
+      myLeaderId: r.myLeaderId,
+      opponentMetaId: r.opponentMetaId,
+      result: r.result,
+      kind: r.kind,
+      playOrder: r.playOrder,
+    })),
   };
 };
 

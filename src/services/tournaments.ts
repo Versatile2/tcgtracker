@@ -14,7 +14,23 @@ const GAME_KINDS = ['swiss', 'top_cut'] as const;
 type DB = NodePgDatabase<typeof schema>;
 export type Tournament = typeof tournaments.$inferSelect;
 export type Round = typeof rounds.$inferSelect;
-type MatchSummary = { opponentLeaderId: string | null; result: 'win' | 'loss' | 'draw'; kind: Round['kind']; playOrder: Round['playOrder'] };
+/**
+ * The per-round facts the client needs without fetching each tournament.
+ *
+ * `myLeaderId` and `opponentMetaId` are here for the statistics module, which
+ * computes every breakdown from this list rather than from the server: a session
+ * records its deck per round, so its colours cannot be attributed without the
+ * first, and the meta resolves as coalesce(round, tournament), so a session or a
+ * free play carrying its own meta needs the second.
+ */
+type MatchSummary = {
+  opponentLeaderId: string | null;
+  myLeaderId: string | null;
+  opponentMetaId: string | null;
+  result: 'win' | 'loss' | 'draw';
+  kind: Round['kind'];
+  playOrder: Round['playOrder'];
+};
 export type TournamentSummary = Tournament & {
   record: ReturnType<typeof computeRecord>;
   matches: MatchSummary[];
@@ -80,7 +96,14 @@ export async function listTournaments(db: DB, ownerId: string): Promise<Tourname
   }
   return ts.map((t) => {
     const rs = (byTournament.get(t.id) ?? []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
-    const matches: MatchSummary[] = rs.map((r) => ({ opponentLeaderId: r.opponentLeaderId, result: r.result, kind: r.kind, playOrder: r.playOrder }));
+    const matches: MatchSummary[] = rs.map((r) => ({
+      opponentLeaderId: r.opponentLeaderId,
+      myLeaderId: r.myLeaderId,
+      opponentMetaId: r.opponentMetaId,
+      result: r.result,
+      kind: r.kind,
+      playOrder: r.playOrder,
+    }));
     return { ...t, record: computeRecord(rs), matches, deckCount: computeDeckCount(rs) };
   });
 }

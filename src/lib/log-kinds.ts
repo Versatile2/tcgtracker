@@ -33,6 +33,8 @@ export type LogKind = {
   key: LogKindKey;
   /** Singular, as it appears in a sentence. */
   noun: string;
+  /** Plural, for headings and counts. Not always noun + "s" — "free play" is not. */
+  plural: string;
   /** The button that starts one. */
   label: string;
   href: string;
@@ -51,6 +53,7 @@ export const LOG_KINDS: LogKind[] = [
   {
     key: 'tournaments',
     noun: 'tournament',
+    plural: 'tournaments',
     label: 'New Tournament',
     href: '/tournaments/new',
     icon: Trophy,
@@ -63,6 +66,7 @@ export const LOG_KINDS: LogKind[] = [
   {
     key: 'sessions',
     noun: 'session',
+    plural: 'sessions',
     label: 'New Session',
     href: '/sessions/new',
     icon: Shuffle,
@@ -75,6 +79,7 @@ export const LOG_KINDS: LogKind[] = [
   {
     key: 'matches',
     noun: 'free play',
+    plural: 'free play',
     label: 'New Free Play',
     href: '/matches/new',
     icon: Swords,
