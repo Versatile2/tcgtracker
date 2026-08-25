@@ -16,12 +16,6 @@ export const useLeaders = () => useQuery({ queryKey: keys.leaders, queryFn: apiC
 export const useMetas = () => useQuery({ queryKey: keys.metas, queryFn: apiClient.listMetas });
 
 export const useStats = () => useQuery({ queryKey: keys.stats, queryFn: apiClient.getStats });
-export const useMatchups = (leaderId: string | null) =>
-  useQuery({
-    queryKey: keys.matchups(leaderId ?? ''),
-    queryFn: () => apiClient.getMatchups(leaderId as string),
-    enabled: !!leaderId,
-  });
 export const useAchievements = () => useQuery({ queryKey: keys.achievements, queryFn: apiClient.getAchievements });
 
 /*

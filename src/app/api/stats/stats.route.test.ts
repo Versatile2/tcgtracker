@@ -37,22 +37,4 @@ describe('stats routes', () => {
     expect(body.opponents[0].byMeta).toHaveLength(0);
   });
 
-  it('GET matchups requires a valid leaderId (400)', async () => {
-    const { GET } = await import('./matchups/route');
-    const res = await GET(new Request('http://test/api/stats/matchups'));
-    expect(res.status).toBe(400);
-  });
-
-  it('GET matchups returns the matchup structure', async () => {
-    const zoro = await leaderId('Roronoa Zoro');
-    const [t] = await db.insert(tournaments).values({ ownerId: 'user_route_stats', type: 'local', myLeaderId: zoro, metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();
-    await db.insert(rounds).values({ tournamentId: t.id, roundNumber: 1, opponentLeaderId: await leaderId('Nami'), result: 'win', playOrder: 'first', notes: null });
-
-    const { GET } = await import('./matchups/route');
-    const res = await GET(new Request(`http://test/api/stats/matchups?leaderId=${zoro}`));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.opponents[0].name).toBe('Nami');
-    expect(body.turnOrder.first.wins).toBe(1);
-  });
 });

@@ -3,9 +3,9 @@ import { pct } from './stat-card';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { useLeaders } from '@/components/query-hooks';
 import { formatRecord } from '@/lib/record';
-import type { OpponentLeaderStatDTO } from '@/lib/dto';
+import type { OpponentRow } from '@/lib/stats/segment-stats';
 
-export function OpponentStats({ rows }: { rows: OpponentLeaderStatDTO[] }) {
+export function OpponentStats({ rows }: { rows: OpponentRow[] }) {
   const { data: leaders } = useLeaders();
   if (rows.length === 0) return null;
   const leaderFor = (id: string) => leaders?.find((l) => l.id === id);

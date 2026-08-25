@@ -1,6 +1,6 @@
 import type {
   LeaderDTO, MetaDTO, LeaderArtMapDTO, RoundDTO, TournamentSummaryDTO, TournamentDetailDTO,
-  StatsDTO, MatchupStatsDTO, AchievementsResponseDTO,
+  StatsDTO, AchievementsResponseDTO,
 } from './dto';
 import type { LeaderArtInput } from './validation/leader-art';
 import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from './validation/tournament';
@@ -43,6 +43,5 @@ export const apiClient = {
   deleteRound: (id: string) => request<{ ok: true }>(`/api/rounds/${id}`, { method: 'DELETE' }),
 
   getStats: () => request<StatsDTO>('/api/stats'),
-  getMatchups: (leaderId: string) => request<MatchupStatsDTO>(`/api/stats/matchups?leaderId=${encodeURIComponent(leaderId)}`),
   getAchievements: () => request<AchievementsResponseDTO>('/api/achievements'),
 };

@@ -64,13 +64,6 @@ export type StatsDTO = {
   overall: OverallStatsDTO; perMeta: PerMetaStatDTO[]; playedLeaders: PlayedLeaderDTO[];
   opponents: OpponentLeaderStatDTO[];
 };
-export type MatchupResultCountsDTO = { wins: number; losses: number; draws: number; games: number; winRate: number };
-export type MatchupOpponentDTO = MatchupResultCountsDTO & { leaderId: string; name: string; verdict: 'favored' | 'even' | 'unfavored' };
-export type MatchupStatsDTO = {
-  opponents: MatchupOpponentDTO[];
-  turnOrder: { first: MatchupResultCountsDTO; second: MatchupResultCountsDTO };
-  colorBreakdown: (MatchupResultCountsDTO & { color: string })[];
-};
 export type AchievementProgressDTO = { current: number; target: number };
 export type AchievementDTO = { key: string; name: string; description: string; unlocked: boolean; progress: AchievementProgressDTO | null };
 export type AchievementsResponseDTO = { achievements: AchievementDTO[]; unlockedCount: number; total: number };

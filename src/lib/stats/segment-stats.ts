@@ -35,6 +35,13 @@ export type Coverage = {
   total: number | null;
 };
 
+/** An opponent leader, and how the meta split behind that record looks. */
+export type OpponentRow = {
+  leaderId: string; name: string;
+  wins: number; losses: number; draws: number; games: number; winRate: number;
+  byMeta: { metaId: string; name: string; wins: number; losses: number; draws: number; games: number; winRate: number }[];
+};
+
 export type SegmentStats = {
   events: number;
   wins: number; losses: number; draws: number;
@@ -44,6 +51,10 @@ export type SegmentStats = {
   byMyColor: Breakdown[];
   byMeta: Breakdown[];
   byType: Breakdown[];
+  /** Who you played, hardest-worked first. Mirrors the server's getOpponentStats. */
+  byOpponent: OpponentRow[];
+  /** Your own leaders that appear in this segment, for the matchup picker. */
+  playedLeaders: { id: string; name: string }[];
   /** Individual colours beaten at least once, of six — the Rainbow progress. */
   colorsBeaten: Coverage;
   metasPlayed: Coverage;
@@ -133,6 +144,11 @@ export function statsForSegment(
   const byMeta = new Map<string, Tally>();
   const byType = new Map<string, Tally>();
   const beaten = new Set<string>();
+  // Per opponent, and per opponent per meta — the two halves the server's
+  // getOpponentStats assembles from two queries.
+  const opponents = new Map<string, { name: string; wins: number; losses: number; draws: number }>();
+  const opponentMeta = new Map<string, Map<string, { name: string; wins: number; losses: number; draws: number }>>();
+  const played = new Map<string, string>();
   let wins = 0, losses = 0, draws = 0;
 
   for (const t of inSegment) {
@@ -174,6 +190,31 @@ export function statsForSegment(
       add(tallyOf(byMeta, metaKey, meta ? metaLabel(meta) : 'No meta', []));
 
       add(tallyOf(byType, typeKey, typeLabel, []));
+
+      // The picker offers only leaders that actually appear here, so a segment
+      // never lists a leader with nothing to show.
+      if (myLeader) {
+        const l = leaders.find((x) => x.id === myLeader);
+        if (l) played.set(l.id, l.name);
+      }
+
+      // Opponent rows need an opponent; the server reaches them through an
+      // inner join, so a round without one contributes nothing there either.
+      if (!m.opponentLeaderId) continue;
+      const opp = leaders.find((l) => l.id === m.opponentLeaderId);
+      if (!opp) continue;
+      const row = opponents.get(opp.id) ?? { name: opp.name, wins: 0, losses: 0, draws: 0 };
+      if (m.result === 'win') row.wins += 1; else if (m.result === 'loss') row.losses += 1; else row.draws += 1;
+      opponents.set(opp.id, row);
+
+      if (metaId) {
+        const perMeta = opponentMeta.get(opp.id) ?? new Map();
+        const label = meta ? metaLabel(meta) : '—';
+        const cell = perMeta.get(metaId) ?? { name: label, wins: 0, losses: 0, draws: 0 };
+        if (m.result === 'win') cell.wins += 1; else if (m.result === 'loss') cell.losses += 1; else cell.draws += 1;
+        perMeta.set(metaId, cell);
+        opponentMeta.set(opp.id, perMeta);
+      }
     }
   }
 
@@ -188,6 +229,21 @@ export function statsForSegment(
     byMyColor: toRows(mine, games),
     byMeta: toRows(byMeta, games),
     byType: toRows(byType, games),
+    byOpponent: [...opponents.entries()]
+      .map(([leaderId, r]) => {
+        const games = r.wins + r.losses + r.draws;
+        const byMeta = [...(opponentMeta.get(leaderId) ?? new Map()).entries()]
+          .map(([metaId, c]) => {
+            const g = c.wins + c.losses + c.draws;
+            return { metaId, name: c.name, wins: c.wins, losses: c.losses, draws: c.draws, games: g, winRate: rate(c.wins, g) };
+          })
+          .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+        return { leaderId, name: r.name, wins: r.wins, losses: r.losses, draws: r.draws, games, winRate: rate(r.wins, games), byMeta };
+      })
+      .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
+    playedLeaders: [...played.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     colorsBeaten: { seen: beaten.size, total: COLOR_ORDER.length },
     metasPlayed: { seen: [...byMeta.keys()].filter((k) => k !== '__none__').length, total: officialMetas || null },
     typesPlayed: { seen: byType.size, total: null },

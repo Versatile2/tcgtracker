@@ -5,9 +5,10 @@ import { seedReferenceData } from '../../db/seed';
 import { leaders, metas } from '../../db/schema';
 import { createTournament, listTournaments } from '../../services/tournaments';
 import { addRound } from '../../services/rounds';
-import { getOverallStats, getPerMetaStats } from '../../services/stats';
+import { getOverallStats, getPerMetaStats, getOpponentStats, getMatchupStats, getPlayedLeaders } from '../../services/stats';
 import { listLeaders, listMetas } from '../../services/reference';
 import { statsForSegment } from './segment-stats';
+import { matchupsForLeader } from './matchups';
 import type { LeaderDTO, MetaDTO, TournamentSummaryDTO } from '../dto';
 
 /*
@@ -118,5 +119,83 @@ describe('the client reaches the same record as the server', () => {
     for (const row of serverMeta) {
       expect([row.name, mine.get(row.name)]).toEqual([row.name, row.wins + row.losses + row.draws]);
     }
+  });
+});
+
+/*
+ * The opponent list and the matchup explorer moved onto the type pages and are
+ * computed here too. They are the reason `getOpponentStats` and
+ * `getMatchupStats` still exist: nothing calls them in the app any more, but
+ * they are an independent implementation of the same questions, and holding the
+ * client to them is what stops it drifting into agreeing only with itself.
+ *
+ * The fixtures below use tournaments only, so the server's all-types answers and
+ * the client's `tournaments` segment cover exactly the same rounds.
+ */
+describe('the client reaches the same opponents and matchups as the server', () => {
+  async function history() {
+    const zoro = await leaderId('Roronoa Zoro');
+    const t = await createTournament(db, USER, {
+      type: 'local', myLeaderId: zoro, playedOn: '2026-08-10', metaId: await metaId('OP01'),
+    });
+    for (const [opp, result, po] of [
+      ['Kaido', 'win', 'first'], ['Kaido', 'win', 'second'], ['Kaido', 'loss', 'first'],
+      ['Nami', 'loss', 'second'], ['Enel', 'draw', 'first'],
+    ] as const) {
+      await addRound(db, USER, t.id, { kind: 'swiss', opponentLeaderId: await leaderId(opp), result, playOrder: po });
+    }
+    await addRound(db, USER, t.id, { kind: 'bye' });
+    const all = (await listTournaments(db, USER)) as unknown as TournamentSummaryDTO[];
+    const ls = (await listLeaders(db, USER)) as unknown as LeaderDTO[];
+    const ms = (await listMetas(db, USER)) as unknown as MetaDTO[];
+    return { zoro, all, ls, ms };
+  }
+
+  it('lists the same opponents, in the same order, with the same records', async () => {
+    const { all, ls, ms } = await history();
+    const server = await getOpponentStats(db, USER);
+    const client = statsForSegment(all, ls, ms, 'tournaments').byOpponent;
+    expect(client).toEqual(server);
+  });
+
+  it('offers the same played leaders for the picker', async () => {
+    const { all, ls, ms } = await history();
+    const server = await getPlayedLeaders(db, USER);
+    expect(statsForSegment(all, ls, ms, 'tournaments').playedLeaders).toEqual(server);
+  });
+
+  it('reaches the same matchup verdicts, turn order and colour split', async () => {
+    const { zoro, all, ls } = await history();
+    const server = await getMatchupStats(db, USER, zoro);
+    const client = matchupsForLeader(all, ls, 'tournaments', zoro);
+    expect(client).toEqual(server);
+  });
+
+  it('agrees for a leader with no rounds at all', async () => {
+    await history();
+    const nami = await leaderId('Nami');
+    expect(matchupsForLeader(
+      (await listTournaments(db, USER)) as unknown as TournamentSummaryDTO[],
+      (await listLeaders(db, USER)) as unknown as LeaderDTO[],
+      'tournaments', nami,
+    )).toEqual(await getMatchupStats(db, USER, nami));
+  });
+
+  it('scopes to the segment, which the endpoint could not', async () => {
+    const { zoro, ls, ms } = await history();
+    const s = await createTournament(db, USER, { type: 'session_locals', playedOn: '2026-08-11' });
+    await addRound(db, USER, s.id, {
+      kind: 'swiss', opponentLeaderId: await leaderId('Kaido'), myLeaderId: zoro, result: 'win', playOrder: 'first',
+    });
+    const all = (await listTournaments(db, USER)) as unknown as TournamentSummaryDTO[];
+    // The server counts the session round into the same total; the client keeps
+    // the two apart, which is the whole reason this moved onto the type pages.
+    const server = await getMatchupStats(db, USER, zoro);
+    const inTournaments = matchupsForLeader(all, ls, 'tournaments', zoro);
+    const inSessions = matchupsForLeader(all, ls, 'sessions', zoro);
+    expect(inSessions.opponents.map((o) => o.name)).toEqual(['Kaido']);
+    expect(inTournaments.turnOrder.first.games + inSessions.turnOrder.first.games)
+      .toBe(server.turnOrder.first.games);
+    expect(statsForSegment(all, ls, ms, 'sessions').byOpponent).toHaveLength(1);
   });
 });

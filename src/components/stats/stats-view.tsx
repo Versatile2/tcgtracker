@@ -11,8 +11,6 @@ import { statsForSegment } from '@/lib/stats/segment-stats';
 import { LOG_KINDS } from '@/lib/log-kinds';
 import { formatRecord } from '@/lib/record';
 import { PlayerCard } from './player-card';
-import { OpponentStats } from './opponent-stats';
-import { MatchupStats } from './matchup-stats';
 import { pct } from './stat-card';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { StatsShareCard } from '@/components/share/stats-share-card';
@@ -25,10 +23,11 @@ import { shareFilename } from '@/lib/share-image';
  * so the overview answers "how am I doing?" on its own, and opens the page that
  * answers "at what?".
  *
- * Overall and per-meta used to be rendered here from `/api/stats`. They are
- * per-game-type questions and have moved into the pages, computed from the
- * cache. By-opponent and the matchup explorer still come from the server and
- * still sit here; scoping those per type is the next slice, not this one.
+ * Everything that was here has moved. Overall and per-meta went first, then
+ * by-opponent and the matchup explorer: each of them asks a question that is
+ * really per game type, and answering it across all three at once mixed a
+ * player's tournament record in with their testing games. What is left is the
+ * only thing that is genuinely about all of them — who you are — and the way in.
  */
 export function StatsView() {
   const { data } = useStats();
@@ -93,8 +92,6 @@ export function StatsView() {
               ))}
             </section>
 
-            <OpponentStats rows={data?.opponents ?? []} />
-            <MatchupStats leaders={data?.playedLeaders ?? []} />
           </>
         )}
 

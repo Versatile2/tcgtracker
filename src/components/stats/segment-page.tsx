@@ -9,6 +9,8 @@ import { statsForSegment } from '@/lib/stats/segment-stats';
 import { logKind } from '@/lib/log-kinds';
 import { formatRecord } from '@/lib/record';
 import { ChartCard } from './chart-card';
+import { OpponentStats } from './opponent-stats';
+import { MatchupStats } from './matchup-stats';
 import { pct } from './stat-card';
 import type { Segment } from '@/components/tournaments/segment';
 
@@ -86,6 +88,14 @@ export function SegmentPage({ segment }: { segment: Segment }) {
                   empty="Nothing logged yet."
                 />
               )}
+
+              <OpponentStats rows={stats.byOpponent} />
+              <MatchupStats
+                tournaments={tournaments ?? []}
+                leaders={leaders ?? []}
+                segment={segment}
+                playedLeaders={stats.playedLeaders}
+              />
             </div>
           </>
         )}
