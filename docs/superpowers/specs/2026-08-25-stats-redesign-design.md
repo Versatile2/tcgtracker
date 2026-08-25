@@ -113,9 +113,18 @@ surface already is.
 
 **Build 1**
 
-- `formStrip(tournaments, segment, n)` — the last n results, most recent first.
-- `streaks(tournaments, segment)` — current and longest run of wins.
-- `trendByMonth(tournaments, segment)` — one row per month with a record.
+- `formStrip(tournaments, scope, n)` — the last n results, most recent first.
+- `streaks(tournaments, scope)` — current and longest run of wins.
+- `trendByMonth(tournaments, scope)` — one row per calendar month that has at
+  least one game, most recent last. Months with no games are omitted rather than
+  drawn as zero: a gap in play is not a month of losses. The card renders only
+  when two or more months are present.
+
+`scope` is a `Segment` **or `'all'`**, because the overview shows form across
+every kind of game while a type page shows only its own. Without the `'all'`
+case the overview would have to call the function three times and merge, which
+would order the merged list wrongly. The UI passes `n = 10` everywhere; the
+parameter exists so the tests can use a smaller window.
 - `headline(stats)` — best and worst matchup and the turn-order split, filtered
   to rows at or above `THIN`, or null when none qualify.
 
@@ -123,6 +132,14 @@ surface already is.
 
 - `placementStats(tournaments)` — best finish, top-cut conversion, median finish
   as a percentile of field, podium count, average field size.
+
+  Defined precisely, because each of these can be read two ways: **best finish**
+  is the lowest placement number, shown with its field; **top-cut conversion** is
+  events where a `top_cut` round was played, over events with any round at all;
+  **median finish** is the median of `placement / fieldSize`, over only the
+  events carrying both — placement is optional, and averaging over events that
+  never recorded one would silently flatter the number; **podiums** are
+  placements 1–3; **average field size** covers events recording one.
 - `byRound(tournaments, segment)` — record by round number, and Swiss versus top
   cut. Needs `roundNumber` added to `MatchSummaryDTO`, the same cheap widening
   already done twice for `myLeaderId` and `opponentMetaId`.
