@@ -38,7 +38,7 @@ export function PlayerCard() {
         <span className="tabular-nums">{xp.toLocaleString()} XP total</span>
         {streak.weeks > 0 && (
           <span className="flex items-center gap-1">
-            <Flame className="size-4 text-primary" aria-hidden />
+            <Flame className="size-4 text-primary-ink" aria-hidden />
             <span className="font-semibold text-foreground tabular-nums">{streak.weeks}</span>
             week{streak.weeks === 1 ? '' : 's'} running
           </span>
@@ -50,7 +50,9 @@ export function PlayerCard() {
       {payoff && (
         <Link
           href="/achievements"
-          className="mt-3 flex items-center gap-1.5 rounded-lg text-sm text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+          // min-h-11 rather than the text's own height: measured at 324x20,
+          // under the 44px a thumb needs on a phone.
+          className="-mx-2 mt-2 flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm text-primary-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
         >
           {/* `label` already names the achievement ("1 from On Fire"), so the
               name is not repeated in front of it. */}

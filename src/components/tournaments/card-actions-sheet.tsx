@@ -193,7 +193,7 @@ function Body({
             >
               <span className={cn(
                 'flex size-10 shrink-0 items-center justify-center rounded-xl',
-                danger ? 'bg-destructive/12 text-destructive' : 'bg-primary/12 text-primary',
+                danger ? 'bg-destructive/12 text-destructive' : 'bg-primary/12 text-primary-ink',
               )}>
                 <Icon className="size-5" />
               </span>

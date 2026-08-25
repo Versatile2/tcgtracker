@@ -25,16 +25,28 @@ describe('verdictOf', () => {
   it('calls the boundaries the same way the server does', () => {
     // Pinned exactly: a matchup that reads "favored" on one screen and "even" on
     // another is worse than no verdict at all.
-    expect(verdictOf(0.55)).toBe('favored');
-    expect(verdictOf(0.5499)).toBe('even');
-    expect(verdictOf(0.45)).toBe('unfavored');
-    expect(verdictOf(0.4501)).toBe('even');
+    expect(verdictOf(0.55, 10)).toBe('favored');
+    expect(verdictOf(0.5499, 10)).toBe('even');
+    expect(verdictOf(0.45, 10)).toBe('unfavored');
+    expect(verdictOf(0.4501, 10)).toBe('even');
   });
 
-  it('treats a leader with no games as unfavored, not favored', () => {
-    // rate() returns 0 for no games, and 0 <= 0.45. Worth pinning so an empty
-    // matchup never renders as a win.
-    expect(verdictOf(0)).toBe('unfavored');
+  it('refuses to judge a matchup it has barely seen', () => {
+    // The defect this closes: one win used to render `favored` in confident
+    // green, and the badge would flip to red on the next loss.
+    expect(verdictOf(1, 1)).toBe('unknown');
+    expect(verdictOf(0, 1)).toBe('unknown');
+    expect(verdictOf(1, 4)).toBe('unknown');
+  });
+
+  it('starts judging at exactly five games', () => {
+    expect(verdictOf(1, 5)).toBe('favored');
+  });
+
+  it('gives no verdict at all for a leader with no games', () => {
+    // rate() returns 0 for no games, and 0 <= 0.45 — which used to render an
+    // unplayed matchup as a loss.
+    expect(verdictOf(0, 0)).toBe('unknown');
   });
 });
 

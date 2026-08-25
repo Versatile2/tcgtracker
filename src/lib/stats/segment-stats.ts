@@ -1,6 +1,7 @@
 import { isSession, MATCH_TYPE } from '../tournament-kinds';
 import { tournamentTypeLabel, metaLabel } from '../labels';
 import { comboKey, comboLabel, comboColors, COLOR_ORDER } from './colors';
+import type { Counts } from './matchups';
 import type { LeaderDTO, MetaDTO, TournamentSummaryDTO, TournamentType } from '../dto';
 import type { Segment } from '@/components/tournaments/segment';
 
@@ -53,8 +54,14 @@ export type SegmentStats = {
   byType: Breakdown[];
   /** Who you played, hardest-worked first. Mirrors the server's getOpponentStats. */
   byOpponent: OpponentRow[];
-  /** Your own leaders that appear in this segment, for the matchup picker. */
-  playedLeaders: { id: string; name: string }[];
+  /**
+   * Your own leaders in this segment, most-played first and carrying their
+   * record — so the picker can open on the one you actually play and let you
+   * choose between the rest informed, rather than from a bare list of names.
+   */
+  playedLeaders: { id: string; name: string; wins: number; losses: number; draws: number; games: number; winRate: number }[];
+  /** On the play versus on the draw, across the whole segment. */
+  turnOrder: { first: Counts; second: Counts };
   /** Individual colours beaten at least once, of six — the Rainbow progress. */
   colorsBeaten: Coverage;
   metasPlayed: Coverage;
@@ -85,6 +92,11 @@ function tallyOf(map: Map<string, Tally>, key: string, label: string, colors: st
 }
 
 const rate = (wins: number, games: number) => (games > 0 ? wins / games : 0);
+
+function countsOf(b: { wins: number; losses: number; draws: number }): Counts {
+  const games = b.wins + b.losses + b.draws;
+  return { ...b, games, winRate: rate(b.wins, games) };
+}
 
 /**
  * Rows ordered by games played, then by label so ties do not shuffle between
@@ -148,7 +160,9 @@ export function statsForSegment(
   // getOpponentStats assembles from two queries.
   const opponents = new Map<string, { name: string; wins: number; losses: number; draws: number }>();
   const opponentMeta = new Map<string, Map<string, { name: string; wins: number; losses: number; draws: number }>>();
-  const played = new Map<string, string>();
+  const played = new Map<string, { name: string; wins: number; losses: number; draws: number }>();
+  const first = { wins: 0, losses: 0, draws: 0 };
+  const second = { wins: 0, losses: 0, draws: 0 };
   let wins = 0, losses = 0, draws = 0;
 
   for (const t of inSegment) {
@@ -159,6 +173,13 @@ export function statsForSegment(
       wins += m.result === 'win' ? 1 : 0;
       losses += m.result === 'loss' ? 1 : 0;
       draws += m.result === 'draw' ? 1 : 0;
+
+      // Byes and no-shows never record a play order, so they stay out of this
+      // without a kind filter — the same way the server's query does it.
+      if (m.playOrder === 'first' || m.playOrder === 'second') {
+        const t = m.playOrder === 'first' ? first : second;
+        if (m.result === 'win') t.wins += 1; else if (m.result === 'loss') t.losses += 1; else t.draws += 1;
+      }
 
       const add = (tally: Tally) => {
         if (m.result === 'win') tally.wins += 1;
@@ -195,7 +216,11 @@ export function statsForSegment(
       // never lists a leader with nothing to show.
       if (myLeader) {
         const l = leaders.find((x) => x.id === myLeader);
-        if (l) played.set(l.id, l.name);
+        if (l) {
+          const row = played.get(l.id) ?? { name: l.name, wins: 0, losses: 0, draws: 0 };
+          if (m.result === 'win') row.wins += 1; else if (m.result === 'loss') row.losses += 1; else row.draws += 1;
+          played.set(l.id, row);
+        }
       }
 
       // Opponent rows need an opponent; the server reaches them through an
@@ -242,10 +267,36 @@ export function statsForSegment(
       })
       .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
     playedLeaders: [...played.entries()]
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
+      .map(([id, r]) => {
+        const g = r.wins + r.losses + r.draws;
+        return { id, name: r.name, wins: r.wins, losses: r.losses, draws: r.draws, games: g, winRate: rate(r.wins, g) };
+      })
+      .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
+    turnOrder: { first: countsOf(first), second: countsOf(second) },
     colorsBeaten: { seen: beaten.size, total: COLOR_ORDER.length },
     metasPlayed: { seen: [...byMeta.keys()].filter((k) => k !== '__none__').length, total: officialMetas || null },
     typesPlayed: { seen: byType.size, total: null },
   };
+}
+
+/** A slice this small is a sliver; it does not help a ring divide. */
+const MEANINGFUL_SHARE = 0.05;
+
+/**
+ * Whether a breakdown has earned a donut, or should be a list of bars.
+ *
+ * A donut shows parts of a whole, and below three parts there is no dividing to
+ * see: a single row renders as an unbroken ring, which is a decoration that
+ * costs a card of vertical space and says nothing the number beside it did not.
+ * Measured across the four routes before this rule existed, five donuts on the
+ * surface were single unbroken rings.
+ *
+ * A rule rather than a judgement per card, so it holds as the data changes: the
+ * same card is a list for a player with one tournament type and becomes a donut
+ * once they have played three.
+ */
+export function qualifiesForDonut(rows: readonly Breakdown[]): boolean {
+  const total = rows.reduce((n, r) => n + r.games, 0);
+  if (total === 0) return false;
+  return rows.filter((r) => r.games / total >= MEANINGFUL_SHARE).length >= 3;
 }

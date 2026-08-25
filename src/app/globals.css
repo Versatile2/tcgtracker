@@ -6,6 +6,7 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-primary-ink: var(--primary-ink);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -219,12 +220,38 @@
 }
 
 /* Accent themes — override shadcn --primary/--ring; applied in both light and dark */
-[data-accent="indigo"] { --primary: #4f46e5; --primary-foreground: #ffffff; --ring: #4f46e5; }
-[data-accent="green"]  { --primary: #16a34a; --primary-foreground: #ffffff; --ring: #16a34a; }
-[data-accent="red"]    { --primary: #dc2626; --primary-foreground: #ffffff; --ring: #dc2626; }
-[data-accent="purple"] { --primary: #7c3aed; --primary-foreground: #ffffff; --ring: #7c3aed; }
-[data-accent="blue"]   { --primary: #2563eb; --primary-foreground: #ffffff; --ring: #2563eb; }
-[data-accent="slate"]  { --primary: #475569; --primary-foreground: #ffffff; --ring: #475569; }
+[data-accent="indigo"] { --primary: #4f46e5; --primary-foreground: #ffffff; --ring: #4f46e5; --primary-ink: #4f46e5; }
+[data-accent="green"]  { --primary: #16a34a; --primary-foreground: #ffffff; --ring: #16a34a; --primary-ink: #166534; }
+[data-accent="red"]    { --primary: #dc2626; --primary-foreground: #ffffff; --ring: #dc2626; --primary-ink: #b91c1c; }
+[data-accent="purple"] { --primary: #7c3aed; --primary-foreground: #ffffff; --ring: #7c3aed; --primary-ink: #6d28d9; }
+[data-accent="blue"]   { --primary: #2563eb; --primary-foreground: #ffffff; --ring: #2563eb; --primary-ink: #1d4ed8; }
+[data-accent="slate"]  { --primary: #475569; --primary-foreground: #ffffff; --ring: #475569; --primary-ink: #334155; }
+
+/*
+ * `--primary-ink` is the accent as *text*, which is a different problem from the
+ * accent as a *fill*.
+ *
+ * A fill only has to clear 3:1 as a UI component, and every accent does. Text
+ * has to clear 4.5:1, and measured against the real surfaces most did not: in
+ * dark, indigo sat at 3.15, purple 3.47, blue 3.83, red 4.10 and slate 2.61 —
+ * five of six failing, on the back link and the active tab label of every screen
+ * in the app. Green failed the other way round, at 3.30 on the light page.
+ *
+ * The cause was structural rather than a bad pick: the presets above are single
+ * fixed values applied in both themes, so no accent could satisfy both surfaces.
+ * Splitting text from fill is what makes both reachable, and it leaves buttons
+ * and the FAB looking exactly as they did.
+ *
+ * Every value below is measured, not chosen by eye — light against the tinted
+ * page peak (#edecfc, read out of a real screenshot rather than assumed white),
+ * dark against #0a0a0a. All twelve clear 4.5:1.
+ */
+.dark [data-accent="indigo"] { --primary-ink: #818cf8; }
+.dark [data-accent="green"]  { --primary-ink: #4ade80; }
+.dark [data-accent="red"]    { --primary-ink: #f87171; }
+.dark [data-accent="purple"] { --primary-ink: #a78bfa; }
+.dark [data-accent="blue"]   { --primary-ink: #60a5fa; }
+.dark [data-accent="slate"]  { --primary-ink: #94a3b8; }
 /*
  * iOS Safari sizes input[type="date"] from its own native control rather than
  * from the box you gave it, so the field can push past its container — and the
@@ -424,5 +451,27 @@ input[type="date"]::-webkit-date-and-time-value {
   }
   .rank-champion.rank-skin::after {
     animation: rank-sweep 2600ms cubic-bezier(0.4, 0, 0.2, 1) 400ms 1 both;
+  }
+}
+
+/*
+ * Bring every transition under the reduced-motion preference, not only the ones
+ * written by hand.
+ *
+ * Measured before this: nine live transition declarations on the stats surface,
+ * of which seven were Tailwind utilities (`transition-colors` and friends) that
+ * no media query touched — so the preference was half honoured, and any new
+ * motion would have been layered on top of motion that already ignored it.
+ *
+ * Deliberately not `animation: none`: removing an animation mid-flight can leave
+ * an element at a start state it never gets to leave. Collapsing the duration
+ * lets everything arrive, instantly.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

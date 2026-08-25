@@ -54,25 +54,37 @@ describe('Donut', () => {
     expect(container.innerHTML).not.toContain('NaN');
   });
 
-  it('gives a multi-colour row a gradient and a single-colour row a flat fill', () => {
-    const { container } = render(<Donut label="t" rows={[row('duo', 1, ['red', 'purple']), row('mono', 1, ['blue'])]} />);
-    const strokes = arcs(container).map((c) => c.getAttribute('stroke'));
-    expect(strokes[0]).toMatch(/^url\(#/);
-    expect(strokes[1]).toBe('var(--chart-blue)');
-    expect(container.querySelectorAll('linearGradient')).toHaveLength(1);
+  it('draws a multi-colour row as one sub-arc per colour, in the deck order', () => {
+    /*
+     * The defect this closes. Multi-colour slices were painted with a
+     * linearGradient, which is defined over the whole 120x120 bounding box — so
+     * the colour a slice showed depended on where it sat on the ring, not on the
+     * deck. "All six" rendered as a plain grey arc.
+     */
+    const { container } = render(<Donut label="t" rows={[row('duo', 2, ['purple', 'red'])]} />);
+    expect(container.querySelectorAll('linearGradient')).toHaveLength(0);
+    expect(arcs(container).map((c) => c.getAttribute('stroke')))
+      .toEqual(['var(--chart-purple)', 'var(--chart-red)']);
   });
 
-  it('splits a six-colour gradient into six equal bands', () => {
+  it('splits a six-colour deck into six equal sub-arcs', () => {
     const six = ['red', 'green', 'blue', 'purple', 'black', 'yellow'];
-    const { container } = render(<Donut label="t" rows={[row('all', 1, six)]} />);
-    // Scoped to the gradient node rather than written as `linearGradient stop`:
-    // jsdom's descendant combinator does not cross into the SVG namespace and
-    // reports zero for a subtree that really holds twelve.
-    const gradient = container.querySelector('linearGradient')!;
-    // Two stops per colour make the edges hard; a blend of six is brown.
-    expect(gradient.querySelectorAll('stop')).toHaveLength(12);
-    expect([...gradient.querySelectorAll('stop')].map((s) => s.getAttribute('stop-color')))
-      .toEqual(six.flatMap((c) => [`var(--chart-${c})`, `var(--chart-${c})`]));
+    const { container } = render(<Donut label="t" rows={[row('all', 6, six)]} />);
+    const drawn = arcs(container);
+    expect(drawn).toHaveLength(6);
+    expect(drawn.map((c) => c.getAttribute('stroke'))).toEqual(six.map((c) => `var(--chart-${c})`));
+    // Equal widths, and only the final sub-arc pays the 2px row gap — a gap
+    // inside a slice would read as two separate decks.
+    const dashes = drawn.map((c) => Number(c.getAttribute('stroke-dasharray')!.split(' ')[0]));
+    for (const d of dashes.slice(0, 5)) expect(d).toBeCloseTo(CIRCUMFERENCE / 6, 6);
+    expect(dashes[5]).toBeCloseTo(CIRCUMFERENCE / 6 - 2, 6);
+  });
+
+  it('gives a colourless row a step of the accent ramp', () => {
+    const { container } = render(<Donut label="t" rows={[row('meta', 1), row('other', 1)]} />);
+    const strokes = arcs(container).map((c) => c.getAttribute('stroke'));
+    expect(strokes[0]).toContain('color-mix');
+    expect(strokes[0]).not.toBe(strokes[1]);
   });
 
   it('is decoration — the legend beside it carries the data', () => {

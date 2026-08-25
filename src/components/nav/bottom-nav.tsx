@@ -111,7 +111,7 @@ export function BottomNav() {
                     onClick={() => setChoosing(false)}
                     className="flex items-center gap-3 rounded-xl border border-border/70 p-3 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary-ink">
                       <Icon className="size-5" aria-hidden />
                     </span>
                     <span className="min-w-0">
@@ -119,7 +119,7 @@ export function BottomNav() {
                       <span className="block text-xs text-muted-foreground">{shape}</span>
                       {/* The line the shape alone never answered: two of these
                           three deliberately stay out of your record. */}
-                      <span className="mt-0.5 block text-xs font-medium text-primary/80">{counts}</span>
+                      <span className="mt-0.5 block text-xs font-medium text-primary-ink/80">{counts}</span>
                     </span>
                   </Link>
                 ))}
@@ -140,7 +140,7 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
       aria-current={active ? 'page' : undefined}
       className={cn(
         'flex flex-1 flex-col items-center justify-center gap-1 text-[0.625rem] font-medium leading-none transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-        active ? 'text-primary' : 'text-muted-foreground',
+        active ? 'text-primary-ink' : 'text-muted-foreground',
       )}
     >
       <Icon className="size-6" strokeWidth={active ? 2.4 : 1.9} aria-hidden />

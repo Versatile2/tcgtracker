@@ -437,7 +437,7 @@ export function LeaderPicker({
             onClick={() => setChanging(true)}
             disabled={disabled}
             aria-label={`Change leader, currently ${selected.name}`}
-            className="min-h-11 shrink-0 rounded-md px-3 text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="min-h-11 shrink-0 rounded-md px-3 text-sm font-semibold text-primary-ink outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             Change
           </button>

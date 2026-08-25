@@ -119,7 +119,7 @@ function TypeRow({ icon: Icon, kind, onPick, disabled }: { icon: LucideIcon; kin
       disabled={disabled}
       className="glass-surface flex w-full items-center gap-3 rounded-2xl p-4 text-left outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] disabled:opacity-50"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></span>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-ink"><Icon className="size-5" /></span>
       <span className="min-w-0">
         <span className="block font-semibold">{roundKindLabel(kind)}</span>
         <span className="block truncate text-sm text-muted-foreground">{ROUND_KIND_SUBTITLES[kind]}</span>
@@ -136,7 +136,7 @@ function TypeCard({ icon: Icon, kind, onPick, disabled }: { icon: LucideIcon; ki
       disabled={disabled}
       className="glass-surface flex flex-col items-start gap-2 rounded-2xl p-4 text-left outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] disabled:opacity-50"
     >
-      <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></span>
+      <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary-ink"><Icon className="size-5" /></span>
       <span className="font-semibold">{roundKindLabel(kind)}</span>
       <span className="text-xs text-muted-foreground">{ROUND_KIND_SUBTITLES[kind]}</span>
     </button>
@@ -321,7 +321,7 @@ function RoundFormBody({
             one. Shown right above the button that pays it out. */}
         {payoff && (
           <p className="flex items-center justify-center gap-1.5 pt-1 text-sm text-muted-foreground">
-            <Target className="size-4 text-primary" aria-hidden />
+            <Target className="size-4 text-primary-ink" aria-hidden />
             <span><span className="font-semibold text-foreground">{payoff.remaining}</span> from {payoff.name}</span>
           </p>
         )}

@@ -47,7 +47,7 @@ export function KindsHelpButton({ children, className }: {
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-primary outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring',
+          'inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-primary-ink outline-none transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring',
           className,
         )}
       >

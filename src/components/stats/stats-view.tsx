@@ -11,6 +11,8 @@ import { statsForSegment } from '@/lib/stats/segment-stats';
 import { LOG_KINDS } from '@/lib/log-kinds';
 import { formatRecord } from '@/lib/record';
 import { PlayerCard } from './player-card';
+import { FormStrip } from './form-strip';
+import { formStrip, streaks } from '@/lib/stats/form';
 import { pct } from './stat-card';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { StatsShareCard } from '@/components/share/stats-share-card';
@@ -48,6 +50,28 @@ export function StatsView() {
   const ready = mounted && !isLoading;
   const anyGames = perSegment.some((s) => s.stats.games > 0);
 
+  /*
+   * The overall record, shown to the player.
+   *
+   * The app already computed this — `useStats().data.overall` — and used it for
+   * exactly one thing: rendering the image you post. The screen itself showed
+   * three rows to add up by hand under a hero reading "Level 3". It is computed
+   * here instead of read from the server so it cannot disagree with the numbers
+   * beside it after a round logged offline.
+   */
+  const overall = useMemo(() => {
+    const wins = perSegment.reduce((n, s) => n + s.stats.wins, 0);
+    const losses = perSegment.reduce((n, s) => n + s.stats.losses, 0);
+    const draws = perSegment.reduce((n, s) => n + s.stats.draws, 0);
+    const games = wins + losses + draws;
+    return { wins, losses, draws, games, winRate: games > 0 ? wins / games : 0 };
+  }, [perSegment]);
+
+  const time = useMemo(() => ({
+    form: formStrip(tournaments ?? [], 'all'),
+    streak: streaks(tournaments ?? [], 'all'),
+  }), [tournaments]);
+
   return (
     <LargeTitleScreen
       title="Statistics"
@@ -66,6 +90,17 @@ export function StatsView() {
 
         {ready && anyGames && (
           <>
+            <section className="space-y-3">
+              <p className="text-3xl font-bold tabular-nums">
+                {formatRecord(overall)}
+                <span className="ml-2 text-lg font-medium text-muted-foreground">{pct(overall.winRate)}</span>
+              </p>
+              <p className="-mt-2 text-sm text-muted-foreground tabular-nums">
+                {overall.games} {overall.games === 1 ? 'game' : 'games'} all told
+              </p>
+              <FormStrip form={time.form} streak={time.streak} />
+            </section>
+
             <PlayerCard />
 
             <section className="space-y-2">
@@ -76,7 +111,7 @@ export function StatsView() {
                   href={`/stats/${kind.key}`}
                   className="flex items-center gap-3 rounded-xl border p-3 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary-ink">
                     <kind.icon className="size-5" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">

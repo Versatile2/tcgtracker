@@ -98,7 +98,7 @@ function Stat({
   return (
     <div className="rounded-2xl border border-border/60 p-3">
       <p className="flex items-center gap-1.5 text-[0.625rem] font-semibold tracking-wide text-muted-foreground uppercase">
-        <Icon className={accent ? 'size-3.5 text-primary' : 'size-3.5'} aria-hidden />
+        <Icon className={accent ? 'size-3.5 text-primary-ink' : 'size-3.5'} aria-hidden />
         {label}
       </p>
       <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>

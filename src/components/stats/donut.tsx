@@ -1,5 +1,4 @@
-import { Fragment } from 'react';
-import { chartColorVar, sliceFill, rampColorVar } from '@/lib/stats/chart-colors';
+import { chartColorVar, rampColorVar } from '@/lib/stats/chart-colors';
 import type { Breakdown } from '@/lib/stats/segment-stats';
 
 /**
@@ -9,21 +8,26 @@ import type { Breakdown } from '@/lib/stats/segment-stats';
  * and nothing else, a library costs more than the feature on a phone, and the
  * share cards render to canvas, which libraries make harder.
  *
- * **The chart is decoration.** It is `aria-hidden`, and the legend list beside it
- * is the real content — every slice is named and carries its record there. That
- * is not only for screen readers: two of the six colours fall under 3:1 against
- * the page, and the validator's rule is that a contrast warning obliges visible
- * labels. The labels are what make the palette legal.
+ * **The legend beside this is its key, and the two must agree.** They did not:
+ * a multi-colour slice used to be painted with a `linearGradient`, which is
+ * defined in object bounding-box space — the whole 120×120 square — so the
+ * colour a slice received depended on where it sat on the ring rather than on
+ * the deck it represented. "All six" rendered as a plain grey arc,
+ * indistinguishable from Red/Black beside it, and neither matched its swatch.
  *
- * Slices are separated by a 2px gap of surface, so adjacent fills never touch —
- * which is what keeps two similar hues legible as two slices.
+ * So there are no gradients here. A slice with k colours is drawn as k
+ * sub-arcs of equal angular width, in the deck's own colour order. A Purple/Red
+ * slice really is half purple and half red along the ring, which is exactly what
+ * its legend swatch shows.
+ *
+ * The 2px surface gap falls only at the end of a *row*, never between the
+ * sub-arcs inside one — a gap mid-slice would read as two decks.
  */
 
 const SIZE = 120;
 const R = 52;
 const STROKE = 16;
 const CIRCUMFERENCE = 2 * Math.PI * R;
-/** Surface gap between slices, in user units of the circumference. */
 const GAP = 2;
 
 export function Donut({
@@ -31,16 +35,13 @@ export function Donut({
   center,
   label,
 }: {
+  /** Exactly the rows the legend lists. Fold before passing, not after. */
   rows: Breakdown[];
-  /** The headline in the hole — a coverage count, not a percentage. */
   center?: { value: string; caption: string };
-  /** Names the chart for anyone reading the DOM; the legend carries the data. */
   label: string;
 }) {
   const total = rows.reduce((n, r) => n + r.games, 0);
 
-  // Nothing logged: an empty ring rather than a division by zero or a chart of
-  // one grey slice pretending to be data.
   if (total === 0) {
     return (
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="size-[120px] shrink-0" role="img" aria-label={`${label}: nothing logged yet`}>
@@ -50,50 +51,36 @@ export function Donut({
     );
   }
 
-  const slug = label.replace(/\W+/g, '');
   // Each arc's start is derived from the rows before it rather than accumulated
   // into a running variable: the React Compiler rejects reassigning a value
-  // captured by a render closure, and with at most nine slices the recomputation
-  // costs nothing.
-  const arcs = rows.map((r, i) => {
-    const fraction = r.games / total;
+  // captured by a render closure, and with at most nine rows this costs nothing.
+  const arcs = rows.flatMap((r, i) => {
     const before = rows.slice(0, i).reduce((n, x) => n + x.games, 0) / total;
-    return {
-      row: r,
-      dash: Math.max(0, fraction * CIRCUMFERENCE - GAP),
-      offset: before * CIRCUMFERENCE,
-      gradientId: `slice-${slug}-${r.key.replace(/\W+/g, '')}`,
-    };
+    const span = r.games / total;
+    // A row with no colours of its own — a meta, a tournament type — takes one
+    // step of the accent ramp, matching the swatch the legend gives it.
+    const colors = r.colors.length > 0 ? r.colors : [null];
+    return colors.map((color, j) => {
+      const sub = span / colors.length;
+      const isLast = j === colors.length - 1;
+      return {
+        key: `${r.key}-${color ?? 'ramp'}`,
+        stroke: color ? chartColorVar(color) : rampColorVar(i, rows.length),
+        dash: Math.max(0, sub * CIRCUMFERENCE - (isLast ? GAP : 0)),
+        offset: (before + sub * j) * CIRCUMFERENCE,
+      };
+    });
   });
 
   return (
     <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="size-[120px] shrink-0" aria-hidden>
-      <defs>
-        {arcs.filter((a) => a.row.colors.length > 1).map((a) => (
-          <linearGradient key={a.gradientId} id={a.gradientId} x1="0" y1="0" x2="1" y2="1">
-            {a.row.colors.map((c, i, all) => (
-              // Hard stops, not a blend: six colours blended across one slice is
-              // brown. Each colour owns an equal band, the same rule the
-              // multi-colour leader avatars follow.
-              //
-              // A Fragment, not a <g>: a group element is not valid inside
-              // <linearGradient> and the stops inside one are simply discarded,
-              // which renders a six-colour slice as nothing at all.
-              <Fragment key={c}>
-                <stop offset={`${(i / all.length) * 100}%`} stopColor={chartColorVar(c)} />
-                <stop offset={`${((i + 1) / all.length) * 100}%`} stopColor={chartColorVar(c)} />
-              </Fragment>
-            ))}
-          </linearGradient>
-        ))}
-      </defs>
       <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
-        {arcs.map((a, i) => (
+        {arcs.map((a) => (
           <circle
-            key={a.row.key}
+            key={a.key}
             cx={SIZE / 2} cy={SIZE / 2} r={R}
             fill="none"
-            stroke={a.row.colors.length > 0 ? sliceFill(a.row.colors, a.gradientId) : rampColorVar(i, arcs.length)}
+            stroke={a.stroke}
             strokeWidth={STROKE}
             strokeDasharray={`${a.dash} ${CIRCUMFERENCE - a.dash}`}
             strokeDashoffset={-a.offset}

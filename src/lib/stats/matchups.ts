@@ -1,4 +1,5 @@
 import { segmentOf } from './segment-stats';
+import { isThin } from './headline';
 import type { LeaderDTO, TournamentSummaryDTO } from '../dto';
 import type { Segment } from '@/components/tournaments/segment';
 
@@ -19,7 +20,7 @@ import type { Segment } from '@/components/tournaments/segment';
 
 export type Counts = { wins: number; losses: number; draws: number; games: number; winRate: number };
 export type MatchupOpponent = Counts & { leaderId: string; name: string; verdict: Verdict };
-export type Verdict = 'favored' | 'even' | 'unfavored';
+export type Verdict = 'favored' | 'even' | 'unfavored' | 'unknown';
 export type LeaderMatchups = {
   opponents: MatchupOpponent[];
   turnOrder: { first: Counts; second: Counts };
@@ -33,8 +34,18 @@ function counts(wins: number, losses: number, draws: number): Counts {
   return { wins, losses, draws, games, winRate: rate(wins, games) };
 }
 
-/** The same thresholds the server applies, so a matchup never changes verdict by screen. */
-export function verdictOf(winRate: number): Verdict {
+/**
+ * A verdict, but only where there is evidence for one.
+ *
+ * The thresholds match the server's, so a matchup never reads differently on two
+ * screens. What is added here is the sample gate: without it one win renders
+ * `favored` in confident green, and a competitive player watches the badge flip
+ * from red to green after a single game — at which point the whole matchup layer
+ * stops being credible. This is the product's first claimed edge; a verdict it
+ * has to retract costs more than a verdict it declines to give.
+ */
+export function verdictOf(winRate: number, games: number): Verdict {
+  if (isThin(games)) return 'unknown';
   if (winRate >= 0.55) return 'favored';
   if (winRate <= 0.45) return 'unfavored';
   return 'even';
@@ -97,7 +108,7 @@ export function matchupsForLeader(
     opponents: [...opponents.entries()]
       .map(([id, b]) => {
         const c = counts(b.wins, b.losses, b.draws);
-        return { leaderId: id, name: b.name, ...c, verdict: verdictOf(c.winRate) };
+        return { leaderId: id, name: b.name, ...c, verdict: verdictOf(c.winRate, c.games) };
       })
       .sort((a, b) => b.games - a.games || a.name.localeCompare(b.name)),
     turnOrder: {

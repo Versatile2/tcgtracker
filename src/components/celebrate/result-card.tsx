@@ -88,7 +88,7 @@ export function ResultCard({ c, onDismiss }: { c: Celebration; onDismiss: () => 
           <ul className="celebrate-rise celebrate-rise-3 mt-1 space-y-1">
             {c.unlocked.map((a) => (
               <li key={a.key} className="text-sm">
-                <span className="font-semibold text-primary">{a.name}</span>
+                <span className="font-semibold text-primary-ink">{a.name}</span>
                 <span className="text-muted-foreground"> — {a.description}</span>
               </li>
             ))}

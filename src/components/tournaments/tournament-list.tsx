@@ -120,7 +120,7 @@ export function TournamentList() {
           nagging; shown to someone six weeks in, it is the reason they log. */}
       {streak.atRisk && streak.weeks > 0 && (
         <p className="mt-3 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/8 px-3 py-2 text-sm">
-          <Flame className="size-4 shrink-0 text-primary" aria-hidden />
+          <Flame className="size-4 shrink-0 text-primary-ink" aria-hidden />
           <span>
             <span className="font-semibold tabular-nums">{streak.weeks} week{streak.weeks === 1 ? '' : 's'}</span>
             {' '}running — log a game this week to keep it.
@@ -219,7 +219,7 @@ export function TournamentList() {
               {logKind(segment).blurb}
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
-              Tap <span className="font-semibold text-primary">{current.add}</span> above to log your first one.
+              Tap <span className="font-semibold text-primary-ink">{current.add}</span> above to log your first one.
             </p>
             <KindsHelpButton className="mt-4">Compare all three</KindsHelpButton>
           </div>

@@ -60,7 +60,7 @@ export function TournamentCard({
             <div className="flex items-center gap-2">
               <TypeBadge type={t.type} />
               {isDraft ? (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-ink">
                   <span className="size-1.5 rounded-full bg-primary" />
                   Logging
                 </span>

@@ -14,7 +14,7 @@ export function KindsComparison() {
       {LOG_KINDS.map(({ key, label, icon: Icon, shape, blurb, counted }) => (
         <section key={key} className="rounded-xl border border-border/70 p-3">
           <div className="flex items-center gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary-ink">
               <Icon className="size-5" aria-hidden />
             </span>
             <span className="min-w-0">
@@ -36,7 +36,7 @@ export function KindsComparison() {
                   key={surface}
                   className={
                     yes
-                      ? 'inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary'
+                      ? 'inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary-ink'
                       : 'inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground'
                   }
                 >

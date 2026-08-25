@@ -161,14 +161,46 @@ describe('the client reaches the same opponents and matchups as the server', () 
   it('offers the same played leaders for the picker', async () => {
     const { all, ls, ms } = await history();
     const server = await getPlayedLeaders(db, USER);
-    expect(statsForSegment(all, ls, ms, 'tournaments').playedLeaders).toEqual(server);
+    const client = statsForSegment(all, ls, ms, 'tournaments').playedLeaders;
+    // Membership, not shape or order: the client orders by games played so the
+    // picker can open on the leader you actually use, and carries each record so
+    // the choice between them is informed. The server has neither, which is why
+    // it is an oracle for *which* leaders, not for how they are presented.
+    expect(client.map((l) => ({ id: l.id, name: l.name })).sort((a, b) => a.name.localeCompare(b.name)))
+      .toEqual(server);
+    expect(client.every((l) => l.games > 0)).toBe(true);
   });
 
-  it('reaches the same matchup verdicts, turn order and colour split', async () => {
+  it('reaches the same records, turn order and colour split', async () => {
     const { zoro, all, ls } = await history();
     const server = await getMatchupStats(db, USER, zoro);
     const client = matchupsForLeader(all, ls, 'tournaments', zoro);
-    expect(client).toEqual(server);
+    expect(client.turnOrder).toEqual(server.turnOrder);
+    expect(client.colorBreakdown).toEqual(server.colorBreakdown);
+    // Verdicts are compared separately below: the client deliberately issues
+    // fewer of them.
+    const record = (o: { verdict: unknown }) => { const { verdict, ...rest } = o; void verdict; return rest; };
+    expect(client.opponents.map(record)).toEqual(server.opponents.map(record));
+  });
+
+  it('deliberately withholds a verdict the server would give', async () => {
+    /*
+     * The one place the two are meant to disagree. The server maps a win rate
+     * straight to a badge, so a single win reads `favored`; the client requires
+     * five games first. This asserts the divergence rather than hiding it, so
+     * that if the client ever starts agreeing again — someone removes the gate —
+     * this fails instead of the app quietly resuming confident claims about
+     * one-game matchups.
+     */
+    const { zoro, all, ls } = await history();
+    const server = await getMatchupStats(db, USER, zoro);
+    const client = matchupsForLeader(all, ls, 'tournaments', zoro);
+    const thin = client.opponents.filter((o) => o.games < 5);
+    expect(thin.length).toBeGreaterThan(0);
+    expect(thin.every((o) => o.verdict === 'unknown')).toBe(true);
+    for (const o of thin) {
+      expect(server.opponents.find((s) => s.leaderId === o.leaderId)!.verdict).not.toBe('unknown');
+    }
   });
 
   it('agrees for a leader with no rounds at all', async () => {
