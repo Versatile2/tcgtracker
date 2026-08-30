@@ -1079,7 +1079,7 @@ git commit -m "feat(admin): list the whole catalog behind the admin role"
 
 **Interfaces:**
 - Consumes: `adminListLeaders` from Task 5.
-- Produces: `setCatalogStatus(db, table, ids, status)` returning the number of rows changed; `bulkStatusSchema` = `{ ids: string[] (1..500, uuid), status: 'draft'|'published'|'hidden' }`; `apiClient.adminSetLeaderStatus(body)`, `apiClient.adminSetMetaStatus(body)`.
+- Produces: `setLeaderStatus(db, input)` and `setMetaStatus(db, input)`, each returning `{ changed: number }`; `bulkStatusSchema` = `{ ids: string[] (1..500, uuid), status: 'draft'|'published'|'hidden' }`; `apiClient.adminSetLeaderStatus(body)`, `apiClient.adminSetMetaStatus(body)`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1542,7 +1542,24 @@ one-line SQL statement run by hand, not an endpoint that exists to be misfired.
 Run: `npm test -- src/app/api/admin.route.test.ts`
 Expected: PASS, 17 tests.
 
-- [ ] **Step 7: Build the edit panel**
+- [ ] **Step 7: Add the client calls**
+
+In `src/lib/api-client.ts`:
+
+```ts
+  adminCreateLeader: (b: LeaderInput) =>
+    request<LeaderDTO>('/api/admin/leaders', { method: 'POST', body: JSON.stringify(b) }),
+  adminUpdateLeader: (id: string, b: LeaderInput) =>
+    request<LeaderDTO>(`/api/admin/leaders/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  adminCreateMeta: (b: MetaInput) =>
+    request<MetaDTO>('/api/admin/metas', { method: 'POST', body: JSON.stringify(b) }),
+  adminUpdateMeta: (id: string, b: MetaInput) =>
+    request<MetaDTO>(`/api/admin/metas/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+```
+
+Import `LeaderInput` and `MetaInput` from `./validation/admin-catalog`.
+
+- [ ] **Step 8: Build the edit panel**
 
 Create `src/components/admin/leader-panel.tsx` using `src/components/ui/sheet.tsx`.
 It receives `leader: LeaderDTO | null` (null means "new") and holds local form
@@ -1558,7 +1575,7 @@ the pre-edit catalog from cache until its hour-long `staleTime` expires.
 
 Wire "New leader" above the grid to open the same panel with `leader={null}`.
 
-- [ ] **Step 8: Build the metas screen**
+- [ ] **Step 9: Build the metas screen**
 
 Create `src/components/admin/meta-table.tsx` — a table, not a grid, since metas
 have no artwork: name, code, release date, status badge, and the same selection
@@ -1576,13 +1593,13 @@ export default function AdminMetasPage() {
 }
 ```
 
-- [ ] **Step 9: Verify by hand**
+- [ ] **Step 10: Verify by hand**
 
 Rename a leader and confirm the change appears in the player-facing picker
 without a reload. Create a leader from scratch and confirm it arrives as a draft.
 Set a release date on OP16 and confirm a new tournament defaults to it.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 git add -A
@@ -2290,17 +2307,58 @@ writes rows.
  */
 ```
 
-Its main loop, per API leader:
+**Split it in two: the script fetches, a tested module decides.** The network is
+what makes a script untestable, and the write rules are the part that matters.
+Add to `src/lib/catalog-import.ts`:
+
+```ts
+export type IncomingLeader = {
+  setCode: string;
+  name: string;
+  colors: string[];
+  /** card_image_id -> already-resized WebP bytes, base printing first. */
+  printings: { cardImageId: string; bytes: Buffer }[];
+};
+export type IncomingMeta = { code: string; name: string };
+
+export type ImportReport = {
+  insertedLeaders: number;
+  insertedMetas: number;
+  insertedPrintings: number;
+  unchangedLeaders: number;
+  differs: { setCode: string; fields: string[]; db: Comparable; api: Comparable }[];
+};
+
+/**
+ * Apply an import. Insert-only: this may add a leader, a meta or a printing that
+ * does not exist yet, and nothing else.
+ *
+ * Where the API disagrees with a row we already hold, the disagreement is
+ * collected into `differs` and the row is left exactly as it is. That is the
+ * whole point of the rework — a hand correction outranks the API.
+ */
+export async function applyImport(
+  db: DB,
+  incoming: { leaders: IncomingLeader[]; metas: IncomingMeta[] },
+): Promise<ImportReport>
+```
+
+Its rules, per incoming leader:
 
 1. `SELECT` the global leader with that `set_code`.
-2. Absent → `INSERT` with `status: 'draft'`, then insert each printing into
-   `leader_images` (download, `sharp().resize(240)`, `.webp()`, sha256), the
-   first one `isDefault: true`.
-3. Present → `diffLeader(existing, incoming)`; if non-empty, collect it for the
-   report. **Write nothing.** Then insert only printings whose `card_image_id`
-   is not already a row for that leader, with `isDefault: false`.
+2. Absent → `INSERT` with `status: 'draft'`, then one `leader_images` row per
+   printing (sha256 checksum, `sortOrder` following the array), the first with
+   `isDefault: true`.
+3. Present → `diffLeader(existing, incoming)`; a non-empty result goes into
+   `differs` and **nothing is written**. Then insert only printings whose
+   `cardImageId` is not already a row for that leader, each `isDefault: false`.
 
-Per API set: insert a `draft` meta if no meta has that code; otherwise skip.
+Per incoming meta: insert as `draft` if no meta holds that code; otherwise skip.
+
+The script keeps the fetching, the promo handling and the `sharp` resizing from
+`build-leader-data.ts`, turns each API row into an `IncomingLeader` with its
+bytes already resized to 240px WebP, calls `applyImport`, and prints the report.
+`sharp` stays in the script, so it stays a devDependency.
 
 Close with a report:
 
@@ -2320,21 +2378,22 @@ Add to `package.json`:
 
 and remove `data:leaders`.
 
-- [ ] **Step 7: Test the importer's write rules against fixture responses**
+- [ ] **Step 7: Test the importer's write rules**
 
-Add to `src/lib/catalog-import.test.ts` a `describe` that exercises the
-insert-only rules against the test database, by extracting the loop body from the
-script into an exported `applyImport(db, apiLeaders, apiSets)` in
-`src/lib/catalog-import.ts` and having the script call it. Keep the fetching in
-the script and the decisions in the tested module — the network is what makes the
-script untestable, and the decisions are the part that matters.
+Add to `src/lib/catalog-import.test.ts` a `describe` running `applyImport`
+against the test database with plain objects — no network, no fixture files.
+Reuse the `webp()` byte helper from `src/app/api/admin-images.route.test.ts`.
 
-Assert: a leader whose set code is absent is inserted as `draft`; a leader that
-exists with a different name is **not** modified and is returned in the
-`differs` list; a printing already present is not inserted twice; a new printing
-of an existing leader is inserted with `isDefault: false`.
-
-Use plain objects for the API rows — no network, no fixtures on disk.
+Assert each rule:
+- a leader whose set code is absent is inserted with `status: 'draft'`, and its
+  first printing is the default;
+- a leader that already exists with a different name is **not modified**, and is
+  returned in `report.differs` with `fields: ['name']`;
+- a printing already present is not inserted twice (`insertedPrintings` counts
+  only the new one);
+- a new printing of an existing leader is inserted with `isDefault: false`, so an
+  import can never move a default the owner chose;
+- a meta whose code is absent is inserted as `draft`; one that exists is skipped.
 
 - [ ] **Step 8: Delete the old generator**
 
