@@ -21,12 +21,17 @@ import type { LeaderArtMapDTO } from '@/lib/dto';
  */
 
 type LeaderArtValue = {
+  /** Leader id → the image id this player chose. */
   art: LeaderArtMapDTO;
+  /** The image to draw for a leader: the player's choice, else the leader's default, else none. */
+  imageIdFor: (leaderId: string | null | undefined) => string | null;
   /** No-op outside the provider. */
-  choose: (setCode: string, art: string) => void;
+  choose: (leaderId: string, imageId: string) => void;
 };
 
-const LeaderArtContext = createContext<LeaderArtValue>({ art: {}, choose: () => {} });
+export const LeaderArtContext = createContext<LeaderArtValue>({
+  art: {}, imageIdFor: () => null, choose: () => {},
+});
 
 export const useLeaderArt = () => useContext(LeaderArtContext);
 
@@ -46,12 +51,22 @@ export function LeaderArtProvider({ children }: { children: React.ReactNode }) {
     retry: false,
   });
 
+  // react-query dedupes this against the query the pages already run under the
+  // same key, so the catalog is fetched once however many providers mount.
+  const { data: leaderRows } = useQuery({
+    queryKey: keys.leaders,
+    queryFn: apiClient.listLeaders,
+    enabled: Boolean(isSignedIn),
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+  });
+
   const { mutate } = useMutation({
     mutationFn: apiClient.setLeaderArt,
-    onMutate: async ({ setCode, art }) => {
+    onMutate: async ({ leaderId, imageId }) => {
       await qc.cancelQueries({ queryKey: keys.leaderArt });
       const previous = qc.getQueryData<LeaderArtMapDTO>(keys.leaderArt) ?? {};
-      qc.setQueryData<LeaderArtMapDTO>(keys.leaderArt, { ...previous, [setCode]: art });
+      qc.setQueryData<LeaderArtMapDTO>(keys.leaderArt, { ...previous, [leaderId]: imageId });
       return { previous };
     },
     // Unlike a round, this write is not queued for later: it takes no foreign
@@ -64,9 +79,24 @@ export function LeaderArtProvider({ children }: { children: React.ReactNode }) {
     onSuccess: (map) => qc.setQueryData<LeaderArtMapDTO>(keys.leaderArt, map),
   });
 
-  const choose = useCallback((setCode: string, art: string) => mutate({ setCode, art }), [mutate]);
+  const choose = useCallback((leaderId: string, imageId: string) => mutate({ leaderId, imageId }), [mutate]);
 
-  const value = useMemo<LeaderArtValue>(() => ({ art: data ?? {}, choose }), [data, choose]);
+  const imageIdFor = useCallback((leaderId: string | null | undefined): string | null => {
+    if (!leaderId) return null;
+    const leader = leaderRows?.find((l) => l.id === leaderId);
+    if (!leader) return null;
+    const chosen = data?.[leaderId];
+    // A choice is checked against the leader's own printings rather than
+    // trusted: an image deleted in the admin page would otherwise render as a
+    // 404 everywhere that leader appears.
+    if (chosen && leader.images.some((i) => i.id === chosen)) return chosen;
+    return leader.defaultImageId;
+  }, [leaderRows, data]);
+
+  const value = useMemo<LeaderArtValue>(
+    () => ({ art: data ?? {}, imageIdFor, choose }),
+    [data, imageIdFor, choose],
+  );
 
   return <LeaderArtContext.Provider value={value}>{children}</LeaderArtContext.Provider>;
 }

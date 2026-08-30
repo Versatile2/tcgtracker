@@ -2,8 +2,6 @@
 // (see getLeaderImage); custom user-created leaders have no card art and fall
 // back to a color-tinted initial derived from their OPTCG colors.
 import { LEADER_DECK_CODES } from './leader-images';
-import { CLEAN_ART } from './clean-art';
-import { printingsOf } from './printings';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
@@ -49,36 +47,9 @@ export function leaderInitial(name: string): string {
   return (m ? m[0] : '?').toUpperCase();
 }
 
-/**
- * Resolve a leader's bundled card art, keyed by set code — names are not unique
- * (there are 15 distinct Monkey D. Luffy printings) but set codes are, and they
- * are stable across DB reseeds where row ids are not. Returns null for custom
- * leaders, which have no card and fall back to the initial placeholder.
- *
- * `art` names one printing of that card — a Parallel, an Alternate Art, an SPR.
- * It is checked against the card's own printings rather than trusted, so a
- * preference left behind by a renumbered set code degrades to the base art
- * instead of a broken image.
- *
- * Two folders back this, and the printing decides which: a hand-collected clean
- * scan in `clean/` when one exists, and the generated SAMPLE-watermarked one
- * otherwise. The fallback is per printing rather than per card, so a leader
- * whose base art was collected but whose Parallel was not still shows both —
- * one clean, one watermarked — instead of hiding the printing that was missed.
- *
- * Refresh with `npm run data:leaders`, then `import-clean-art.ts`.
- */
-export function getLeaderImage(setCode: string | null | undefined, art?: string | null): string | null {
-  if (!setCode) return null;
-  const printings = printingsOf(setCode);
-  if (!printings.length) return null;
-  const chosen = art && printings.includes(art) ? art : printings[0];
-  return CLEAN_ART.has(chosen) ? `/leaders/clean/${chosen}.webp` : `/leaders/${chosen}.webp`;
-}
-
-/** Every bundled printing of a card, base first. Empty for custom leaders. */
-export function leaderPrintings(setCode: string | null | undefined): readonly string[] {
-  return printingsOf(setCode);
+/** The URL an image id is served from. Null in, null out, so callers can pass a miss straight through. */
+export function leaderImageUrl(imageId: string | null | undefined): string | null {
+  return imageId ? `/api/leader-images/${imageId}` : null;
 }
 
 /**

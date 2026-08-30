@@ -4,11 +4,12 @@ import { Layers } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { useLeaderArt } from '@/components/leaders/leader-art-provider';
+import type { LeaderImageDTO } from '@/lib/dto';
 import { cn } from '@/lib/utils';
 import { recentLeaders, pushRecentLeader, RECENT_LIMIT } from '@/lib/recent-leaders';
 import { useIsMounted } from '@/lib/use-is-mounted';
 import {
-  leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leaderPrintings, leaderSearchText,
+  leaderBackground, leaderTextColor, leaderInitial, leaderImageUrl, leaderSearchText,
 } from '@/lib/leader-visual';
 
 /*
@@ -33,7 +34,7 @@ import {
  * selection, and stays that way.
  */
 
-type Option = { id: string; name: string; colors?: string[]; setCode?: string | null };
+type Option = { id: string; name: string; colors?: string[]; setCode?: string | null; images: LeaderImageDTO[] };
 
 /** The head of the strip, before the run of set codes begins. */
 const RECENT_LABEL = 'Recent';
@@ -52,8 +53,8 @@ const SET_RUN = /^[A-Z]+\d+/;
  * Set code carries real weight because names are not unique: there are 15 Monkey D.
  * Luffy printings and the code is the only thing separating them.
  */
-function LeaderCard({ leader, selected, art }: { leader: Option; selected: boolean; art?: string | null }) {
-  const src = getLeaderImage(leader.setCode, art);
+function LeaderCard({ leader, selected, imageId }: { leader: Option; selected: boolean; imageId?: string | null }) {
+  const src = leaderImageUrl(imageId);
   return (
     <div
       className={cn(
@@ -109,7 +110,7 @@ function ArtTrigger({
       aria-label={`Artwork for ${leader.name}, ${count} available`}
       className="relative shrink-0 rounded-[0.35rem] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50"
     >
-      <LeaderAvatar name={leader.name} colors={leader.colors} setCode={leader.setCode} size="md" />
+      <LeaderAvatar name={leader.name} colors={leader.colors} leaderId={leader.id} size="md" />
       <span
         aria-hidden
         // Top corner, not bottom: the printings open directly beneath this
@@ -132,13 +133,12 @@ function ArtTrigger({
  * for selection, so there is no second visual language to learn.
  */
 function ArtRow({
-  leader, printings, current, disabled, onPick,
+  leader, current, disabled, onPick,
 }: {
   leader: Option;
-  printings: readonly string[];
-  current: string;
+  current: string | null;
   disabled?: boolean;
-  onPick: (art: string) => void;
+  onPick: (imageId: string) => void;
 }) {
   return (
     <div
@@ -146,16 +146,16 @@ function ArtRow({
       aria-label={`Artwork for ${leader.name}`}
       className="mt-2 flex flex-wrap gap-2 duration-200 ease-out animate-in fade-in slide-in-from-top-1"
     >
-      {printings.map((art, i) => {
-        const isCurrent = art === current;
+      {leader.images.map((img, i) => {
+        const isCurrent = img.id === current;
         return (
           <button
-            key={art}
+            key={img.id}
             type="button"
-            onClick={() => onPick(art)}
+            onClick={() => onPick(img.id)}
             disabled={disabled}
             aria-pressed={isCurrent}
-            aria-label={`Artwork ${i + 1} of ${printings.length}`}
+            aria-label={`Artwork ${i + 1} of ${leader.images.length}`}
             className={cn(
               'overflow-hidden rounded-[0.35rem] outline-none transition-[transform,box-shadow] duration-150 ease-out',
               'focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background',
@@ -164,7 +164,7 @@ function ArtRow({
             )}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={getLeaderImage(leader.setCode, art) ?? ''} alt="" loading="lazy" className="h-[3.85rem] w-11 object-cover" />
+            <img src={leaderImageUrl(img.id) ?? ''} alt="" loading="lazy" className="h-[3.85rem] w-11 object-cover" />
           </button>
         );
       })}
@@ -188,7 +188,7 @@ function StripCard({
   // Reads the chosen printing so the strip shows the art you settled on, but
   // offers no way to change it: a card here is for picking a leader, nothing
   // else. Choosing the printing belongs to the settled selection.
-  const { art } = useLeaderArt();
+  const { imageIdFor } = useLeaderArt();
   return (
     <button
       type="button"
@@ -211,7 +211,7 @@ function StripCard({
           : 'hover:-translate-y-px hover:shadow-[0_3px_10px_-5px_rgb(0_0_0/0.35)] active:scale-[0.97]',
       )}
     >
-      <LeaderCard leader={leader} selected={selected} art={leader.setCode ? art[leader.setCode] : undefined} />
+      <LeaderCard leader={leader} selected={selected} imageId={imageIdFor(leader.id)} />
     </button>
   );
 }
@@ -316,13 +316,13 @@ export function LeaderPicker({
   // which has no card art to choose between.
   // `chooseArt`, not `choose`: this picker's own `choose` settles which leader
   // you are on, which is the decision this one dresses afterwards.
-  const { art, choose: chooseArt } = useLeaderArt();
-  const selectedPrintings = leaderPrintings(selected?.setCode);
-  // Falls back to the base printing when the stored art is not one of this
-  // card's — the same forgiving rule getLeaderImage applies to the image.
-  const selectedArtIndex = Math.max(0, selectedPrintings.indexOf((selected?.setCode && art[selected.setCode]) || ''));
-  const pickArt = (nextArt: string) => {
-    if (selected?.setCode) chooseArt(selected.setCode, nextArt);
+  const { imageIdFor, choose: chooseArt } = useLeaderArt();
+  // The provider already falls back to the leader's default when the stored
+  // choice is not one of this card's printings, so there is nothing to reconcile
+  // here — it answers with an image this leader actually has, or null.
+  const selectedImageId = imageIdFor(selected?.id);
+  const pickArt = (imageId: string) => {
+    if (selected) chooseArt(selected.id, imageId);
     // The row answered the question it was opened to ask.
     setArtOpen(false);
   };
@@ -411,19 +411,19 @@ export function LeaderPicker({
   if (collapsed && selected) {
     // Only a card printed more than once has anything to choose between; every
     // other leader, custom ones included, keeps the plain thumbnail.
-    const hasAlternates = selectedPrintings.length > 1;
+    const hasAlternates = (selected?.images.length ?? 0) > 1;
     return (
       <div className="rounded-xl border border-primary/35 bg-primary/8 p-2">
         <div className="flex items-center gap-2.5">
           {hasAlternates ? (
             <ArtTrigger
               leader={selected}
-              count={selectedPrintings.length}
+              count={selected?.images.length ?? 0}
               open={artOpen}
               disabled={disabled}
               onToggle={() => setArtOpen((o) => !o)} />
           ) : (
-            <LeaderAvatar name={selected.name} colors={selected.colors} setCode={selected.setCode} size="md" />
+            <LeaderAvatar name={selected.name} colors={selected.colors} leaderId={selected.id} size="md" />
           )}
           <div className="min-w-0 flex-1">
             {selectedLabel && (
@@ -445,8 +445,7 @@ export function LeaderPicker({
         {hasAlternates && artOpen && (
           <ArtRow
             leader={selected}
-            printings={selectedPrintings}
-            current={selectedPrintings[selectedArtIndex]}
+            current={selectedImageId}
             disabled={disabled}
             onPick={pickArt} />
         )}

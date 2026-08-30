@@ -1,7 +1,7 @@
 'use client';
 import { Trophy, Flame, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getLeaderImage } from '@/lib/leader-visual';
+import { leaderImageUrl } from '@/lib/leader-visual';
 import { useLeaderArt } from '@/components/leaders/leader-art-provider';
 import { LeaderAvatar } from '@/components/leaders/leader-avatar';
 import { CountUp } from './count-up';
@@ -23,7 +23,7 @@ import type { Celebration } from './celebration';
  * and the streak, because the habit being rewarded is logging, not winning.
  */
 export function ResultCard({ c, onDismiss }: { c: Celebration; onDismiss: () => void }) {
-  const { art } = useLeaderArt();
+  const { imageIdFor } = useLeaderArt();
   const won = c.result === 'win';
   const tier = rankTier(c.placement, c.fieldSize);
   // The winner faces up. On a draw, and when no game was played at all, the
@@ -32,7 +32,7 @@ export function ResultCard({ c, onDismiss }: { c: Celebration; onDismiss: () => 
   const front = mineLeads ? c.myLeader : c.opponentLeader;
   // Starting an event has no opponent; the card still turns, onto itself.
   const back = (mineLeads ? c.opponentLeader : c.myLeader) ?? front;
-  const src = (l: typeof front) => (l?.setCode ? getLeaderImage(l.setCode, art[l.setCode]) : null);
+  const src = (l: typeof front) => leaderImageUrl(imageIdFor(l?.id));
 
   return (
     <div
@@ -119,7 +119,7 @@ function Face({
         <LeaderAvatar
           name={leader?.name ?? '—'}
           colors={leader?.colors}
-          setCode={leader?.setCode}
+          leaderId={leader?.id}
           size="lg"
           className="h-[15.4rem] w-44 rounded-2xl text-5xl"
         />

@@ -1,7 +1,7 @@
 import type { Achievement } from '@/lib/achievements/definitions';
 import { rankTier, rankLabel, isPodiumTier } from '@/lib/rank';
 
-export type CelebrationLeader = { name: string; colors?: string[]; setCode?: string | null } | null;
+export type CelebrationLeader = { id: string; name: string; colors?: string[]; setCode?: string | null } | null;
 
 export type Celebration = {
   /** Null when the act was starting an event rather than playing a game. */

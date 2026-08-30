@@ -55,7 +55,7 @@ export function TournamentCard({
         >
           {isSession(t.type)
             ? <TypeGlyph type={t.type} size="md" />
-            : <LeaderAvatar name={leaderName} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
+            : <LeaderAvatar name={leaderName} colors={leader?.colors} leaderId={leader?.id} size="md" />}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <TypeBadge type={t.type} />
@@ -116,7 +116,7 @@ export function TournamentCard({
               const pill = resultPill[m.result];
               return (
                 <div key={i} className="flex items-center gap-2">
-                  <LeaderAvatar name={label} colors={opp?.colors} setCode={opp?.setCode} size="sm" />
+                  <LeaderAvatar name={label} colors={opp?.colors} leaderId={opp?.id} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-sm">
                     {label}
                     {opp?.setCode && <span className="text-muted-foreground"> {opp.setCode}</span>}

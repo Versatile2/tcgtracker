@@ -50,7 +50,7 @@ export function MatchCard({
         {...press}
         className="flex items-center gap-3 rounded-xl p-3 outline-none transition-transform select-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] [-webkit-touch-callout:none]"
       >
-        <LeaderAvatar name={mine?.name ?? '—'} colors={mine?.colors} setCode={mine?.setCode} size="md" />
+        <LeaderAvatar name={mine?.name ?? '—'} colors={mine?.colors} leaderId={mine?.id} size="md" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{mine?.name ?? '—'}</p>
           <p className="truncate text-sm text-muted-foreground">
@@ -61,7 +61,7 @@ export function MatchCard({
             {unsynced && <CloudOff className="size-3.5" aria-label="Not synced yet" />}
           </p>
         </div>
-        <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} setCode={opponent?.setCode} size="md" />
+        <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} leaderId={opponent?.id} size="md" />
         {pill && (
           <span className={cn('shrink-0 rounded-md px-2 py-1 text-xs font-semibold', pill.className)}>
             {pill.label}

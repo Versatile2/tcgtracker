@@ -143,7 +143,7 @@ function Body({
       <div className="flex items-center gap-3 px-4 pb-3">
         {session
           ? <TypeGlyph type={t.type} size="md" />
-          : <LeaderAvatar name={leader?.name ?? '—'} colors={leader?.colors} setCode={leader?.setCode} size="md" />}
+          : <LeaderAvatar name={leader?.name ?? '—'} colors={leader?.colors} leaderId={leader?.id} size="md" />}
         <div className="min-w-0">
           <p className="truncate font-semibold">{t.name ?? tournamentTypeLabel(t.type)}</p>
           {/* TypeGlyph above is aria-hidden, and a named session states its type

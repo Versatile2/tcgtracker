@@ -75,7 +75,7 @@ export function useLogCelebration() {
 
       const leader = (id: string | null) => {
         const l = id ? after.leaders.find((x) => x.id === id) : undefined;
-        return l ? { name: l.name, colors: l.colors, setCode: l.setCode } : null;
+        return l ? { id: l.id, name: l.name, colors: l.colors, setCode: l.setCode } : null;
       };
 
       const c: Celebration = {

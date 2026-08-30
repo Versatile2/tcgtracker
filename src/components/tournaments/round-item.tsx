@@ -26,7 +26,7 @@ export function RoundItem({
   round, myLeader, resolveLeader, onEdit, onDelete, editable, unsynced = false,
 }: {
   round: RoundDTO;
-  myLeader?: { name: string; colors: string[]; setCode?: string | null };
+  myLeader?: { id: string; name: string; colors: string[]; setCode?: string | null };
   resolveLeader: (id: string) => LeaderDTO | undefined;
   onEdit: () => void;
   onDelete: () => void;
@@ -45,7 +45,7 @@ export function RoundItem({
     <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
       {/* Only session rounds carry their own leader; a classic tournament's leader
           is fixed for the event and is stated once in the page header. */}
-      {myLeader && <LeaderAvatar name={myLeader.name} colors={myLeader.colors} setCode={myLeader.setCode} size="md" />}
+      {myLeader && <LeaderAvatar name={myLeader.name} colors={myLeader.colors} leaderId={myLeader.id} size="md" />}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Badge className={resultStyle[round.result]}>{round.result[0].toUpperCase()}</Badge>
@@ -68,7 +68,7 @@ export function RoundItem({
         )}
         {round.notes && <p className="truncate text-xs text-muted-foreground">{round.notes}</p>}
       </div>
-      {hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} setCode={opponent?.setCode} size="md" />}
+      {hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} leaderId={opponent?.id} size="md" />}
 
       {editable && (
         // Overflow menu for pointer/mouse devices; touch users get the swipe actions instead.

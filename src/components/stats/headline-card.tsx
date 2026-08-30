@@ -1,8 +1,9 @@
 'use client';
 import { pct } from './stat-card';
 import { formatRecord } from '@/lib/record';
-import { getLeaderImage, leaderBackground } from '@/lib/leader-visual';
+import { leaderImageUrl, leaderBackground } from '@/lib/leader-visual';
 import { useLeaders } from '@/components/query-hooks';
+import { useLeaderArt } from '@/components/leaders/leader-art-provider';
 import { THIN, turnOrderIsMeaningful, type Headline } from '@/lib/stats/headline';
 
 /**
@@ -24,6 +25,7 @@ import { THIN, turnOrderIsMeaningful, type Headline } from '@/lib/stats/headline
  */
 export function HeadlineCard({ headline }: { headline: Headline }) {
   const { data: leaders } = useLeaders();
+  const { imageIdFor } = useLeaderArt();
   const { worst, best, turnOrder } = headline;
 
   // Nothing has enough games behind it to be a finding. Say that, rather than
@@ -41,7 +43,7 @@ export function HeadlineCard({ headline }: { headline: Headline }) {
   }
 
   const leader = leaders?.find((l) => l.id === worst.leaderId);
-  const art = leader ? getLeaderImage(leader.setCode) : null;
+  const art = leaderImageUrl(imageIdFor(leader?.id));
 
   return (
     <section className="relative overflow-hidden rounded-2xl border p-4">
