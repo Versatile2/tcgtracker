@@ -42,7 +42,8 @@ Append to `src/db/schema.test.ts`, inside a new `describe` block at the end of t
 ```ts
 describe('leader_images', () => {
   beforeEach(async () => { await resetDb(); });
-  afterAll(async () => { await closeTestDb(); });
+  // No afterAll here: the existing `describe('schema')` block already closes the
+  // shared pool, and calling pool.end() twice throws.
 
   async function makeLeader() {
     const [row] = await db.insert(leaders)
@@ -925,10 +926,85 @@ Note: this writes only the new columns. `set_code` and `art` are still `NOT NULL
 
 - [ ] **Step 8: Update the leader-art route test to the new contract**
 
-In `src/app/api/leader-art.route.test.ts`, replace every request body of the form `{ setCode: 'OP06-022', art: 'OP06-022_p1' }` with `{ leaderId: <leader.id>, imageId: <image.id> }`, seeding a leader and two images with the helper shape used in Task 2 Step 1. Assert:
-- choosing a non-default image returns `{ [leaderId]: imageId }`;
-- choosing the default image returns `{}` (the row is deleted);
-- an image belonging to another leader is rejected with a 400.
+Replace `src/app/api/leader-art.route.test.ts` entirely:
+
+```ts
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
+import { getTestDb, resetDb, closeTestDb } from '../../../tests/setup/db';
+import { leaders, leaderImages } from '../../db/schema';
+
+vi.mock('@clerk/nextjs/server', () => ({ auth: vi.fn(async () => ({ userId: 'user_api' })) }));
+vi.mock('@/db/client', () => ({ db: getTestDb(), schema: {} }));
+
+const db = getTestDb();
+afterAll(closeTestDb);
+
+const bytes = Buffer.from('not-really-a-webp');
+
+async function seedLeaderWithTwoPrintings(name: string, setCode: string) {
+  const [leader] = await db.insert(leaders).values({ name, colors: ['green'], setCode }).returning();
+  const common = {
+    leaderId: leader.id, data: bytes, mimeType: 'image/webp',
+    width: 240, height: 335, byteSize: bytes.byteLength,
+  };
+  const [base] = await db.insert(leaderImages)
+    .values({ ...common, cardImageId: setCode, label: 'Base', checksum: `${setCode}-a`, isDefault: true, sortOrder: 0 })
+    .returning();
+  const [alt] = await db.insert(leaderImages)
+    .values({ ...common, cardImageId: `${setCode}_p1`, label: 'p1', checksum: `${setCode}-b`, sortOrder: 1 })
+    .returning();
+  return { leader, base, alt };
+}
+
+function put(body: unknown) {
+  return new Request('http://localhost/api/leader-art', {
+    method: 'PUT', body: JSON.stringify(body),
+  });
+}
+
+describe('/api/leader-art', () => {
+  beforeEach(async () => { await resetDb(); });
+
+  it('GET starts empty', async () => {
+    const { GET } = await import('./leader-art/route');
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({});
+  });
+
+  it('PUT records a non-default printing', async () => {
+    const { leader, alt } = await seedLeaderWithTwoPrintings('Yamato', 'OP06-022');
+    const { PUT } = await import('./leader-art/route');
+    const res = await PUT(put({ leaderId: leader.id, imageId: alt.id }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ [leader.id]: alt.id });
+  });
+
+  it('PUT of the default printing clears the preference', async () => {
+    // Choosing the default is the absence of a preference, not a preference for
+    // the default, so the row is deleted rather than stored.
+    const { leader, base, alt } = await seedLeaderWithTwoPrintings('Yamato', 'OP06-022');
+    const { PUT } = await import('./leader-art/route');
+    await PUT(put({ leaderId: leader.id, imageId: alt.id }));
+    const res = await PUT(put({ leaderId: leader.id, imageId: base.id }));
+    expect(await res.json()).toEqual({});
+  });
+
+  it('rejects an image belonging to another leader', async () => {
+    const { leader } = await seedLeaderWithTwoPrintings('Yamato', 'OP06-022');
+    const other = await seedLeaderWithTwoPrintings('Zoro', 'OP01-001');
+    const { PUT } = await import('./leader-art/route');
+    const res = await PUT(put({ leaderId: leader.id, imageId: other.alt.id }));
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a body that is not two uuids', async () => {
+    const { PUT } = await import('./leader-art/route');
+    const res = await PUT(put({ setCode: 'OP06-022', art: 'OP06-022_p1' }));
+    expect(res.status).toBe(400);
+  });
+});
+```
 
 - [ ] **Step 9: Commit**
 
@@ -1092,11 +1168,59 @@ At each one, replace `setCode={X?.setCode}` with `leaderId={X?.id}`. Every call 
 
 - [ ] **Step 8: Update the picker**
 
-In `src/components/leaders/leader-picker.tsx`:
-- `LeaderCard` (line ~45) takes `imageId?: string | null` instead of `art`, and computes `const src = leaderImageUrl(imageId);`
-- the printing strip (line ~150) iterates `leader.images` instead of `leaderPrintings(leader.setCode)`, uses `img.id` as the key, `leaderImageUrl(img.id)` as the `src`, `img.label` in the `aria-label`, and calls `onPick(img.id)`
-- `isCurrent` compares `img.id === current` where `current` is `imageIdFor(leader.id)`
-- drop the `getLeaderImage` and `leaderPrintings` imports; add `leaderImageUrl`
+In `src/components/leaders/leader-picker.tsx`, change the import line at the top from
+
+```tsx
+import {
+  leaderBackground, leaderTextColor, leaderInitial, getLeaderImage, leaderPrintings, leaderSearchText,
+} from '@/lib/leader-visual';
+```
+
+to
+
+```tsx
+import {
+  leaderBackground, leaderTextColor, leaderInitial, leaderImageUrl, leaderSearchText,
+} from '@/lib/leader-visual';
+```
+
+`LeaderCard` (around line 45) takes an image id instead of an art string:
+
+```tsx
+function LeaderCard({ leader, selected, imageId }: { leader: Option; selected: boolean; imageId?: string | null }) {
+  const src = leaderImageUrl(imageId);
+```
+
+The rest of `LeaderCard` is unchanged — it already branches on `src`.
+
+The printing strip (around line 150) iterates the leader's own images. Replace the `printings.map(...)` body with:
+
+```tsx
+      {leader.images.map((img, i) => {
+        const isCurrent = img.id === current;
+        return (
+          <button
+            key={img.id}
+            type="button"
+            onClick={() => onPick(img.id)}
+            disabled={disabled}
+            aria-pressed={isCurrent}
+            aria-label={`Artwork ${i + 1} of ${leader.images.length}`}
+            className={cn(
+              'overflow-hidden rounded-[0.35rem] outline-none transition-[transform,box-shadow] duration-150 ease-out',
+              'focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'disabled:opacity-50',
+              isCurrent ? 'ring-2 ring-primary' : 'ring-1 ring-border/70 hover:-translate-y-px',
+            )}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={leaderImageUrl(img.id) ?? ''} alt="" loading="lazy" className="h-[3.85rem] w-11 object-cover" />
+          </button>
+        );
+      })}
+```
+
+`current` is now `imageIdFor(leader.id)` from `useLeaderArt()`, and the strip's enclosing component no longer needs `printings` at all — delete that local and the `leaderPrintings` call that produced it. A leader with an empty `images` array renders an empty strip, which is what a custom leader already does today.
 
 - [ ] **Step 9: Update the share card and the stats headline**
 
