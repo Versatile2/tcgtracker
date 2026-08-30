@@ -2,12 +2,19 @@ export type LeaderImageDTO = { id: string; label: string };
 export type LeaderDTO = {
   id: string; name: string; colors: string[]; setCode: string | null;
   isCustom: boolean; ownerId: string | null;
+  status: 'draft' | 'published' | 'hidden';
+  aliases: string[];
+  deckCodes: string[];
   /** The printing shown to a player who has chosen none. Null for a leader with no art. */
   defaultImageId: string | null;
   /** Every printing this leader has, base first. Empty for custom leaders. */
   images: LeaderImageDTO[];
 };
-export type MetaDTO = { id: string; name: string; code: string | null; isCustom: boolean; ownerId: string | null };
+export type MetaDTO = {
+  id: string; name: string; code: string | null; isCustom: boolean; ownerId: string | null;
+  status: 'draft' | 'published' | 'hidden';
+  releasedAt: string | null;
+};
 /** Leader id → the image id this player chose. A missing key means the default. */
 export type LeaderArtMapDTO = Record<string, string>;
 export type RoundKind = 'swiss' | 'top_cut' | 'bye' | 'no_show';

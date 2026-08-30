@@ -5,6 +5,12 @@ import { SEED_LEADERS, SEED_METAS } from './seed-data';
 
 type DB = typeof defaultDb;
 
+/*
+ * Seeded rows are `published`: this is the curated catalog the app ships with,
+ * not something the importer proposed. The column defaults to `draft` so that
+ * everything arriving from optcgapi waits for review, which would otherwise
+ * leave a freshly seeded database with an empty picker.
+ */
 export async function seedReferenceData(db: DB) {
   let leaderCount = 0;
   for (const l of SEED_LEADERS) {
@@ -15,7 +21,7 @@ export async function seedReferenceData(db: DB) {
       .limit(1);
     if (existing[0]) continue;
     const res = await db.insert(leaders)
-      .values({ name: l.name, colors: l.colors, setCode: l.setCode, isCustom: false, ownerId: null })
+      .values({ name: l.name, colors: l.colors, setCode: l.setCode, isCustom: false, ownerId: null, status: 'published' })
       .returning();
     leaderCount += res.length;
   }
@@ -26,7 +32,7 @@ export async function seedReferenceData(db: DB) {
       .limit(1);
     if (existing[0]) continue;
     const res = await db.insert(metas)
-      .values({ name: m.name, code: m.code, isCustom: false, ownerId: null })
+      .values({ name: m.name, code: m.code, isCustom: false, ownerId: null, status: 'published' })
       .returning();
     metaCount += res.length;
   }
