@@ -28,6 +28,8 @@ export const apiClient = {
   getLeaderArt: () => request<LeaderArtMapDTO>('/api/leader-art'),
   setLeaderArt: (b: LeaderArtInput) => request<LeaderArtMapDTO>('/api/leader-art', { method: 'PUT', body: JSON.stringify(b) }),
   listMetas: () => request<MetaDTO[]>('/api/metas'),
+  adminListLeaders: () => request<LeaderDTO[]>('/api/admin/leaders'),
+  adminListMetas: () => request<MetaDTO[]>('/api/admin/metas'),
 
   listTournaments: () => request<TournamentSummaryDTO[]>('/api/tournaments'),
   getTournament: (id: string) => request<TournamentDetailDTO>(`/api/tournaments/${id}`),
