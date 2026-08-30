@@ -1,6 +1,6 @@
 'use client';
 import { cn } from '@/lib/utils';
-import { leaderBackground, leaderTextColor, leaderInitial, getLeaderImage } from '@/lib/leader-visual';
+import { leaderBackground, leaderTextColor, leaderInitial, leaderImageUrl } from '@/lib/leader-visual';
 import { useLeaderArt } from './leader-art-provider';
 
 // Card aspect (the source art is 600x838, ~5:7), so the whole card is visible
@@ -23,18 +23,18 @@ const SIZES = {
 export function LeaderAvatar({
   name,
   colors,
-  setCode,
+  leaderId,
   size = 'md',
   className,
 }: {
   name: string;
   colors?: string[];
-  setCode?: string | null;
+  leaderId?: string | null;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
-  const { art } = useLeaderArt();
-  const src = getLeaderImage(setCode, setCode ? art[setCode] : null);
+  const { imageIdFor } = useLeaderArt();
+  const src = leaderImageUrl(imageIdFor(leaderId));
   return (
     <div
       aria-hidden

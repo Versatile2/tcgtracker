@@ -1,26 +1,35 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { getLeaderImage } from '@/lib/leader-visual';
+import { leaderImageUrl } from '@/lib/leader-visual';
 
 // The provider needs a query client and a Clerk session; what these tests care
 // about is only what the picker asks it for and what it hands back.
 const ctx = vi.hoisted(() => ({
   art: {} as Record<string, string>,
-  choose: vi.fn<(setCode: string, art: string) => void>(),
+  choose: vi.fn<(leaderId: string, imageId: string) => void>(),
 }));
 vi.mock('./leader-art-provider', () => ({
-  useLeaderArt: () => ({ art: ctx.art, choose: ctx.choose }),
+  useLeaderArt: () => ({
+    art: ctx.art,
+    choose: ctx.choose,
+    // Mirrors the real provider: the player's choice when it is one of this
+    // leader's printings, else the leader's default.
+    imageIdFor: (leaderId?: string | null) => ctx.art[leaderId ?? ''] ?? `${leaderId}-img-0`,
+  }),
 }));
 
 import { LeaderPicker } from './leader-picker';
 import { recentLeaders, pushRecentLeader } from '@/lib/recent-leaders';
 
 // OP06-022 has four printings, ST01-001 exactly one.
-const YAMATO = { id: 'y', name: 'Yamato', colors: ['green'], setCode: 'OP06-022' };
-const LUFFY = { id: 'l', name: 'Monkey D. Luffy', colors: ['red'], setCode: 'ST01-001' };
-const HOMEBREW = { id: 'h', name: 'Homebrew', colors: ['red'], setCode: null };
-const ZORO = { id: 'z', name: 'Roronoa Zoro', colors: ['red'], setCode: 'OP01-001' };
+const img = (leader: string, n: number) =>
+  Array.from({ length: n }, (_, i) => ({ id: `${leader}-img-${i}`, label: i === 0 ? 'Base' : `p${i}` }));
+
+const YAMATO = { id: 'y', name: 'Yamato', colors: ['green'], setCode: 'OP06-022', images: img('y', 4) };
+const LUFFY = { id: 'l', name: 'Monkey D. Luffy', colors: ['red'], setCode: 'ST01-001', images: img('l', 1) };
+const HOMEBREW = { id: 'h', name: 'Homebrew', colors: ['red'], setCode: null, images: [] };
+const ZORO = { id: 'z', name: 'Roronoa Zoro', colors: ['red'], setCode: 'OP01-001', images: img('z', 2) };
 
 const OPTIONS = [YAMATO, LUFFY, HOMEBREW, ZORO];
 
@@ -141,7 +150,7 @@ describe('the printing picker on the settled leader', () => {
   });
 
   it('marks the chosen printing as current', () => {
-    ctx.art = { 'OP06-022': 'OP06-022_p2' };
+    ctx.art = { [YAMATO.id]: YAMATO.images[2].id };
     renderPicker(YAMATO.id);
     fireEvent.click(trigger()!);
     expect(thumbnails().map((b) => b.getAttribute('aria-pressed')))
@@ -151,22 +160,17 @@ describe('the printing picker on the settled leader', () => {
   it('shows each printing its own art, so nothing is chosen blind', () => {
     renderPicker(YAMATO.id);
     fireEvent.click(trigger()!);
-    expect(thumbnails().map((b) => b.querySelector('img')?.getAttribute('src'))).toEqual([
-      // Resolved rather than written out: each printing is served from clean/
-      // or the generated bundle depending on whether a clean scan exists, and
-      // this test is about every printing being shown, not about where from.
-      getLeaderImage('OP06-022', 'OP06-022'),
-      getLeaderImage('OP06-022', 'OP06-022_p1'),
-      getLeaderImage('OP06-022', 'OP06-022_p2'),
-      getLeaderImage('OP06-022', 'OP06-022_p3'),
-    ]);
+    // Resolved through the URL helper rather than written out: this test is
+    // about every printing being shown, not about how an id becomes a URL.
+    expect(thumbnails().map((b) => b.querySelector('img')?.getAttribute('src')))
+      .toEqual(YAMATO.images.map((i) => leaderImageUrl(i.id)));
   });
 
   it('records the printing that was tapped, and closes', () => {
     renderPicker(YAMATO.id);
     fireEvent.click(trigger()!);
     fireEvent.click(thumbnails()[2]);
-    expect(ctx.choose).toHaveBeenCalledWith('OP06-022', 'OP06-022_p2');
+    expect(ctx.choose).toHaveBeenCalledWith(YAMATO.id, YAMATO.images[2].id);
     expect(thumbnails()).toHaveLength(0);
   });
 

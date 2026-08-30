@@ -1,5 +1,14 @@
-import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, primaryKey, uniqueIndex, customType } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import type { GameLog } from '../lib/dto';
+
+/**
+ * Postgres bytea. drizzle-orm ships no bytea column and node-postgres already
+ * hands one back as a Buffer, so this is a straight pass-through.
+ */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() { return 'bytea'; },
+});
 
 // 'match' is a single game with no event around it: a tournament row holding
 // exactly one round, so it inherits the leader invariant, the outbox and every
@@ -25,26 +34,57 @@ export const leaders = pgTable('leaders', {
 });
 
 /**
+ * A leader's card art, stored as bytes rather than as a file in public/.
+ *
+ * Rows are immutable. Correcting a leader's art inserts a new row and moves
+ * `isDefault`; it never rewrites `data`. That is what lets /api/leader-images
+ * serve these with `immutable` caching — an id names bytes that cannot change,
+ * so a correction produces a new URL rather than a stale cache.
+ */
+export const leaderImages = pgTable('leader_images', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  leaderId: uuid('leader_id').notNull().references(() => leaders.id, { onDelete: 'cascade' }),
+  /** The optcgapi card_image_id this came from ('OP06-022_p2'); null for art added by hand. */
+  cardImageId: text('card_image_id'),
+  /** Shown in the printing picker: 'Base', 'p1', 'p2', 'pr1'. */
+  label: text('label').notNull(),
+  data: bytea('data').notNull(),
+  mimeType: text('mime_type').notNull(),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  byteSize: integer('byte_size').notNull(),
+  /** sha256 of `data`, hex. Doubles as the ETag and as a dedup key. */
+  checksum: text('checksum').notNull(),
+  isDefault: boolean('is_default').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // Nulls are distinct in Postgres, so this pins imported printings without
+  // blocking several hand-uploaded images on one leader.
+  uniqueIndex('leader_images_leader_card_uq').on(t.leaderId, t.cardImageId),
+  // "Exactly one default per leader", enforced by Postgres rather than by
+  // application code that every future writer would have to remember.
+  uniqueIndex('leader_images_one_default_uq').on(t.leaderId).where(sql`${t.isDefault}`),
+]);
+
+/**
  * Which printing of a leader this player wants to look at. Most leaders are
- * printed several times — a base card, a Parallel or Alternate Art, sometimes an
- * SPR — and this records the one they picked.
+ * printed several times — a base card, a Parallel or Alternate Art, sometimes
+ * an SPR — and this records the one they picked.
  *
- * Keyed on the card's set code rather than a leaders.id, for the same reason
- * getLeaderImage is: row ids are reassigned by a reseed, set codes are not. It
- * carries no foreign key for that reason, and custom leaders — which have no
- * card art at all — never appear here.
+ * A missing row means the leader's default printing, so the table only ever
+ * holds genuine deviations from it. Purely presentational: nothing in the
+ * statistics reads it, and a leader is one leader however it is drawn.
  *
- * A missing row means the base printing, so the table only ever holds genuine
- * deviations from the default. Purely presentational: nothing in the statistics
- * reads it, and a leader is one leader however it is drawn.
+ * Deleting an image deletes the preferences that chose it, by design — the
+ * player falls back to the default rather than to a broken image.
  */
 export const leaderArt = pgTable('leader_art', {
   ownerId: text('owner_id').notNull(),
-  setCode: text('set_code').notNull(),
-  /** A card_image_id from LEADER_ART[setCode], e.g. 'OP06-022_p2'. */
-  art: text('art').notNull(),
+  leaderId: uuid('leader_id').notNull().references(() => leaders.id, { onDelete: 'cascade' }),
+  leaderImageId: uuid('leader_image_id').notNull().references(() => leaderImages.id, { onDelete: 'cascade' }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [primaryKey({ columns: [t.ownerId, t.setCode] })]);
+}, (t) => [primaryKey({ columns: [t.ownerId, t.leaderId] })]);
 
 export const metas = pgTable('metas', {
   id: uuid('id').primaryKey().defaultRandom(),

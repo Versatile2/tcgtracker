@@ -27,7 +27,7 @@ export function OpponentStats({ rows }: { rows: OpponentRow[] }) {
           return (
           <div key={r.leaderId} className="rounded-lg border p-3">
             <div className="flex items-center gap-3">
-              <LeaderAvatar name={r.name} colors={leader?.colors} setCode={leader?.setCode} size="md" />
+              <LeaderAvatar name={r.name} colors={leader?.colors} leaderId={leader?.id} size="md" />
               <div className="min-w-0 flex-1">
                 {/* The name wraps rather than truncating, and the set code is
                     allowed to go first. Measured before this: 379px of name in

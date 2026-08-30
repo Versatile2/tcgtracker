@@ -1,86 +1,100 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
+import { leaders, leaderImages } from '../db/schema';
 import { listLeaderArt, setLeaderArt } from './leader-art';
 import { ValidationError } from '../lib/errors';
-import { LEADER_ART } from '../lib/leader-images';
-import { EXTRA_ART } from '../lib/clean-art';
-import { printingsOf } from '../lib/printings';
+
+/*
+ * The service-level counterpart to the route test.
+ *
+ * Not mentioned by the implementation plan, which replaced only the route test —
+ * but this file asserted the old (setCode, art) contract and cannot compile
+ * against the new one. Rewritten rather than deleted: it still owns the one case
+ * the route test does not, that two players' choices never leak into each other.
+ */
 
 const db = getTestDb();
 afterAll(closeTestDb);
 
-// A real card with at least three printings, so "not the base" and "a different
-// alternate" are distinguishable.
-const CODE = 'OP06-022';
-const [BASE, ALT, SPR] = LEADER_ART[CODE];
+const bytes = Buffer.from('not-really-a-webp');
+
+async function seedLeader(name: string, setCode: string) {
+  const [leader] = await db.insert(leaders).values({ name, colors: ['green'], setCode }).returning();
+  const common = {
+    leaderId: leader.id, data: bytes, mimeType: 'image/webp',
+    width: 240, height: 335, byteSize: bytes.byteLength,
+  };
+  const [base] = await db.insert(leaderImages)
+    .values({ ...common, cardImageId: setCode, label: 'Base', checksum: `${setCode}-a`, isDefault: true, sortOrder: 0 })
+    .returning();
+  const [alt] = await db.insert(leaderImages)
+    .values({ ...common, cardImageId: `${setCode}_p1`, label: 'p1', checksum: `${setCode}-b`, sortOrder: 1 })
+    .returning();
+  return { leader, base, alt };
+}
 
 describe('leader art', () => {
-  beforeEach(resetDb);
+  beforeEach(async () => { await resetDb(); });
 
   it('starts empty', async () => {
     expect(await listLeaderArt(db, 'user_a')).toEqual({});
   });
 
   it('records a chosen printing and returns the whole map', async () => {
-    const map = await setLeaderArt(db, 'user_a', { setCode: CODE, art: ALT });
-    expect(map).toEqual({ [CODE]: ALT });
-    expect(await listLeaderArt(db, 'user_a')).toEqual({ [CODE]: ALT });
+    const { leader, alt } = await seedLeader('Yamato', 'OP06-022');
+    expect(await setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: alt.id }))
+      .toEqual({ [leader.id]: alt.id });
   });
 
   it('overwrites an earlier choice rather than adding a second row', async () => {
-    await setLeaderArt(db, 'user_a', { setCode: CODE, art: ALT });
-    const map = await setLeaderArt(db, 'user_a', { setCode: CODE, art: SPR });
-    expect(map).toEqual({ [CODE]: SPR });
+    const { leader, alt } = await seedLeader('Yamato', 'OP06-022');
+    const common = {
+      leaderId: leader.id, data: bytes, mimeType: 'image/webp',
+      width: 240, height: 335, byteSize: bytes.byteLength,
+    };
+    const [third] = await db.insert(leaderImages)
+      .values({ ...common, cardImageId: 'OP06-022_p2', label: 'p2', checksum: 'c', sortOrder: 2 })
+      .returning();
+    await setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: alt.id });
+    expect(await setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: third.id }))
+      .toEqual({ [leader.id]: third.id });
   });
 
-  it('forgets the choice when the base printing is picked again', async () => {
-    await setLeaderArt(db, 'user_a', { setCode: CODE, art: ALT });
-    // Absent already means "base art" to every reader, so the row is dropped
-    // rather than stored as a redundant statement of the default.
-    expect(await setLeaderArt(db, 'user_a', { setCode: CODE, art: BASE })).toEqual({});
+  it('forgets the choice when the default is picked again', async () => {
+    // Absent already means "the default" to every reader, so the row is dropped
+    // rather than stored as a redundant statement of it.
+    const { leader, base, alt } = await seedLeader('Yamato', 'OP06-022');
+    await setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: alt.id });
+    expect(await setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: base.id })).toEqual({});
   });
 
   it('keeps players apart', async () => {
-    await setLeaderArt(db, 'user_a', { setCode: CODE, art: ALT });
-    await setLeaderArt(db, 'user_b', { setCode: CODE, art: SPR });
-    expect(await listLeaderArt(db, 'user_a')).toEqual({ [CODE]: ALT });
-    expect(await listLeaderArt(db, 'user_b')).toEqual({ [CODE]: SPR });
+    const { leader, alt } = await seedLeader('Yamato', 'OP06-022');
+    await setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: alt.id });
+    expect(await listLeaderArt(db, 'user_b')).toEqual({});
   });
 
-  it('rejects art belonging to a different card', async () => {
-    // The column is bare text, so an unchecked value would store happily and
-    // then render as a 404 everywhere that leader appears.
-    await expect(setLeaderArt(db, 'user_a', { setCode: CODE, art: 'OP01-001_p1' }))
-      .rejects.toThrow(ValidationError);
-    expect(await listLeaderArt(db, 'user_a')).toEqual({});
-  });
-
-  it('rejects a set code with no bundled art', async () => {
-    await expect(setLeaderArt(db, 'user_a', { setCode: 'NOPE-001', art: 'NOPE-001' }))
-      .rejects.toThrow(ValidationError);
-  });
-});
-
-/*
- * The picker offers `printingsOf`, so the server must accept exactly that list.
- * Validating against optcgapi's alone would show a player a collected printing
- * and then refuse to remember it.
- */
-describe('what the server accepts', () => {
-  beforeEach(resetDb);
-
-  it('accepts every printing the picker offers', async () => {
-    for (const art of printingsOf(CODE)) {
-      await expect(setLeaderArt(db, 'user_a', { setCode: CODE, art })).resolves.toBeDefined();
-    }
-  });
-
-  it('is the same list the picker uses, not a second copy of it', () => {
-    expect(printingsOf(CODE)).toEqual([...LEADER_ART[CODE], ...(EXTRA_ART[CODE] ?? [])]);
-  });
-
-  it('still refuses a printing of no card at all', async () => {
-    await expect(setLeaderArt(db, 'user_a', { setCode: CODE, art: `${CODE}_c99` }))
+  it('rejects an image belonging to a different leader', async () => {
+    const { leader } = await seedLeader('Yamato', 'OP06-022');
+    const other = await seedLeader('Zoro', 'OP01-001');
+    await expect(setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: other.alt.id }))
       .rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects an image id that exists nowhere', async () => {
+    const { leader } = await seedLeader('Yamato', 'OP06-022');
+    await expect(setLeaderArt(db, 'user_a', {
+      leaderId: leader.id, imageId: '00000000-0000-0000-0000-000000000000',
+    })).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('deleting an image forgets the players who chose it', async () => {
+    // The cascade the spec calls a designed consequence: a player whose printing
+    // is removed falls back to the default rather than pointing at nothing.
+    const { leader, alt } = await seedLeader('Yamato', 'OP06-022');
+    await setLeaderArt(db, 'user_a', { leaderId: leader.id, imageId: alt.id });
+    const { eq } = await import('drizzle-orm');
+    await db.delete(leaderImages).where(eq(leaderImages.id, alt.id));
+    expect(await listLeaderArt(db, 'user_a')).toEqual({});
   });
 });

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { leaderBackground, leaderTextColor, getLeaderImage, LEADER_COLOR_HEX } from './leader-visual';
-import { CLEAN_ART, EXTRA_ART } from './clean-art';
+import { leaderBackground, leaderTextColor, leaderImageUrl, LEADER_COLOR_HEX } from './leader-visual';
 import { printingsOf, mergePrintings } from './printings';
 import { LEADER_ART } from './leader-images';
+import { EXTRA_ART } from './clean-art';
 
 /*
  * Leaders carried at most two colours until the promo feed arrived. The Release
@@ -56,50 +56,22 @@ describe('leaderBackground', () => {
  * some printings were collected by hand, so the two folders coexist and the
  * choice is made per printing.
  */
-describe('getLeaderImage', () => {
-  const cleanPrinting = [...CLEAN_ART][0];
-  const watermarked = Object.values(LEADER_ART).flat().find((p) => !CLEAN_ART.has(p));
-
-  it('serves the clean scan when one was collected', () => {
-    const code = Object.keys(LEADER_ART).find((c) => LEADER_ART[c].includes(cleanPrinting))!;
-    expect(getLeaderImage(code, cleanPrinting)).toBe(`/leaders/clean/${cleanPrinting}.webp`);
+describe('leaderImageUrl', () => {
+  /*
+   * What replaced getLeaderImage. Resolution — the player's choice, then the
+   * leader's default — moved into the art provider, which is the only place that
+   * knows both; all that is left here is turning an id into a URL.
+   */
+  it('addresses an image by id', () => {
+    expect(leaderImageUrl('abc-123')).toBe('/api/leader-images/abc-123');
   });
 
-  it('falls back to the generated one where none was', () => {
-    const code = Object.keys(LEADER_ART).find((c) => LEADER_ART[c].includes(watermarked!))!;
-    expect(getLeaderImage(code, watermarked)).toBe(`/leaders/${watermarked}.webp`);
-  });
-
-  it('decides per printing, not per card', () => {
-    // A leader can have a clean base and a watermarked Parallel; picking one
-    // folder for the whole card would either hide or break one of them.
-    const mixed = Object.entries(LEADER_ART).find(([, ps]) =>
-      ps.some((p) => CLEAN_ART.has(p)) && ps.some((p) => !CLEAN_ART.has(p)));
-    if (!mixed) return; // nothing mixed today; the rule still holds
-    const [code, ps] = mixed;
-    const clean = ps.find((p) => CLEAN_ART.has(p))!;
-    const dirty = ps.find((p) => !CLEAN_ART.has(p))!;
-    expect([getLeaderImage(code, clean), getLeaderImage(code, dirty)])
-      .toEqual([`/leaders/clean/${clean}.webp`, `/leaders/${dirty}.webp`]);
-  });
-
-  it('still returns null for a leader with no card at all', () => {
-    expect(getLeaderImage('P-700')).toBeNull();
-    expect(getLeaderImage(null)).toBeNull();
-  });
-
-  it('ignores a printing preference that is not this card\u2019s', () => {
-    const code = Object.keys(LEADER_ART).find((c) => LEADER_ART[c].length > 0)!;
-    expect(getLeaderImage(code, 'OP99-999_p9')).toContain(LEADER_ART[code][0]);
+  it('passes a miss straight through, so callers need no branch', () => {
+    expect(leaderImageUrl(null)).toBeNull();
+    expect(leaderImageUrl(undefined)).toBeNull();
   });
 });
 
-/*
- * The collection can list printings optcgapi does not — it is a shelf of real
- * cards, the API is one vendor's index of them. Whether it currently does is a
- * fact about today's folder, so the merge is tested as a function and the wiring
- * is tested against whatever the folder holds.
- */
 describe('merging collected printings with bundled ones', () => {
   it('appends extras after the bundled printings', () => {
     expect(mergePrintings(['A', 'A_p1'], ['A_c3'])).toEqual(['A', 'A_p1', 'A_c3']);

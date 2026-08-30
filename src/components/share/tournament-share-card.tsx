@@ -54,8 +54,8 @@ function MatchRow({
       <span className="w-4 shrink-0 text-center text-xs font-medium tabular-nums text-muted-foreground">
         {round.roundNumber}
       </span>
-      {myLeader && <LeaderAvatar name={myLeader.name} colors={myLeader.colors} setCode={myLeader.setCode} size="sm" />}
-      {!condensed && hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} setCode={opponent?.setCode} size="sm" />}
+      {myLeader && <LeaderAvatar name={myLeader.name} colors={myLeader.colors} leaderId={myLeader.id} size="sm" />}
+      {!condensed && hasOpponent && <LeaderAvatar name={opponent?.name ?? '—'} colors={opponent?.colors} leaderId={opponent?.id} size="sm" />}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
           {name}
@@ -104,7 +104,7 @@ export function TournamentShareCard({
       <div className="flex items-start gap-3">
         {isSession(tournament.type)
           ? <TypeGlyph type={tournament.type} size="lg" />
-          : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
+          : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} leaderId={myLeader?.id} size="lg" />}
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-bold leading-tight">
             {isSession(tournament.type)

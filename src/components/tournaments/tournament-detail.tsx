@@ -87,7 +87,7 @@ export function TournamentDetail({ id }: { id: string }) {
   const leaderForRound = (r: RoundDTO) => {
     if (!isSession(t.type)) return undefined;
     const l = r.myLeaderId ? leaders?.find((x) => x.id === r.myLeaderId) : undefined;
-    return l ? { name: l.name, colors: l.colors, setCode: l.setCode } : undefined;
+    return l ? { id: l.id, name: l.name, colors: l.colors, setCode: l.setCode } : undefined;
   };
 
   function handleDeleteRound(r: RoundDTO) {
@@ -110,7 +110,7 @@ export function TournamentDetail({ id }: { id: string }) {
         <div className="flex min-w-0 items-start gap-3">
           {isSession(t.type)
             ? <TypeGlyph type={t.type} size="lg" />
-            : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} setCode={myLeader?.setCode} size="lg" />}
+            : <LeaderAvatar name={myLeader?.name ?? '—'} colors={myLeader?.colors} leaderId={myLeader?.id} size="lg" />}
           <div className="min-w-0">
           <div className="flex items-center gap-2">
             <TypeBadge type={t.type} />
