@@ -1,9 +1,11 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { keys } from '@/lib/query-keys';
 import type { LeaderDTO } from '@/lib/dto';
+import type { BulkStatusInput } from '@/lib/validation/admin-catalog';
 import {
   leaderBackground, leaderTextColor, leaderInitial, leaderImageUrl,
   leaderSearchText, leaderColorBand, COLOR_BANDS,
@@ -15,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { StatusBadge } from './status-badge';
+import { SelectionBar } from './selection-bar';
 import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | 'draft' | 'published' | 'hidden';
@@ -25,6 +28,29 @@ const STATUS_LABEL: Record<StatusFilter, string> = {
 };
 
 /**
+ * There is no checkbox component in src/components/ui and this does not warrant
+ * a dependency: a button carrying the checkbox role is accessible, keyboard
+ * operable and costs nothing.
+ */
+function SelectToggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      className={cn(
+        'absolute left-2 top-2 z-10 flex size-5 items-center justify-center rounded border-2 bg-background/80 backdrop-blur',
+        checked ? 'border-primary bg-primary' : 'border-border',
+      )}
+    >
+      {checked ? <Check className="size-4 text-primary-foreground" /> : null}
+    </button>
+  );
+}
+
+/**
  * One card per leader.
  *
  * The artwork is the leader's own default, not `LeaderAvatar`'s — that reads the
@@ -32,10 +58,18 @@ const STATUS_LABEL: Record<StatusFilter, string> = {
  * question here: the admin is curating the catalog, not looking at their own
  * collection.
  */
-function LeaderCard({ leader }: { leader: LeaderDTO }) {
+function LeaderCard({
+  leader, selected, onToggle,
+}: { leader: LeaderDTO; selected: boolean; onToggle: () => void }) {
   const src = leaderImageUrl(leader.defaultImageId);
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2 text-left">
+    <div
+      className={cn(
+        'relative flex flex-col gap-2 rounded-lg border bg-card p-2 text-left transition-colors',
+        selected ? 'border-primary ring-2 ring-primary/30' : 'border-border',
+      )}
+    >
+      <SelectToggle checked={selected} onChange={onToggle} label={`Select ${leader.name}`} />
       <div
         className="flex aspect-[5/7] w-full items-center justify-center overflow-hidden rounded-md text-2xl font-bold leading-none ring-1 ring-black/10"
         style={src ? undefined : { background: leaderBackground(leader.colors), color: leaderTextColor(leader.colors) }}
@@ -62,6 +96,7 @@ function LeaderCard({ leader }: { leader: LeaderDTO }) {
 }
 
 export function LeaderGrid() {
+  const qc = useQueryClient();
   const { data, isPending, isError } = useQuery({
     queryKey: keys.adminLeaders,
     queryFn: apiClient.adminListLeaders,
@@ -71,6 +106,7 @@ export function LeaderGrid() {
   const [color, setColor] = useState<ColorFilter>('all');
   const [q, setQ] = useState('');
   const [noImageOnly, setNoImageOnly] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Client-side over the already-fetched list: the catalog is a few hundred rows
   // and a round trip per keystroke would be worse in every way.
@@ -85,10 +121,40 @@ export function LeaderGrid() {
     });
   }, [data, status, color, q, noImageOnly]);
 
+  const selectedLeaders = useMemo(
+    () => (data ?? []).filter((l) => selected.has(l.id)),
+    [data, selected],
+  );
+
+  const setStatusMutation = useMutation({
+    mutationFn: (b: BulkStatusInput) => apiClient.adminSetLeaderStatus(b),
+    onSuccess: async () => {
+      setSelected(new Set());
+      await qc.invalidateQueries({ queryKey: keys.adminLeaders });
+      // The player-facing list is derived from the same rows.
+      await qc.invalidateQueries({ queryKey: keys.leaders });
+    },
+  });
+
+  const apply = (next: BulkStatusInput['status']) =>
+    setStatusMutation.mutate({ ids: [...selected], status: next });
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // Deliberately the current filter, never the whole catalog: selecting rows you
+  // cannot see is a trap, so the label says exactly how many it will take.
+  const selectAllShown = () => setSelected(new Set(shown.map((l) => l.id)));
+
   if (isError) return <p className="text-sm text-destructive">Could not load the catalog.</p>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       <div className="flex flex-wrap items-center gap-2">
         <Select value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
           <SelectTrigger className="min-h-10 w-40">
@@ -134,6 +200,10 @@ export function LeaderGrid() {
           No image
         </Button>
 
+        <Button variant="outline" onClick={selectAllShown} disabled={shown.length === 0}>
+          Select all {shown.length} shown
+        </Button>
+
         <span className="ml-auto text-sm text-muted-foreground">
           {isPending ? '—' : `${shown.length} of ${data?.length ?? 0}`}
         </span>
@@ -148,10 +218,27 @@ export function LeaderGrid() {
       ) : shown.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Nothing matches those filters.</p>
       ) : (
-        <div className={cn('grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6')}>
-          {shown.map((l) => <LeaderCard key={l.id} leader={l} />)}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {shown.map((l) => (
+            <LeaderCard
+              key={l.id}
+              leader={l}
+              selected={selected.has(l.id)}
+              onToggle={() => toggle(l.id)}
+            />
+          ))}
         </div>
       )}
+
+      <SelectionBar
+        count={selected.size}
+        withoutArt={selectedLeaders.filter((l) => l.images.length === 0).length}
+        pending={setStatusMutation.isPending}
+        onPublish={() => apply('published')}
+        onHide={() => apply('hidden')}
+        onDraft={() => apply('draft')}
+        onClear={() => setSelected(new Set())}
+      />
     </div>
   );
 }

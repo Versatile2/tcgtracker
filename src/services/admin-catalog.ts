@@ -3,6 +3,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { leaders, metas, leaderImages } from '../db/schema';
 import type { LeaderDTO, LeaderImageDTO, MetaDTO } from '../lib/dto';
+import type { BulkStatusInput } from '../lib/validation/admin-catalog';
 
 type DB = NodePgDatabase<typeof schema>;
 
@@ -54,4 +55,27 @@ export async function adminListMetas(db: DB): Promise<MetaDTO[]> {
     sql`${metas.code} desc nulls last`,
     asc(metas.name),
   );
+}
+
+/**
+ * Move a set of catalog rows to one status.
+ *
+ * Returns how many rows actually changed, which is not always how many ids were
+ * sent — an id that no longer exists changes nothing, and the caller deserves to
+ * know that rather than being told "done".
+ */
+export async function setLeaderStatus(db: DB, input: BulkStatusInput): Promise<{ changed: number }> {
+  const rows = await db.update(leaders)
+    .set({ status: input.status })
+    .where(inArray(leaders.id, input.ids))
+    .returning({ id: leaders.id });
+  return { changed: rows.length };
+}
+
+export async function setMetaStatus(db: DB, input: BulkStatusInput): Promise<{ changed: number }> {
+  const rows = await db.update(metas)
+    .set({ status: input.status })
+    .where(inArray(metas.id, input.ids))
+    .returning({ id: metas.id });
+  return { changed: rows.length };
 }

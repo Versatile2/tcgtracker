@@ -3,6 +3,7 @@ import type {
   StatsDTO, AchievementsResponseDTO,
 } from './dto';
 import type { LeaderArtInput } from './validation/leader-art';
+import type { BulkStatusInput } from './validation/admin-catalog';
 import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from './validation/tournament';
 import type { CreateRoundInput, UpdateRoundInput } from './validation/round';
 
@@ -30,6 +31,10 @@ export const apiClient = {
   listMetas: () => request<MetaDTO[]>('/api/metas'),
   adminListLeaders: () => request<LeaderDTO[]>('/api/admin/leaders'),
   adminListMetas: () => request<MetaDTO[]>('/api/admin/metas'),
+  adminSetLeaderStatus: (b: BulkStatusInput) =>
+    request<{ changed: number }>('/api/admin/leaders/status', { method: 'PATCH', body: JSON.stringify(b) }),
+  adminSetMetaStatus: (b: BulkStatusInput) =>
+    request<{ changed: number }>('/api/admin/metas/status', { method: 'PATCH', body: JSON.stringify(b) }),
 
   listTournaments: () => request<TournamentSummaryDTO[]>('/api/tournaments'),
   getTournament: (id: string) => request<TournamentDetailDTO>(`/api/tournaments/${id}`),
