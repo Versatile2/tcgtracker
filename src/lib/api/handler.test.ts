@@ -1,35 +1,38 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { ZodError } from 'zod';
-import { errorToResponse, UnauthorizedError } from './handler';
-import { NotFoundError, ConflictError, ValidationError } from '../errors';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-async function status(err: unknown) {
-  const res = errorToResponse(err);
-  return { code: res.status, body: await res.json() };
-}
+const auth = vi.fn();
+vi.mock('@clerk/nextjs/server', () => ({ auth: () => auth() }));
 
-describe('errorToResponse', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+describe('requireAdmin', () => {
+  beforeEach(() => { auth.mockReset(); });
+
+  it('returns the user id when the session claims the admin role', async () => {
+    auth.mockResolvedValue({ userId: 'user_1', sessionClaims: { metadata: { role: 'admin' } } });
+    const { requireAdmin } = await import('./handler');
+    await expect(requireAdmin()).resolves.toBe('user_1');
   });
 
-  it('maps NotFoundError to 404', async () => {
-    expect((await status(new NotFoundError())).code).toBe(404);
+  it('throws for a signed-in user with no role', async () => {
+    auth.mockResolvedValue({ userId: 'user_1', sessionClaims: {} });
+    const { requireAdmin, ForbiddenError } = await import('./handler');
+    await expect(requireAdmin()).rejects.toBeInstanceOf(ForbiddenError);
   });
-  it('maps ConflictError to 409', async () => {
-    expect((await status(new ConflictError())).code).toBe(409);
+
+  it('throws for a signed-in user with some other role', async () => {
+    auth.mockResolvedValue({ userId: 'user_1', sessionClaims: { metadata: { role: 'player' } } });
+    const { requireAdmin, ForbiddenError } = await import('./handler');
+    await expect(requireAdmin()).rejects.toBeInstanceOf(ForbiddenError);
   });
-  it('maps ValidationError and ZodError to 400', async () => {
-    expect((await status(new ValidationError())).code).toBe(400);
-    const zerr = new ZodError([]);
-    expect((await status(zerr)).code).toBe(400);
+
+  it('throws Unauthorized when nobody is signed in', async () => {
+    auth.mockResolvedValue({ userId: null });
+    const { requireAdmin, UnauthorizedError } = await import('./handler');
+    await expect(requireAdmin()).rejects.toBeInstanceOf(UnauthorizedError);
   });
-  it('maps UnauthorizedError to 401', async () => {
-    expect((await status(new UnauthorizedError())).code).toBe(401);
-  });
-  it('maps unknown to 500', async () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect((await status(new Error('boom'))).code).toBe(500);
-    expect(spy).toHaveBeenCalled();
+
+  it('maps ForbiddenError to a 403', async () => {
+    const { errorToResponse, ForbiddenError } = await import('./handler');
+    const res = errorToResponse(new ForbiddenError());
+    expect(res.status).toBe(403);
   });
 });

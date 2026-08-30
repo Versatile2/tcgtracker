@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { ModeToggle } from '@/components/theme/mode-toggle';
 import { AccentPicker } from '@/components/theme/accent-picker';
 import { ExportCard } from './export-card';
+import { AdminCard } from './admin-card';
 import { KindsHelpButton } from '@/components/nav/kinds-sheet';
 
 export function SettingsView() {
@@ -29,6 +30,7 @@ export function SettingsView() {
         </p>
         <KindsHelpButton />
       </Card>
+      <AdminCard />
       <ExportCard />
     </LargeTitleScreen>
   );
