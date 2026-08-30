@@ -53,10 +53,21 @@ distinct Monkey D. Luffy printings. Card images are Bandai's official promotiona
 scans and carry a "SAMPLE" watermark — every public source (optcgapi, Limitless,
 Bandai's own card list) serves the same watermarked files.
 
-Admin access needs a Clerk role. In the Clerk dashboard set *Sessions → Customize
-session token* to `{"metadata": "{{user.public_metadata}}"}`, and give your user
-public metadata `{"role": "admin"}`. Sign out and in again: the role rides in the
-session token, so an existing session will not see the change.
+### Admin access
+
+Two settings, and **both** are required — with only the second, `requireAdmin`
+correctly refuses everyone:
+
+1. Clerk dashboard → *Sessions → Customize session token* →
+   `{"metadata": "{{user.public_metadata}}"}`. This is instance-level and has no
+   Backend API equivalent, so it has to be done in the dashboard.
+2. Clerk dashboard → your user → *Public metadata* → `{"role": "admin"}`.
+
+Then sign out and in again: the role rides in the session token, so an existing
+session will not see the change.
+
+Until step 1 is done, `/admin` answers 404 and `/api/admin/*` answers 403. That
+is the gate working, not a bug — do not loosen the check to get in.
 
 ## Learn More
 
