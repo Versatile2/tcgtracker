@@ -1,7 +1,8 @@
-import { or, eq, isNull, sql, asc } from 'drizzle-orm';
+import { or, eq, isNull, sql, asc, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
-import { leaders, metas } from '../db/schema';
+import { leaders, leaderImages, metas } from '../db/schema';
+import type { LeaderDTO, LeaderImageDTO } from '../lib/dto';
 
 type DB = NodePgDatabase<typeof schema>;
 export type Leader = typeof leaders.$inferSelect;
@@ -19,8 +20,35 @@ export type Meta = typeof metas.$inferSelect;
 const visibleTo = (table: typeof leaders | typeof metas, ownerId: string) =>
   or(isNull(table.ownerId), eq(table.ownerId, ownerId));
 
-export async function listLeaders(db: DB, ownerId: string): Promise<Leader[]> {
-  return db.select().from(leaders).where(visibleTo(leaders, ownerId)).orderBy(asc(leaders.name));
+export async function listLeaders(db: DB, ownerId: string): Promise<LeaderDTO[]> {
+  const rows = await db.select().from(leaders).where(visibleTo(leaders, ownerId)).orderBy(asc(leaders.name));
+  if (!rows.length) return [];
+
+  // Two queries rather than a join: a join multiplies leader rows by their
+  // printings, and the regrouping costs more than the extra round trip.
+  const imgs = await db
+    .select({
+      id: leaderImages.id, leaderId: leaderImages.leaderId,
+      label: leaderImages.label, isDefault: leaderImages.isDefault,
+    })
+    .from(leaderImages)
+    .where(inArray(leaderImages.leaderId, rows.map((r) => r.id)))
+    .orderBy(asc(leaderImages.sortOrder));
+
+  const byLeader = new Map<string, LeaderImageDTO[]>();
+  const defaultOf = new Map<string, string>();
+  for (const img of imgs) {
+    const list = byLeader.get(img.leaderId);
+    if (list) list.push({ id: img.id, label: img.label });
+    else byLeader.set(img.leaderId, [{ id: img.id, label: img.label }]);
+    if (img.isDefault) defaultOf.set(img.leaderId, img.id);
+  }
+
+  return rows.map((l) => ({
+    ...l,
+    images: byLeader.get(l.id) ?? [],
+    defaultImageId: defaultOf.get(l.id) ?? null,
+  }));
 }
 
 

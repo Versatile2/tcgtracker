@@ -1,6 +1,14 @@
-export type LeaderDTO = { id: string; name: string; colors: string[]; setCode: string | null; isCustom: boolean; ownerId: string | null };
+export type LeaderImageDTO = { id: string; label: string };
+export type LeaderDTO = {
+  id: string; name: string; colors: string[]; setCode: string | null;
+  isCustom: boolean; ownerId: string | null;
+  /** The printing shown to a player who has chosen none. Null for a leader with no art. */
+  defaultImageId: string | null;
+  /** Every printing this leader has, base first. Empty for custom leaders. */
+  images: LeaderImageDTO[];
+};
 export type MetaDTO = { id: string; name: string; code: string | null; isCustom: boolean; ownerId: string | null };
-/** Set code → the leader printing this player chose. A missing key means the base printing. */
+/** Leader id → the image id this player chose. A missing key means the default. */
 export type LeaderArtMapDTO = Record<string, string>;
 export type RoundKind = 'swiss' | 'top_cut' | 'bye' | 'no_show';
 export type GameLog = { result: 'win' | 'loss'; playOrder: 'first' | 'second' | null };
