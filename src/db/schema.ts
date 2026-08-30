@@ -72,21 +72,19 @@ export const leaderImages = pgTable('leader_images', {
  * printed several times — a base card, a Parallel or Alternate Art, sometimes
  * an SPR — and this records the one they picked.
  *
- * Purely presentational: nothing in the statistics reads it, and a leader is
- * one leader however it is drawn.
+ * A missing row means the leader's default printing, so the table only ever
+ * holds genuine deviations from it. Purely presentational: nothing in the
+ * statistics reads it, and a leader is one leader however it is drawn.
  *
- * MIGRATION IN PROGRESS: `leaderId` / `leaderImageId` are the new keys and are
- * still nullable while the backfill runs. `setCode` / `art` are the old string
- * keys and are dropped in the contract migration once the backfill is verified.
+ * Deleting an image deletes the preferences that chose it, by design — the
+ * player falls back to the default rather than to a broken image.
  */
 export const leaderArt = pgTable('leader_art', {
   ownerId: text('owner_id').notNull(),
-  setCode: text('set_code').notNull(),
-  art: text('art').notNull(),
-  leaderId: uuid('leader_id').references(() => leaders.id, { onDelete: 'cascade' }),
-  leaderImageId: uuid('leader_image_id').references(() => leaderImages.id, { onDelete: 'cascade' }),
+  leaderId: uuid('leader_id').notNull().references(() => leaders.id, { onDelete: 'cascade' }),
+  leaderImageId: uuid('leader_image_id').notNull().references(() => leaderImages.id, { onDelete: 'cascade' }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [primaryKey({ columns: [t.ownerId, t.setCode] })]);
+}, (t) => [primaryKey({ columns: [t.ownerId, t.leaderId] })]);
 
 export const metas = pgTable('metas', {
   id: uuid('id').primaryKey().defaultRandom(),

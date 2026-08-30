@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
-import { leaders, leaderImages } from './schema';
+import { leaders, leaderImages, leaderArt } from './schema';
 
 const db = getTestDb();
 
@@ -93,6 +93,21 @@ describe('leader_images', () => {
     });
     await db.delete(leaders).where(eq(leaders.id, leader.id));
     const rows = await db.select().from(leaderImages);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('drops a player art preference when the image is deleted', async () => {
+    const leader = await makeLeader();
+    const [image] = await db.insert(leaderImages).values({
+      leaderId: leader.id, cardImageId: 'OP06-022_p1', label: 'p1', data: bytes,
+      mimeType: 'image/webp', width: 240, height: 335, byteSize: bytes.byteLength, checksum: 'c',
+    }).returning();
+    await db.insert(leaderArt).values({ ownerId: 'user_1', leaderId: leader.id, leaderImageId: image.id });
+
+    await db.delete(leaderImages).where(eq(leaderImages.id, image.id));
+    const rows = await db.select().from(leaderArt);
+    // The preference is cosmetic: losing the image means falling back to the
+    // leader's default, not pointing at nothing.
     expect(rows).toHaveLength(0);
   });
 });
