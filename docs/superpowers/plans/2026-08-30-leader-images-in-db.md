@@ -220,13 +220,20 @@ git commit -m "feat(db): add leader_images table with one-default-per-leader con
 **Files:**
 - Create: `src/services/leader-images.ts`
 - Create: `src/app/api/leader-images/[id]/route.ts`
+- Modify: `src/proxy.ts:3`
 - Test: `src/app/api/leader-images.route.test.ts`
 
 **Interfaces:**
 - Consumes: `leaderImages` from Task 1.
 - Produces: `findLeaderImage(db, id)` returning `{ data: Buffer; mimeType: string; checksum: string } | null`; the route `GET /api/leader-images/:id`.
 
-**This route is deliberately unauthenticated.** Card art is public game data, not user data, and a `Cache-Control: public` header on an authenticated route would be a bug — the CDN would serve one user's response to everyone. Nothing about which leader a player uses is exposed: the id says nothing without a session that already lists it.
+**This route is deliberately unauthenticated.** Card art is public game data, not user data, and a `Cache-Control: public` header on an authenticated route would be a bug — the CDN would serve one user's response to everyone. Nothing about which leader a player uses is exposed: an image id is an unguessable uuid, and it says nothing without a session that already lists it.
+
+**This requires a change to `src/proxy.ts`, and it is easy to miss.** The Clerk
+middleware currently protects every `/api/*` route, and middleware runs *before*
+the cache — so without this change every thumbnail costs a function invocation
+and the CDN caching that justifies storing bytes in Postgres never happens. The
+route tests call `GET` directly and would not catch it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -398,15 +405,40 @@ export async function GET(req: Request, { params }: Ctx) {
 }
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [ ] **Step 5: Let the route past the auth middleware**
+
+In `src/proxy.ts`, add the route to the public matcher:
+
+```ts
+// Leader art is public card scans, addressed by unguessable uuid. It is public
+// so the CDN can serve it: middleware runs before the cache, so protecting this
+// route would cost a function invocation per thumbnail and defeat the immutable
+// caching the route is built around.
+const isPublic = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/api/leader-images/(.*)']);
+```
+
+- [ ] **Step 6: Run the test to verify it passes**
 
 Run: `npm test -- src/app/api/leader-images.route.test.ts`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Verify the route really is public**
+
+Start the dev server, sign out (or use a private window), and request an image
+id directly:
 
 ```bash
-git add src/services/leader-images.ts src/app/api/leader-images src/app/api/leader-images.route.test.ts
+curl -sI http://localhost:3000/api/leader-images/<an-id-from-your-db>
+```
+
+Expected: `HTTP/1.1 200`, `content-type: image/webp`, and a `cache-control`
+containing `immutable`. A 307 to `/sign-in` means the proxy change did not take
+— fix it before moving on, because nothing downstream will reveal it.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/services/leader-images.ts src/app/api/leader-images src/app/api/leader-images.route.test.ts src/proxy.ts
 git commit -m "feat(api): serve leader art from the database with immutable caching"
 ```
 

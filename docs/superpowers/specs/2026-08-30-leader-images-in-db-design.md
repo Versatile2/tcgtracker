@@ -115,6 +115,14 @@ image from Postgres once per region and never revalidates, and no cache purge is
 ever needed. Node runtime (`export const runtime = 'nodejs'`), matching the
 other routes.
 
+**The route is unauthenticated, and `src/proxy.ts` must be changed to allow
+that.** The Clerk middleware protects every `/api/*` route today, and middleware
+runs before the cache: leaving it protected would cost a function invocation per
+thumbnail and remove the entire benefit that makes bytea a sound choice. Add
+`/api/leader-images/(.*)` to the public matcher. This is safe — these are
+Bandai's public promotional card scans, addressed by unguessable uuid, and the
+id reveals nothing without a session that already lists it.
+
 ## What the client sees
 
 The leader DTO grows its printings and loses nothing:
