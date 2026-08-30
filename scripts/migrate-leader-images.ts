@@ -16,7 +16,7 @@ import path from 'node:path';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import sharp from 'sharp';
 import { db } from '../src/db/client';
-import { leaders, leaderImages, leaderArt } from '../src/db/schema';
+import { leaders, leaderImages } from '../src/db/schema';
 import { printingsOf } from '../src/lib/printings';
 import { CLEAN_ART } from '../src/lib/clean-art';
 import { labelForPrinting, imagePathForPrinting } from '../src/lib/leader-image-import';
@@ -69,13 +69,24 @@ async function backfillImages() {
 }
 
 async function backfillArtPreferences() {
-  const prefs = await db.select().from(leaderArt);
+  /*
+   * The legacy columns are read through raw SQL rather than the typed schema.
+   *
+   * This script runs against production while `leader_art` still carries
+   * `set_code` and `art` — that is the whole point of expand/migrate/contract —
+   * but the repo's schema has already contracted, so those columns no longer
+   * exist on the drizzle type. Naming them in SQL keeps the script honest about
+   * the shape it actually meets, and lets the branch typecheck.
+   */
+  const legacy = await db.execute<{ owner_id: string; set_code: string; art: string; leader_image_id: string | null }>(
+    sql`SELECT owner_id, set_code, art, leader_image_id FROM leader_art`,
+  ).then((r) => r.rows);
   let linked = 0, dropped = 0;
 
-  for (const pref of prefs) {
-    if (pref.leaderImageId) { linked++; continue; }
+  for (const pref of legacy) {
+    if (pref.leader_image_id) { linked++; continue; }
     const [leader] = await db.select({ id: leaders.id }).from(leaders)
-      .where(and(isNull(leaders.ownerId), eq(leaders.setCode, pref.setCode)))
+      .where(and(isNull(leaders.ownerId), eq(leaders.setCode, pref.set_code)))
       .limit(1);
     const image = leader
       ? (await db.select({ id: leaderImages.id }).from(leaderImages)
@@ -86,14 +97,14 @@ async function backfillArtPreferences() {
     if (!leader || !image) {
       // Cosmetic only: a preference that finds no target is deleted, and the
       // player falls back to the leader's default art.
-      await db.delete(leaderArt)
-        .where(and(eq(leaderArt.ownerId, pref.ownerId), eq(leaderArt.setCode, pref.setCode)));
+      await db.execute(sql`DELETE FROM leader_art WHERE owner_id = ${pref.owner_id} AND set_code = ${pref.set_code}`);
       dropped++;
       continue;
     }
-    await db.update(leaderArt)
-      .set({ leaderId: leader.id, leaderImageId: image.id })
-      .where(and(eq(leaderArt.ownerId, pref.ownerId), eq(leaderArt.setCode, pref.setCode)));
+    await db.execute(sql`
+      UPDATE leader_art SET leader_id = ${leader.id}, leader_image_id = ${image.id}
+      WHERE owner_id = ${pref.owner_id} AND set_code = ${pref.set_code}
+    `);
     linked++;
   }
   return { linked, dropped };
