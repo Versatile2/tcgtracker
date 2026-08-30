@@ -173,13 +173,24 @@ production between migration A and migration B.
 
 ## Deletions and one relocation
 
-Removed once the backfill is verified:
+**Sequencing matters here.** The backfill script *reads* `printingsOf`,
+`LEADER_ART`, `CLEAN_ART`, `EXTRA_ART` and the two image folders. So nothing in
+that list may be deleted until the backfill has run against production and been
+verified. Everything below — including `scripts/migrate-leader-images.ts`
+itself — goes in one final commit after that verification, not before.
+
+Removed in that final commit:
 
 - `src/lib/leader-images.ts`, `src/lib/clean-art.ts`, `src/lib/printings.ts`
 - `public/leaders/` (308 files) and `public/leaders/clean/` (120 files)
 - `scripts/reset-reference-data.ts` and its `db:reset-reference` npm script
 - `scripts/import-clean-art.ts` — its output now lives in the DB, and stage 2's
   admin upload replaces it
+- `scripts/migrate-leader-images.ts` — a one-shot whose inputs no longer exist
+
+Add `public/leaders/` to `.gitignore` in the same commit. `build-leader-data.ts`
+still writes that folder, and without the ignore rule the next `npm run
+data:leaders` reintroduces 308 untracked files that look like a regression.
 
 `scripts/build-leader-data.ts` **stays as it is** in stage 1. It still writes
 `seed-data.ts`, and it still writes `public/leaders/`, which is now unused — a
