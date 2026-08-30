@@ -1,5 +1,14 @@
-import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, boolean, integer, timestamp, date, jsonb, primaryKey, uniqueIndex, customType } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import type { GameLog } from '../lib/dto';
+
+/**
+ * Postgres bytea. drizzle-orm ships no bytea column and node-postgres already
+ * hands one back as a Buffer, so this is a straight pass-through.
+ */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() { return 'bytea'; },
+});
 
 // 'match' is a single game with no event around it: a tournament row holding
 // exactly one round, so it inherits the leader invariant, the outbox and every
@@ -23,6 +32,40 @@ export const leaders = pgTable('leaders', {
   ownerId: text('owner_id'), // null = global seed
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A leader's card art, stored as bytes rather than as a file in public/.
+ *
+ * Rows are immutable. Correcting a leader's art inserts a new row and moves
+ * `isDefault`; it never rewrites `data`. That is what lets /api/leader-images
+ * serve these with `immutable` caching — an id names bytes that cannot change,
+ * so a correction produces a new URL rather than a stale cache.
+ */
+export const leaderImages = pgTable('leader_images', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  leaderId: uuid('leader_id').notNull().references(() => leaders.id, { onDelete: 'cascade' }),
+  /** The optcgapi card_image_id this came from ('OP06-022_p2'); null for art added by hand. */
+  cardImageId: text('card_image_id'),
+  /** Shown in the printing picker: 'Base', 'p1', 'p2', 'pr1'. */
+  label: text('label').notNull(),
+  data: bytea('data').notNull(),
+  mimeType: text('mime_type').notNull(),
+  width: integer('width').notNull(),
+  height: integer('height').notNull(),
+  byteSize: integer('byte_size').notNull(),
+  /** sha256 of `data`, hex. Doubles as the ETag and as a dedup key. */
+  checksum: text('checksum').notNull(),
+  isDefault: boolean('is_default').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // Nulls are distinct in Postgres, so this pins imported printings without
+  // blocking several hand-uploaded images on one leader.
+  uniqueIndex('leader_images_leader_card_uq').on(t.leaderId, t.cardImageId),
+  // "Exactly one default per leader", enforced by Postgres rather than by
+  // application code that every future writer would have to remember.
+  uniqueIndex('leader_images_one_default_uq').on(t.leaderId).where(sql`${t.isDefault}`),
+]);
 
 /**
  * Which printing of a leader this player wants to look at. Most leaders are
