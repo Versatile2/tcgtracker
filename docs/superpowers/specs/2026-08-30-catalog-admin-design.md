@@ -115,6 +115,11 @@ leaders into `draft` and empty the application. Three steps instead:
 in `src/lib/leader-deck-codes.ts`. That module is deleted here and
 `leaderSearchText` reads the column.
 
+`leaders.aliases` holds the nicknames players actually use — "gear 5", "red
+Zoro". It is not admin-only metadata: `leaderSearchText` includes it, so the
+player-facing picker finds a leader by nickname. That is the entire point of the
+field, and a version of it that only the admin could search would be pointless.
+
 ### Visibility: the rule that protects history
 
 The owner's decision is that a hidden leader stays visible in past matches and
@@ -131,6 +136,13 @@ rather than a second request.
 `/api/metas` follows the same rule against `tournaments.meta_id` and
 `rounds.opponent_meta_id`.
 
+**The admin endpoints are the exception.** `/api/admin/leaders` and
+`/api/admin/metas` return every row regardless of status — a review queue that
+hid its drafts would be useless. That is the whole reason the admin has its own
+endpoints rather than a query parameter on the player-facing ones: a `?all=true`
+that only an admin may pass is one forgotten check away from leaking the draft
+catalog to every player.
+
 This is the single most breakable thing in the spec, and it is what the first
 test in the Testing section pins down.
 
@@ -146,8 +158,12 @@ Filling the 16 dates through the admin removes that whole class of bug.
 the lexical-ordering tests are **replaced**, not kept alongside — a test for a
 rule that no longer exists is a lie about the code.
 
-Metas with no `released_at` are excluded from the default pick and fall back to
-the lexical rule, so the app keeps working while the dates are being entered.
+The fallback is all-or-nothing, not per-row: if **at least one** official meta
+has a `released_at`, the default is the most recently released among those, and
+dateless metas simply cannot be chosen; if **no** meta has one, the function
+falls back to the lexical rule wholesale. Mixing the two — comparing a date
+against a code — has no meaning, and the app keeps working while the 16 dates
+are being entered either way.
 
 ## Admin access
 
