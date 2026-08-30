@@ -43,6 +43,12 @@ export const apiClient = {
     request<MetaDTO>('/api/admin/metas', { method: 'POST', body: JSON.stringify(b) }),
   adminUpdateMeta: (id: string, b: MetaInput) =>
     request<MetaDTO>(`/api/admin/metas/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  adminUpdateImage: (id: string, b: { label?: string; isDefault?: boolean }) =>
+    request<{ id: string; label: string; isDefault: boolean }>(`/api/admin/images/${id}`, {
+      method: 'PATCH', body: JSON.stringify(b),
+    }),
+  adminDeleteImage: (id: string) =>
+    request<{ ok: boolean }>(`/api/admin/images/${id}`, { method: 'DELETE' }),
 
   listTournaments: () => request<TournamentSummaryDTO[]>('/api/tournaments'),
   getTournament: (id: string) => request<TournamentDetailDTO>(`/api/tournaments/${id}`),

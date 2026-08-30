@@ -5,13 +5,14 @@ import { apiClient } from '@/lib/api-client';
 import { keys } from '@/lib/query-keys';
 import type { LeaderDTO } from '@/lib/dto';
 import type { LeaderInput } from '@/lib/validation/admin-catalog';
-import { LEADER_COLOR_HEX } from '@/lib/leader-visual';
+import { LEADER_COLOR_HEX, leaderImageUrl } from '@/lib/leader-visual';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { ImageCropper } from './image-cropper';
 import { cn } from '@/lib/utils';
 
 const COLORS = ['red', 'green', 'blue', 'purple', 'black', 'yellow'] as const;
@@ -51,6 +52,24 @@ export function LeaderPanel({
       await qc.invalidateQueries({ queryKey: keys.leaders });
       onOpenChange(false);
     },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const refreshCatalog = async () => {
+    await qc.invalidateQueries({ queryKey: keys.adminLeaders });
+    await qc.invalidateQueries({ queryKey: keys.leaders });
+  };
+
+  const patchImage = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { label?: string; isDefault?: boolean } }) =>
+      apiClient.adminUpdateImage(id, body),
+    onSuccess: refreshCatalog,
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const removeImage = useMutation({
+    mutationFn: (id: string) => apiClient.adminDeleteImage(id),
+    onSuccess: refreshCatalog,
     onError: (e: Error) => setError(e.message),
   });
 
@@ -135,6 +154,65 @@ export function LeaderPanel({
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
+
+          {/* Only for a row that exists: artwork hangs off a leader id, so a
+              leader being created has nothing to attach it to yet. */}
+          {leader && (
+            <div className="space-y-3 border-t border-border pt-4">
+              <span className="text-sm font-medium">Artwork</span>
+
+              {leader.images.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No artwork. This leader renders as a coloured initial.
+                </p>
+              ) : (
+                <ul className="flex flex-wrap gap-3">
+                  {leader.images.map((img) => (
+                    <li key={img.id} className="w-20 space-y-1">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={leaderImageUrl(img.id) ?? ''}
+                        alt={img.label}
+                        className={cn(
+                          'aspect-[5/7] w-full rounded object-cover ring-1',
+                          img.id === leader.defaultImageId ? 'ring-2 ring-primary' : 'ring-border',
+                        )}
+                      />
+                      <Input
+                        defaultValue={img.label}
+                        aria-label={`Label for ${img.label}`}
+                        className="h-7 text-xs"
+                        onBlur={(e) => {
+                          const next = e.target.value.trim();
+                          if (next && next !== img.label) patchImage.mutate({ id: img.id, body: { label: next } });
+                        }}
+                      />
+                      <div className="flex gap-1">
+                        <Button
+                          size="xs"
+                          variant={img.id === leader.defaultImageId ? 'default' : 'outline'}
+                          disabled={img.id === leader.defaultImageId || patchImage.isPending}
+                          onClick={() => patchImage.mutate({ id: img.id, body: { isDefault: true } })}
+                        >
+                          Default
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="destructive"
+                          disabled={removeImage.isPending}
+                          onClick={() => removeImage.mutate(img.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <ImageCropper leaderId={leader.id} />
+            </div>
+          )}
         </div>
 
         <SheetFooter className="p-0">
