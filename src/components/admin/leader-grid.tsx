@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { StatusBadge } from './status-badge';
 import { SelectionBar } from './selection-bar';
+import { LeaderPanel } from './leader-panel';
 import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | 'draft' | 'published' | 'hidden';
@@ -59,8 +60,8 @@ function SelectToggle({ checked, onChange, label }: { checked: boolean; onChange
  * collection.
  */
 function LeaderCard({
-  leader, selected, onToggle,
-}: { leader: LeaderDTO; selected: boolean; onToggle: () => void }) {
+  leader, selected, onToggle, onOpen,
+}: { leader: LeaderDTO; selected: boolean; onToggle: () => void; onOpen: () => void }) {
   const src = leaderImageUrl(leader.defaultImageId);
   return (
     <div
@@ -70,6 +71,7 @@ function LeaderCard({
       )}
     >
       <SelectToggle checked={selected} onChange={onToggle} label={`Select ${leader.name}`} />
+      <button type="button" onClick={onOpen} className="flex w-full flex-col gap-2 text-left" aria-label={`Edit ${leader.name}`}>
       <div
         className="flex aspect-[5/7] w-full items-center justify-center overflow-hidden rounded-md text-2xl font-bold leading-none ring-1 ring-black/10"
         style={src ? undefined : { background: leaderBackground(leader.colors), color: leaderTextColor(leader.colors) }}
@@ -91,6 +93,7 @@ function LeaderCard({
           )}
         </div>
       </div>
+      </button>
     </div>
   );
 }
@@ -107,6 +110,13 @@ export function LeaderGrid() {
   const [q, setQ] = useState('');
   const [noImageOnly, setNoImageOnly] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<LeaderDTO | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  function openPanel(leader: LeaderDTO | null) {
+    setEditing(leader);
+    setPanelOpen(true);
+  }
 
   // Client-side over the already-fetched list: the catalog is a few hundred rows
   // and a round trip per keystroke would be worse in every way.
@@ -204,6 +214,8 @@ export function LeaderGrid() {
           Select all {shown.length} shown
         </Button>
 
+        <Button onClick={() => openPanel(null)}>New leader</Button>
+
         <span className="ml-auto text-sm text-muted-foreground">
           {isPending ? '—' : `${shown.length} of ${data?.length ?? 0}`}
         </span>
@@ -225,6 +237,7 @@ export function LeaderGrid() {
               leader={l}
               selected={selected.has(l.id)}
               onToggle={() => toggle(l.id)}
+              onOpen={() => openPanel(l)}
             />
           ))}
         </div>
@@ -239,6 +252,17 @@ export function LeaderGrid() {
         onDraft={() => apply('draft')}
         onClear={() => setSelected(new Set())}
       />
+
+      {/* Keyed and mounted only while open: that is how the form resets to the
+          row you just clicked, without an effect copying props into state. */}
+      {panelOpen && (
+        <LeaderPanel
+          key={editing?.id ?? 'new'}
+          leader={editing}
+          open
+          onOpenChange={setPanelOpen}
+        />
+      )}
     </div>
   );
 }

@@ -1,9 +1,10 @@
-import { asc, sql, inArray } from 'drizzle-orm';
+import { asc, eq, sql, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
 import { leaders, metas, leaderImages } from '../db/schema';
 import type { LeaderDTO, LeaderImageDTO, MetaDTO } from '../lib/dto';
-import type { BulkStatusInput } from '../lib/validation/admin-catalog';
+import type { BulkStatusInput, LeaderInput, MetaInput } from '../lib/validation/admin-catalog';
+import { NotFoundError } from '../lib/errors';
 
 type DB = NodePgDatabase<typeof schema>;
 
@@ -78,4 +79,38 @@ export async function setMetaStatus(db: DB, input: BulkStatusInput): Promise<{ c
     .where(inArray(metas.id, input.ids))
     .returning({ id: metas.id });
   return { changed: rows.length };
+}
+
+/*
+ * There is deliberately no delete. A leader referenced by a round cannot be
+ * removed without either cascading away real match history or failing on a
+ * foreign key; `hidden` is the delete, and it leaves the history intact.
+ */
+export async function createLeader(db: DB, input: LeaderInput): Promise<LeaderDTO> {
+  const [row] = await db.insert(leaders).values(input).returning();
+  return { ...row, images: [], defaultImageId: null };
+}
+
+export async function updateLeader(db: DB, id: string, input: LeaderInput): Promise<LeaderDTO> {
+  const [row] = await db.update(leaders).set(input).where(eq(leaders.id, id)).returning();
+  if (!row) throw new NotFoundError('No such leader.');
+  const imgs = await db
+    .select({ id: leaderImages.id, label: leaderImages.label, isDefault: leaderImages.isDefault })
+    .from(leaderImages).where(eq(leaderImages.leaderId, id)).orderBy(asc(leaderImages.sortOrder));
+  return {
+    ...row,
+    images: imgs.map((i) => ({ id: i.id, label: i.label })),
+    defaultImageId: imgs.find((i) => i.isDefault)?.id ?? null,
+  };
+}
+
+export async function createMeta(db: DB, input: MetaInput): Promise<MetaDTO> {
+  const [row] = await db.insert(metas).values(input).returning();
+  return row;
+}
+
+export async function updateMeta(db: DB, id: string, input: MetaInput): Promise<MetaDTO> {
+  const [row] = await db.update(metas).set(input).where(eq(metas.id, id)).returning();
+  if (!row) throw new NotFoundError('No such meta.');
+  return row;
 }
