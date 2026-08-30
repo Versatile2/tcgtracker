@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../../tests/setup/db';
 import { seedReferenceData } from '../../db/seed';
+import { FIXTURE_CATALOG } from '../../../tests/fixtures/catalog';
 import { leaders, metas } from '../../db/schema';
 import { createTournament, listTournaments } from '../../services/tournaments';
 import { addRound } from '../../services/rounds';
@@ -37,7 +38,7 @@ async function metaId(code: string) {
   return m.id;
 }
 
-beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
 async function bothWays() {
   const server = await getOverallStats(db, USER);

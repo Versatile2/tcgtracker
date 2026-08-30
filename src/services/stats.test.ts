@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { leaders, metas, tournaments, rounds } from '../db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { getOverallStats, getPerMetaStats, getPlayedLeaders, getOpponentStats, getMatchupStats } from './stats';
@@ -45,7 +46,7 @@ async function addRoundTo(tournamentId: string, roundNumber: number, opp: string
 }
 
 describe('stats service — overall/per-meta/played-leaders', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
   it('computes overall wins/losses/draws and win rate', async () => {
     await makeTournament('OP02 Paramount War', 'Roronoa Zoro', [

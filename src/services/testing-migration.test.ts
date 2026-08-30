@@ -4,6 +4,7 @@ import { asc, eq } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { leaders, tournaments, rounds } from '../db/schema';
 
 const db = getTestDb();
@@ -26,7 +27,7 @@ async function runMigration() {
 describe('testing tournaments become sessions', () => {
   beforeEach(async () => {
     await resetDb();
-    await seedReferenceData(db);
+    await seedReferenceData(db, FIXTURE_CATALOG);
   });
   afterAll(closeTestDb);
 

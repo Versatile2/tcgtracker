@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupPrintings, cleanLeaderName, leadersWithoutArt, type ApiCard } from '../scripts/build-leader-data';
+import { groupPrintings, cleanLeaderName, leadersWithoutArt, type ApiCard } from '../src/lib/catalog-import';
 
 /** A leader row shaped like optcgapi's, with only the fields the script reads. */
 function card(setId: string, imageId: string | null, name = 'Someone'): ApiCard {

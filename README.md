@@ -22,22 +22,41 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Reference data (leaders & metas)
 
-The leader catalog (132 real printings) and the OP01–OP16 meta list are generated
-from [optcgapi.com](https://optcgapi.com), not hand-maintained:
+**A fresh database has no catalog.** Leaders and metas enter through one command:
 
 ```bash
-npm run data:leaders          # refresh seed-data.ts, leader-images.ts, public/leaders/
-npm run db:reset-reference    # DESTRUCTIVE: wipe tournaments/rounds, reseed the catalog
+npm run db:migrate            # schema first
+npm run db:import-catalog      # pull the catalog from optcgapi
 ```
 
-`npm run data:leaders` is a manual authoring step — the app never calls optcgapi at
-runtime. Everything it emits is committed, so card art is served from our own origin
-and keeps working offline.
+Everything it inserts arrives as a **draft**, which means players cannot pick it
+yet. Publish what you want offered in `/admin/leaders` and `/admin/metas`. That
+sounds like an extra step and is the point: the importer proposes, you decide.
 
-Leaders are keyed by **set code** (`OP01-003`), not name: names are not unique, and
-there are 15 distinct Monkey D. Luffy printings. Card images are Bandai's official
-promotional scans and carry a "SAMPLE" watermark — every public source (optcgapi,
-Limitless, Bandai's own card list) serves the same watermarked files.
+The importer is **insert-only**. It can add a leader, a meta or a printing that
+does not exist yet, and nothing else. Where optcgapi disagrees with a row you
+already hold — a name you corrected by hand, say — it prints the disagreement and
+changes nothing:
+
+```
+differs:    1 leaders — NOT modified:
+  OP05-060  name: "Monkey D. Luffy" (db) vs "Monkey.D.Luffy" (api)
+```
+
+Fix those in `/admin/leaders` if they need fixing. Run the importer by hand when a
+set drops — never in a build; optcgapi asks callers not to hammer the API.
+
+Card art lives in the database (`leader_images`) and is served from
+`/api/leader-images/:id`, so it comes from our own origin. Leaders are keyed by
+**set code** (`OP01-003`), not name: names are not unique, and there are 15
+distinct Monkey D. Luffy printings. Card images are Bandai's official promotional
+scans and carry a "SAMPLE" watermark — every public source (optcgapi, Limitless,
+Bandai's own card list) serves the same watermarked files.
+
+Admin access needs a Clerk role. In the Clerk dashboard set *Sessions → Customize
+session token* to `{"metadata": "{{user.public_metadata}}"}`, and give your user
+public metadata `{"role": "admin"}`. Sign out and in again: the role rides in the
+session token, so an existing session will not see the change.
 
 ## Learn More
 

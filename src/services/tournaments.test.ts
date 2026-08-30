@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { leaders } from '../db/schema';
 import {
   createTournament, listTournaments, getTournament,
@@ -28,7 +29,7 @@ async function leaderId(name: string) {
 }
 
 describe('tournament service', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
   afterAll(closeTestDb);
 
   it('creates a draft tournament', async () => {

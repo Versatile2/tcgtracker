@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterAll } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../../../tests/setup/db';
 import { seedReferenceData } from '../../../db/seed';
+import { FIXTURE_CATALOG } from '../../../../tests/fixtures/catalog';
 import { leaders, tournaments, rounds } from '../../../db/schema';
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: vi.fn(async () => ({ userId: 'user_route_stats' })) }));
@@ -18,7 +19,7 @@ async function leaderId(name: string) {
 }
 
 describe('stats routes', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
   it('GET /api/stats returns overall, perMeta, playedLeaders', async () => {
     const [t] = await db.insert(tournaments).values({ ownerId: 'user_route_stats', type: 'local', myLeaderId: await leaderId('Nami'), metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();

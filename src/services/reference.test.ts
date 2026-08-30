@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG, FIXTURE_LEADERS } from '../../tests/fixtures/catalog';
 import { leaders, metas, tournaments, rounds } from '../db/schema';
 import { listLeaders, listMetas } from './reference';
 
@@ -23,7 +24,7 @@ const USER = 'user_123';
 afterAll(async () => { await closeTestDb(); });
 
 describe('reference service', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
   /** A custom row as one already in the database looks. */
   async function existingCustomLeader(ownerId: string, name: string) {
@@ -36,7 +37,7 @@ describe('reference service', () => {
   it('lists the seeded catalog', async () => {
     const list = await listLeaders(db, USER);
     expect(list.some((l) => l.name === 'Roronoa Zoro' && l.ownerId === null)).toBe(true);
-    expect(list.length).toBeGreaterThan(100);
+    expect(list).toHaveLength(FIXTURE_LEADERS.length);
   });
 
   // The migration swept legacy custom rows into `draft`, so they are no longer
@@ -60,7 +61,7 @@ describe('reference service', () => {
 
   it('lists global metas newest first', async () => {
     const list = await listMetas(db, USER);
-    expect(list[0]?.code).toBe('OP16');
+    expect(list[0]?.code).toBe('OP06');
     expect(list.every((m) => m.ownerId === null)).toBe(true);
   });
 

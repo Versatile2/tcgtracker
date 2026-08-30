@@ -1,9 +1,11 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db as defaultDb } from './client';
 import { leaders, metas } from './schema';
-import { SEED_LEADERS, SEED_METAS } from './seed-data';
 
 type DB = typeof defaultDb;
+
+export type SeedLeader = { name: string; colors: string[]; setCode: string };
+export type SeedMeta = { name: string; code: string };
 
 /*
  * Seeded rows are `published`: this is the curated catalog the app ships with,
@@ -11,9 +13,12 @@ type DB = typeof defaultDb;
  * everything arriving from optcgapi waits for review, which would otherwise
  * leave a freshly seeded database with an empty picker.
  */
-export async function seedReferenceData(db: DB) {
+export async function seedReferenceData(
+  db: DB,
+  data: { leaders: SeedLeader[]; metas: SeedMeta[] },
+) {
   let leaderCount = 0;
-  for (const l of SEED_LEADERS) {
+  for (const l of data.leaders) {
     // Keyed on the set code, not the name: a leader name is not unique (there
     // are 15 distinct Monkey D. Luffy printings), but a card's set code is.
     const existing = await db.select().from(leaders)
@@ -26,7 +31,7 @@ export async function seedReferenceData(db: DB) {
     leaderCount += res.length;
   }
   let metaCount = 0;
-  for (const m of SEED_METAS) {
+  for (const m of data.metas) {
     const existing = await db.select().from(metas)
       .where(and(isNull(metas.ownerId), sql`lower(${metas.name}) = lower(${m.name})`))
       .limit(1);
@@ -37,11 +42,4 @@ export async function seedReferenceData(db: DB) {
     metaCount += res.length;
   }
   return { leaders: leaderCount, metas: metaCount };
-}
-
-// Allow `npm run db:seed`
-if (process.argv[1] && process.argv[1].endsWith('seed.ts')) {
-  seedReferenceData(defaultDb)
-    .then((r) => { console.log('Seeded', r); process.exit(0); })
-    .catch((e) => { console.error(e); process.exit(1); });
 }

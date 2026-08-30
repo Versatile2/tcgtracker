@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { leaders, tournaments, rounds } from '../db/schema';
 import { computeCtx, getAchievements, ACHIEVEMENTS } from './achievements';
 
@@ -127,7 +128,7 @@ async function leaderId(name: string) {
 }
 
 describe('getAchievements', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
   it('unlocks first_blood after one tournament and is owner-scoped', async () => {
     const [t] = await db.insert(tournaments).values({ ownerId: USER, type: 'local', myLeaderId: await leaderId('Nami'), metaId: null, playedOn: '2026-07-20', status: 'locked' }).returning();

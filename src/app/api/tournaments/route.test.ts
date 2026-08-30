@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../../../tests/setup/db';
 import { seedReferenceData } from '../../../db/seed';
+import { FIXTURE_CATALOG } from '../../../../tests/fixtures/catalog';
 import { listLeaders } from '../../../services/reference';
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: vi.fn(async () => ({ userId: 'user_t' })) }));
@@ -9,7 +10,7 @@ vi.mock('@/db/client', () => ({ db: getTestDb(), schema: {} }));
 const db = getTestDb();
 
 describe('/api/tournaments', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
   afterAll(closeTestDb);
 
   it('POST creates then GET lists it', async () => {

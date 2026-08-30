@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { leaders, metas } from '../db/schema';
 import { createTournament, updateTournament } from './tournaments';
 import { addRound } from './rounds';
@@ -31,7 +32,7 @@ async function logMatch(mine: string, theirs: string, result: 'win' | 'loss' | '
   return t;
 }
 
-beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
 describe('a match', () => {
   it('is a tournament row holding one round', async () => {
@@ -104,7 +105,7 @@ describe('a match and the competitive record', () => {
     // The reason the form asks for a meta at all: without one a match counts
     // toward an opponent's overall win rate but vanishes from the per-meta
     // split, which is the matchup intelligence the product exists for.
-    const [meta] = await db.select().from(metas).where(eq(metas.code, 'OP16')).limit(1);
+    const [meta] = await db.select().from(metas).where(eq(metas.code, 'OP06')).limit(1);
     const t = await createTournament(db, USER, {
       type: 'match', myLeaderId: await leaderId('Roronoa Zoro'), metaId: meta.id, playedOn: '2026-08-19',
     });
@@ -112,7 +113,7 @@ describe('a match and the competitive record', () => {
       kind: 'swiss', opponentLeaderId: await leaderId('Kaido'), result: 'win', playOrder: 'first',
     });
     const kaido = (await getOpponentStats(db, USER)).find((o) => o.name === 'Kaido');
-    expect(kaido?.byMeta.map((m) => m.name)).toContain('OP16');
+    expect(kaido?.byMeta.map((m) => m.name)).toContain('OP06');
   });
 
   it('counts toward matchup statistics for the deck played', async () => {
