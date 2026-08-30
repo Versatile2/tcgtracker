@@ -50,3 +50,7 @@ skills-lock.json
 # Agent brainstorm/SDD scratch
 .superpowers/
 clean-art-contact-sheet.png
+
+# Written by scripts/build-leader-data.ts, now unused — the art lives in the
+# database. Stage 2 stops the script writing it at all.
+/public/leaders/

@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { leaderBackground, leaderTextColor, leaderImageUrl, LEADER_COLOR_HEX } from './leader-visual';
-import { printingsOf, mergePrintings } from './printings';
-import { LEADER_ART } from './leader-images';
-import { EXTRA_ART } from './clean-art';
 
 /*
  * Leaders carried at most two colours until the promo feed arrived. The Release
@@ -51,11 +48,6 @@ describe('leaderBackground', () => {
   });
 });
 
-/*
- * Clean art is layered over the generated bundle rather than replacing it: only
- * some printings were collected by hand, so the two folders coexist and the
- * choice is made per printing.
- */
 describe('leaderImageUrl', () => {
   /*
    * What replaced getLeaderImage. Resolution — the player's choice, then the
@@ -72,33 +64,3 @@ describe('leaderImageUrl', () => {
   });
 });
 
-describe('merging collected printings with bundled ones', () => {
-  it('appends extras after the bundled printings', () => {
-    expect(mergePrintings(['A', 'A_p1'], ['A_c3'])).toEqual(['A', 'A_p1', 'A_c3']);
-  });
-
-  it('keeps the base printing first, so no fallback changes', () => {
-    // getLeaderImage falls back to printings[0]; an extra jumping the queue
-    // would silently change the art shown to everyone who chose nothing.
-    expect(mergePrintings(['A', 'A_p1'], ['A_c3'])[0]).toBe('A');
-  });
-
-  it('returns the bundled list untouched when there are no extras', () => {
-    const bundled = ['A', 'A_p1'];
-    expect(mergePrintings(bundled, [])).toBe(bundled);
-  });
-
-  it('matches what the app actually resolves today', () => {
-    const code = Object.keys(LEADER_ART)[0];
-    expect(printingsOf(code)).toEqual(mergePrintings(LEADER_ART[code], EXTRA_ART[code] ?? []));
-  });
-
-  it('gives every extra a suffix optcgapi does not use, so nothing can collide', () => {
-    for (const [c, ids] of Object.entries(EXTRA_ART)) {
-      for (const id of ids) {
-        expect([id, /_c\d+$/.test(id)]).toEqual([id, true]);
-        expect([id, LEADER_ART[c].includes(id)]).toEqual([id, false]);
-      }
-    }
-  });
-});

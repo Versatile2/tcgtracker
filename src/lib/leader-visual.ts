@@ -1,7 +1,7 @@
 // Visual helpers for leader avatars. Real card art is bundled in public/leaders/
 // (see getLeaderImage); custom user-created leaders have no card art and fall
 // back to a color-tinted initial derived from their OPTCG colors.
-import { LEADER_DECK_CODES } from './leader-images';
+import { LEADER_DECK_CODES } from './leader-deck-codes';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
