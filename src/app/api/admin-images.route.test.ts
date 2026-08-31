@@ -22,6 +22,25 @@ function webp(size = 2048): Buffer {
   return b;
 }
 
+function png(size = 2048): Buffer {
+  const b = Buffer.alloc(size, 0x20);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b, 0);
+  return b;
+}
+
+function jpeg(size = 2048): Buffer {
+  const b = Buffer.alloc(size, 0x20);
+  Buffer.from([0xff, 0xd8, 0xff, 0xe0]).copy(b, 0);
+  return b;
+}
+
+/** A GIF — a real image format the catalog deliberately does not accept. */
+function gif(size = 2048): Buffer {
+  const b = Buffer.alloc(size, 0x20);
+  b.write('GIF89a', 0, 'ascii');
+  return b;
+}
+
 function upload(bytes: Buffer, label = 'Custom', type = 'image/webp') {
   const form = new FormData();
   // A Uint8Array view rather than the Buffer itself: Buffer is not a BlobPart
@@ -84,15 +103,37 @@ describe('POST /api/admin/leaders/[id]/images', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rejects bytes that are not a webp however they are labelled', async () => {
+  it('rejects an unsupported format however it is labelled', async () => {
     // A client can claim any content type; the signature is the only thing that
-    // is actually true about the bytes.
+    // is actually true about the bytes. This one really is a GIF and really is
+    // called a WebP, and the signature is what decides.
     const leader = await makeLeader();
-    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     asAdmin();
     const { POST } = await import('./admin/leaders/[id]/images/route');
-    const res = await POST(upload(png), { params: Promise.resolve({ id: leader.id }) });
+    const res = await POST(upload(gif()), { params: Promise.resolve({ id: leader.id }) });
     expect(res.status).toBe(400);
+  });
+
+  /*
+   * The crop is re-encoded by a canvas, and `toBlob` silently hands back PNG
+   * when the browser cannot encode WebP — so insisting on WebP locked those
+   * browsers out of uploading anything at all. The stored mimeType is what the
+   * bytes actually are, and /api/leader-images serves that back verbatim.
+   */
+  it.each([
+    ['png', () => png(), 'image/png'],
+    ['jpeg', () => jpeg(), 'image/jpeg'],
+    ['webp', () => webp(), 'image/webp'],
+  ])('accepts %s and records what the bytes really are', async (_name, make, expected) => {
+    const leader = await makeLeader();
+    asAdmin();
+    const { POST } = await import('./admin/leaders/[id]/images/route');
+    // Deliberately mislabelled: the declared type must not decide anything.
+    const res = await POST(upload(make(), 'Custom', 'application/octet-stream'),
+      { params: Promise.resolve({ id: leader.id }) });
+    expect(res.status).toBe(200);
+    const [row] = await db.select().from(leaderImages).where(eq(leaderImages.leaderId, leader.id));
+    expect(row.mimeType).toBe(expected);
   });
 });
 

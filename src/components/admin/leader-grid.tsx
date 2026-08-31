@@ -110,11 +110,14 @@ export function LeaderGrid() {
   const [q, setQ] = useState('');
   const [noImageOnly, setNoImageOnly] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [editing, setEditing] = useState<LeaderDTO | null>(null);
+  // The id, not the row: the panel edits artwork and every mutation refetches
+  // this query, so holding a captured DTO would leave the panel showing the
+  // printings as they were when it opened. Looking it up keeps it live.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
   function openPanel(leader: LeaderDTO | null) {
-    setEditing(leader);
+    setEditingId(leader?.id ?? null);
     setPanelOpen(true);
   }
 
@@ -130,6 +133,11 @@ export function LeaderGrid() {
       return true;
     });
   }, [data, status, color, q, noImageOnly]);
+
+  const editing = useMemo(
+    () => (editingId ? (data ?? []).find((l) => l.id === editingId) ?? null : null),
+    [data, editingId],
+  );
 
   const selectedLeaders = useMemo(
     () => (data ?? []).filter((l) => selected.has(l.id)),
@@ -257,7 +265,7 @@ export function LeaderGrid() {
           row you just clicked, without an effect copying props into state. */}
       {panelOpen && (
         <LeaderPanel
-          key={editing?.id ?? 'new'}
+          key={editingId ?? 'new'}
           leader={editing}
           open
           onOpenChange={setPanelOpen}

@@ -161,6 +161,11 @@ export function LeaderPanel({
             <div className="space-y-3 border-t border-border pt-4">
               <span className="text-sm font-medium">Artwork</span>
 
+              {/* Above the thumbnails, not below them: a leader with four
+                  printings pushed this button off the bottom of a phone screen,
+                  which is the same as not having one. */}
+              <ImageCropper leaderId={leader.id} />
+
               {leader.images.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   No artwork. This leader renders as a coloured initial.
@@ -214,7 +219,6 @@ export function LeaderPanel({
                 </ul>
               )}
 
-              <ImageCropper leaderId={leader.id} />
             </div>
           )}
         </div>
