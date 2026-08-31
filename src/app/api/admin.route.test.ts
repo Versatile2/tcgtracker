@@ -34,6 +34,30 @@ describe('/api/admin/leaders', () => {
       .toEqual(['Draft Zoro', 'Hidden Law', 'Live Luffy']);
   });
 
+  it('orders by set code descending, newest sets first', async () => {
+    await db.insert(leaders).values([
+      { name: 'Older', colors: ['red'], setCode: 'OP01-001', status: 'published' },
+      { name: 'Newest', colors: ['red'], setCode: 'OP16-041', status: 'published' },
+      { name: 'Middle', colors: ['red'], setCode: 'OP09-001', status: 'published' },
+    ]);
+    asAdmin();
+    const { GET } = await import('./admin/leaders/route');
+    const body = await (await GET()).json();
+    expect(body.map((l: { name: string }) => l.name)).toEqual(['Newest', 'Middle', 'Older']);
+  });
+
+  it('puts a leader with no set code last rather than first', async () => {
+    // A custom row has no code; sorting it to the top would bury the catalog.
+    await db.insert(leaders).values([
+      { name: 'Codeless', colors: ['red'], setCode: null, status: 'published' },
+      { name: 'Coded', colors: ['red'], setCode: 'OP01-001', status: 'published' },
+    ]);
+    asAdmin();
+    const { GET } = await import('./admin/leaders/route');
+    const body = await (await GET()).json();
+    expect(body.map((l: { name: string }) => l.name)).toEqual(['Coded', 'Codeless']);
+  });
+
   it('sorts drafts first', async () => {
     await db.insert(leaders).values([
       { name: 'AAA Published', colors: ['red'], status: 'published' },
