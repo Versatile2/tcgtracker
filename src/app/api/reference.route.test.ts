@@ -3,6 +3,7 @@ import { leaders, leaderImages } from '../../db/schema';
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../../tests/setup/db';
 import { seedReferenceData } from '../../db/seed';
+import { FIXTURE_CATALOG } from '../../../tests/fixtures/catalog';
 
 vi.mock('@clerk/nextjs/server', () => ({ auth: vi.fn(async () => ({ userId: 'user_api' })) }));
 vi.mock('@/db/client', () => ({ db: getTestDb(), schema: {} }));
@@ -11,7 +12,7 @@ const db = getTestDb();
 afterAll(closeTestDb);
 
 describe('/api/leaders', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
   it('offers no way to create one', async () => {
     // The catalog ships the real leaders and the daily refresh adds new sets,
@@ -55,7 +56,7 @@ describe('/api/leaders', () => {
 });
 
 describe('/api/metas', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
   it('offers no way to create one', async () => {
     const mod = await import('./metas/route');
@@ -68,7 +69,7 @@ describe('/api/metas', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
-    expect(body.some((m: { code: string }) => m.code === 'OP16')).toBe(true);
+    expect(body.some((m: { code: string }) => m.code === 'OP06')).toBe(true);
   });
 
 

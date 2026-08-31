@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { leaders, tournaments, rounds } from '../db/schema';
 import { getMatchupStats } from './stats';
 
@@ -28,7 +29,7 @@ async function addRounds(myLeader: string, rows: [string, 'win' | 'loss' | 'draw
 }
 
 describe('stats service — matchups', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 
   it('aggregates per-opponent records with verdict', async () => {
     // Zoro vs Doflamingo(purple): 2-0 favored; vs Nami(blue): 0-2 unfavored

@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { leaders } from '../db/schema';
 import { createTournament, finishTournament, getTournament } from './tournaments';
 import { addRound, updateRound, deleteRound } from './rounds';
@@ -26,7 +27,7 @@ async function leaderId(name: string) {
 }
 
 describe('round service', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
   afterAll(closeTestDb);
 
   it('appends rounds with incrementing numbers', async () => {

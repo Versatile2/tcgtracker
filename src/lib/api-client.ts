@@ -3,6 +3,7 @@ import type {
   StatsDTO, AchievementsResponseDTO,
 } from './dto';
 import type { LeaderArtInput } from './validation/leader-art';
+import type { BulkStatusInput, LeaderInput, MetaInput } from './validation/admin-catalog';
 import type { CreateTournamentInput, UpdateTournamentInput, ConvertTournamentInput } from './validation/tournament';
 import type { CreateRoundInput, UpdateRoundInput } from './validation/round';
 
@@ -28,6 +29,26 @@ export const apiClient = {
   getLeaderArt: () => request<LeaderArtMapDTO>('/api/leader-art'),
   setLeaderArt: (b: LeaderArtInput) => request<LeaderArtMapDTO>('/api/leader-art', { method: 'PUT', body: JSON.stringify(b) }),
   listMetas: () => request<MetaDTO[]>('/api/metas'),
+  adminListLeaders: () => request<LeaderDTO[]>('/api/admin/leaders'),
+  adminListMetas: () => request<MetaDTO[]>('/api/admin/metas'),
+  adminSetLeaderStatus: (b: BulkStatusInput) =>
+    request<{ changed: number }>('/api/admin/leaders/status', { method: 'PATCH', body: JSON.stringify(b) }),
+  adminSetMetaStatus: (b: BulkStatusInput) =>
+    request<{ changed: number }>('/api/admin/metas/status', { method: 'PATCH', body: JSON.stringify(b) }),
+  adminCreateLeader: (b: LeaderInput) =>
+    request<LeaderDTO>('/api/admin/leaders', { method: 'POST', body: JSON.stringify(b) }),
+  adminUpdateLeader: (id: string, b: LeaderInput) =>
+    request<LeaderDTO>(`/api/admin/leaders/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  adminCreateMeta: (b: MetaInput) =>
+    request<MetaDTO>('/api/admin/metas', { method: 'POST', body: JSON.stringify(b) }),
+  adminUpdateMeta: (id: string, b: MetaInput) =>
+    request<MetaDTO>(`/api/admin/metas/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  adminUpdateImage: (id: string, b: { label?: string; isDefault?: boolean }) =>
+    request<{ id: string; label: string; isDefault: boolean }>(`/api/admin/images/${id}`, {
+      method: 'PATCH', body: JSON.stringify(b),
+    }),
+  adminDeleteImage: (id: string) =>
+    request<{ ok: boolean }>(`/api/admin/images/${id}`, { method: 'DELETE' }),
 
   listTournaments: () => request<TournamentSummaryDTO[]>('/api/tournaments'),
   getTournament: (id: string) => request<TournamentDetailDTO>(`/api/tournaments/${id}`),

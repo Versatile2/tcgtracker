@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { createTournament } from './tournaments';
 import { addRound } from './rounds';
 import { listLeaders, listMetas } from './reference';
@@ -20,7 +21,7 @@ async function leaderId(name: string) {
 }
 
 describe('export service', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
   afterAll(closeTestDb);
 
   it('exports nothing for a player with no tournaments', async () => {

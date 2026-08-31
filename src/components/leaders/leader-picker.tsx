@@ -34,7 +34,12 @@ import {
  * selection, and stays that way.
  */
 
-type Option = { id: string; name: string; colors?: string[]; setCode?: string | null; images: LeaderImageDTO[] };
+type Option = {
+  id: string; name: string; colors?: string[]; setCode?: string | null;
+  aliases?: string[]; deckCodes?: string[];
+  status?: 'draft' | 'published' | 'hidden';
+  images: LeaderImageDTO[];
+};
 
 /** The head of the strip, before the run of set codes begins. */
 const RECENT_LABEL = 'Recent';
@@ -327,11 +332,24 @@ export function LeaderPicker({
     setArtOpen(false);
   };
 
+  // Resolution, not offering: this map answers "which leader is that id?" for a
+  // match already recorded, so it must see every status. Filtering it would
+  // blank a hidden leader in a past round.
   const byId = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
 
+  // What the picker offers. A draft has not been reviewed and a hidden row was
+  // set aside on purpose; neither should be pickable for a new game.
+  const offerable = useMemo(
+    () => options.filter((o) => o.status === undefined || o.status === 'published'),
+    [options],
+  );
+  const offerableIds = useMemo(() => new Set(offerable.map((o) => o.id)), [offerable]);
+
   const matches = useMemo(
-    () => (q ? options.filter((o) => leaderSearchText(o.name, o.setCode).includes(q)) : options),
-    [options, q],
+    () => (q
+      ? offerable.filter((o) => leaderSearchText(o.name, o.setCode, o.aliases, o.deckCodes).includes(q))
+      : offerable),
+    [offerable, q],
   );
 
   /**
@@ -362,12 +380,15 @@ export function LeaderPicker({
     for (const id of [...recentIds, ...(suggested ?? [])]) {
       if (seen.has(id)) continue;
       seen.add(id);
-      const o = byId.get(id);
+      // Recents are for picking, so they obey the same rule as the rest of the
+      // strip: a leader that has since been hidden drops out of the head even
+      // though `byId` can still resolve it for the match that used it.
+      const o = offerableIds.has(id) ? byId.get(id) : undefined;
       if (o) recent.push(o);
       if (recent.length === RECENT_LIMIT) break;
     }
     return { recent, rest: byCode.filter((o) => !seen.has(o.id)) };
-  }, [matches, q, recentIds, suggested, byId]);
+  }, [matches, q, recentIds, suggested, byId, offerableIds]);
 
 
   function choose(id: string) {
@@ -473,7 +494,7 @@ export function LeaderPicker({
 
       {/* An empty catalog means the leaders query has not resolved yet — saying
           "no leaders match" there would blame the search for a loading state. */}
-      {options.length === 0 ? (
+      {offerable.length === 0 ? (
         <div className="flex gap-2 overflow-hidden">
           {Array.from({ length: 5 }, (_, i) => <SkeletonTile key={i} />)}
         </div>

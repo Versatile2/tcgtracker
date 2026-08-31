@@ -1,7 +1,6 @@
 // Visual helpers for leader avatars. Real card art is bundled in public/leaders/
 // (see getLeaderImage); custom user-created leaders have no card art and fall
 // back to a color-tinted initial derived from their OPTCG colors.
-import { LEADER_DECK_CODES } from './leader-images';
 
 export const LEADER_COLOR_HEX: Record<string, string> = {
   red: '#d92b3f',
@@ -53,14 +52,21 @@ export function leaderImageUrl(imageId: string | null | undefined): string | nul
 }
 
 /**
- * Haystack for the leader pickers: the name, the card's own set code, and the
- * codes of any starter deck that reprints it. The single-colour starter decks
- * ship an existing booster leader under its original code, so without the last
- * part a player searching for their "ST17" deck would find nothing.
+ * Haystack for the leader pickers: the name, the card's set code, the nicknames
+ * players actually type, and the codes of any starter deck that reprints it.
+ *
+ * The single-colour starter decks ship an existing booster leader under its
+ * original code, so without the deck codes a player searching for their "ST17"
+ * deck would find nothing. Aliases are there for the same reason at a different
+ * altitude: nobody at a venue calls a deck "OP02-001".
  */
-export function leaderSearchText(name: string, setCode: string | null | undefined): string {
-  const decks = setCode ? (LEADER_DECK_CODES[setCode] ?? []) : [];
-  return [name, setCode, ...decks].filter(Boolean).join(' ').toLowerCase();
+export function leaderSearchText(
+  name: string,
+  setCode: string | null | undefined,
+  aliases: readonly string[] = [],
+  deckCodes: readonly string[] = [],
+): string {
+  return [name, setCode, ...aliases, ...deckCodes].filter(Boolean).join(' ').toLowerCase();
 }
 
 /**

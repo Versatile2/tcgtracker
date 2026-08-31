@@ -8,4 +8,6 @@ export const keys = {
   stats: ['stats'] as const,
   matchups: (leaderId: string) => ['matchups', leaderId] as const,
   achievements: ['achievements'] as const,
+  adminLeaders: ['admin-leaders'] as const,
+  adminMetas: ['admin-metas'] as const,
 };

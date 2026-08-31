@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../../../tests/setup/db';
 import { seedReferenceData } from '../../../db/seed';
+import { FIXTURE_CATALOG } from '../../../../tests/fixtures/catalog';
 import { createTournament, finishTournament } from '../../../services/tournaments';
 import { listLeaders } from '../../../services/reference';
 
@@ -10,7 +11,7 @@ vi.mock('@/db/client', () => ({ db: getTestDb(), schema: {} }));
 const db = getTestDb();
 
 describe('round routes', () => {
-  beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+  beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
   afterAll(closeTestDb);
 
   it('POST adds a round; returns 409 once locked', async () => {

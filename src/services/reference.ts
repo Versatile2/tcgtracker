@@ -1,7 +1,7 @@
-import { or, eq, isNull, sql, asc, inArray } from 'drizzle-orm';
+import { or, and, eq, isNull, sql, asc, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
-import { leaders, leaderImages, metas } from '../db/schema';
+import { leaders, leaderImages, metas, tournaments, rounds } from '../db/schema';
 import type { LeaderDTO, LeaderImageDTO } from '../lib/dto';
 
 type DB = NodePgDatabase<typeof schema>;
@@ -20,8 +20,36 @@ export type Meta = typeof metas.$inferSelect;
 const visibleTo = (table: typeof leaders | typeof metas, ownerId: string) =>
   or(isNull(table.ownerId), eq(table.ownerId, ownerId));
 
+/*
+ * The second half of "what this player may see".
+ *
+ * Published rows, plus any row their own matches already reference whatever its
+ * status. That second half is not a nicety: the client fetches this list once
+ * and resolves leader names by id, so without it, hiding a leader would blank
+ * every past match that used it. "Offerable" is a display filter the pickers
+ * apply to `status`, not a narrower query.
+ */
+const inMyMatches = (leaderId: typeof leaders.id, ownerId: string) => sql`EXISTS (
+  SELECT 1 FROM ${tournaments} t
+  LEFT JOIN ${rounds} r ON r.tournament_id = t.id
+  WHERE t.owner_id = ${ownerId}
+    AND (t.my_leader_id = ${leaderId} OR r.my_leader_id = ${leaderId} OR r.opponent_leader_id = ${leaderId})
+)`;
+
+const metaInMyMatches = (metaId: typeof metas.id, ownerId: string) => sql`EXISTS (
+  SELECT 1 FROM ${tournaments} t
+  LEFT JOIN ${rounds} r ON r.tournament_id = t.id
+  WHERE t.owner_id = ${ownerId}
+    AND (t.meta_id = ${metaId} OR r.opponent_meta_id = ${metaId})
+)`;
+
 export async function listLeaders(db: DB, ownerId: string): Promise<LeaderDTO[]> {
-  const rows = await db.select().from(leaders).where(visibleTo(leaders, ownerId)).orderBy(asc(leaders.name));
+  const rows = await db.select().from(leaders)
+    .where(and(
+      visibleTo(leaders, ownerId),
+      or(eq(leaders.status, 'published'), inMyMatches(leaders.id, ownerId)),
+    ))
+    .orderBy(asc(leaders.name));
   if (!rows.length) return [];
 
   // Two queries rather than a join: a join multiplies leader rows by their
@@ -59,7 +87,10 @@ export async function listMetas(db: DB, ownerId: string): Promise<Meta[]> {
   // metas and doesn't rely on this ordering; keeping customs below the
   // official list here is belt-and-braces plus good UX in its own right.
   return db.select().from(metas)
-    .where(visibleTo(metas, ownerId))
+    .where(and(
+      visibleTo(metas, ownerId),
+      or(eq(metas.status, 'published'), metaInMyMatches(metas.id, ownerId)),
+    ))
     .orderBy(asc(metas.isCustom), sql`${metas.code} desc nulls last`, asc(metas.name));
 }
 

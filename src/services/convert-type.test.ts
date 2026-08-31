@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
 import { seedReferenceData } from '../db/seed';
+import { FIXTURE_CATALOG } from '../../tests/fixtures/catalog';
 import { rounds, tournaments } from '../db/schema';
 import { createTournament, convertTournamentType, finishTournament } from './tournaments';
 import { addRound } from './rounds';
@@ -20,7 +21,7 @@ async function roundsFor(tournamentId: string) {
   return db.select().from(rounds).where(eq(rounds.tournamentId, tournamentId)).orderBy(rounds.roundNumber);
 }
 
-beforeEach(async () => { await resetDb(); await seedReferenceData(db); });
+beforeEach(async () => { await resetDb(); await seedReferenceData(db, FIXTURE_CATALOG); });
 afterAll(closeTestDb);
 
 describe('converting a tournament into a session', () => {

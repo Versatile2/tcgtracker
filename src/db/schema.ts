@@ -23,11 +23,24 @@ export const roundResult = pgEnum('round_result', ['win', 'loss', 'draw']);
 export const playOrder = pgEnum('play_order', ['first', 'second']);
 export const roundKind = pgEnum('round_kind', ['swiss', 'top_cut', 'bye', 'no_show']);
 
+/**
+ * Where a catalog row is in its review. `draft` is "arrived, never reviewed" —
+ * what the importer produces. `hidden` is "reviewed and set aside": a duplicate,
+ * a mistake, or a product this player never sees. The distinction is what makes
+ * a review queue possible, so the two are not collapsed into one flag.
+ */
+export const catalogStatus = pgEnum('catalog_status', ['draft', 'published', 'hidden']);
+
 export const leaders = pgTable('leaders', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   colors: text('colors').array().notNull().default([]),
   setCode: text('set_code'),
+  /** Nicknames players actually type: 'gear 5', 'whitebeard'. Fed into leaderSearchText. */
+  aliases: text('aliases').array().notNull().default([]),
+  /** Starter decks that reprint this leader under its original code, e.g. ['ST17']. */
+  deckCodes: text('deck_codes').array().notNull().default([]),
+  status: catalogStatus('status').notNull().default('draft'),
   isCustom: boolean('is_custom').notNull().default(false),
   ownerId: text('owner_id'), // null = global seed
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -91,6 +104,7 @@ export const metas = pgTable('metas', {
   name: text('name').notNull(),
   code: text('code'),
   releasedAt: date('released_at'),
+  status: catalogStatus('status').notNull().default('draft'),
   isCustom: boolean('is_custom').notNull().default(false),
   ownerId: text('owner_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

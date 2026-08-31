@@ -26,7 +26,8 @@ import { recentLeaders, pushRecentLeader } from '@/lib/recent-leaders';
 const img = (leader: string, n: number) =>
   Array.from({ length: n }, (_, i) => ({ id: `${leader}-img-${i}`, label: i === 0 ? 'Base' : `p${i}` }));
 
-const YAMATO = { id: 'y', name: 'Yamato', colors: ['green'], setCode: 'OP06-022', images: img('y', 4) };
+// Deck codes now travel on the row rather than a lookup table keyed on set code.
+const YAMATO = { id: 'y', name: 'Yamato', colors: ['green'], setCode: 'OP06-022', deckCodes: ['ST28'], images: img('y', 4) };
 const LUFFY = { id: 'l', name: 'Monkey D. Luffy', colors: ['red'], setCode: 'ST01-001', images: img('l', 1) };
 const HOMEBREW = { id: 'h', name: 'Homebrew', colors: ['red'], setCode: null, images: [] };
 const ZORO = { id: 'z', name: 'Roronoa Zoro', colors: ['red'], setCode: 'OP01-001', images: img('z', 2) };

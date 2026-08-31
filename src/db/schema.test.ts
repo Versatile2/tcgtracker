@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getTestDb, resetDb, closeTestDb } from '../../tests/setup/db';
-import { leaders, leaderImages, leaderArt } from './schema';
+import { leaders, leaderImages, leaderArt, metas } from './schema';
 
 const db = getTestDb();
 
@@ -109,5 +109,36 @@ describe('leader_images', () => {
     // The preference is cosmetic: losing the image means falling back to the
     // leader's default, not pointing at nothing.
     expect(rows).toHaveLength(0);
+  });
+});
+
+describe('catalog status', () => {
+  beforeEach(async () => { await resetDb(); });
+
+  it('defaults a newly inserted leader to draft', async () => {
+    const [row] = await db.insert(leaders).values({ name: 'Yamato', colors: ['green'] }).returning();
+    expect(row.status).toBe('draft');
+    expect(row.aliases).toEqual([]);
+    expect(row.deckCodes).toEqual([]);
+  });
+
+  it('defaults a newly inserted meta to draft', async () => {
+    const [row] = await db.insert(metas).values({ name: 'OP17 Whatever', code: 'OP17' }).returning();
+    expect(row.status).toBe('draft');
+  });
+
+  it('rejects a status outside the enum', async () => {
+    await expect(
+      db.execute(sql`INSERT INTO leaders (name, colors, status) VALUES ('X', '{}', 'retired')`),
+    ).rejects.toThrow();
+  });
+
+  it('round-trips aliases and deck codes', async () => {
+    const [row] = await db.insert(leaders).values({
+      name: 'Edward Newgate', colors: ['red'], setCode: 'OP02-001',
+      aliases: ['whitebeard', 'pops'], deckCodes: ['ST15'],
+    }).returning();
+    expect(row.aliases).toEqual(['whitebeard', 'pops']);
+    expect(row.deckCodes).toEqual(['ST15']);
   });
 });

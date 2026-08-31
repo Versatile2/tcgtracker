@@ -14,9 +14,9 @@ const LEADERS = [
   leader('reversed', ['yellow', 'black']),
 ];
 const METAS: MetaDTO[] = [
-  { id: 'm1', name: 'OP01 Romance Dawn', code: 'OP01', isCustom: false, ownerId: null },
-  { id: 'm2', name: 'OP02 Paramount War', code: 'OP02', isCustom: false, ownerId: null },
-  { id: 'mine', name: 'Kitchen table', code: null, isCustom: true, ownerId: 'u' },
+  { id: 'm1', name: 'OP01 Romance Dawn', code: 'OP01', isCustom: false, ownerId: null, status: 'published', releasedAt: null },
+  { id: 'm2', name: 'OP02 Paramount War', code: 'OP02', isCustom: false, ownerId: null, status: 'published', releasedAt: null },
+  { id: 'mine', name: 'Kitchen table', code: null, isCustom: true, ownerId: 'u', status: 'published', releasedAt: null },
 ];
 
 const round = (p: Partial<MatchSummaryDTO> = {}): MatchSummaryDTO => ({
