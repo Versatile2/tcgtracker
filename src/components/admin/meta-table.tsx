@@ -22,10 +22,15 @@ export function MetaTable() {
   });
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [editing, setEditing] = useState<MetaDTO | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
   const rows = useMemo(() => data ?? [], [data]);
+  // Looked up rather than captured, for the same reason as the leader grid.
+  const editing = useMemo(
+    () => (editingId ? rows.find((m) => m.id === editingId) ?? null : null),
+    [rows, editingId],
+  );
 
   const setStatusMutation = useMutation({
     mutationFn: (b: BulkStatusInput) => apiClient.adminSetMetaStatus(b),
@@ -48,7 +53,7 @@ export function MetaTable() {
   }
 
   function openPanel(meta: MetaDTO | null) {
-    setEditing(meta);
+    setEditingId(meta?.id ?? null);
     setPanelOpen(true);
   }
 
@@ -121,7 +126,7 @@ export function MetaTable() {
 
       {panelOpen && (
         <MetaPanel
-          key={editing?.id ?? 'new'}
+          key={editingId ?? 'new'}
           meta={editing}
           open
           onOpenChange={setPanelOpen}

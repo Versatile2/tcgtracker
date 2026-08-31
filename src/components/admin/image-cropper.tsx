@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState } from 'react';
+import { ImagePlus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '@/lib/query-keys';
 import { clampOffset, displaySize, sourceRect, type Offset, type View } from '@/lib/image-crop';
@@ -21,18 +22,21 @@ async function exportCrop(img: HTMLImageElement, view: View): Promise<Blob> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No 2d context');
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, FRAME.w, FRAME.h);
+  // WebP is asked for because it is the smallest, but `toBlob` silently returns
+  // PNG when the browser cannot encode it — and returns a blob either way, so
+  // there is nothing to detect here and nothing worth refusing. The server
+  // reads the signature and records what the bytes really are.
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, 'image/webp', 0.85),
   );
-  // Not a silent PNG fallback: the server rejects non-WebP bytes, so falling
-  // back would turn a browser limitation into a confusing 400.
-  if (!blob) throw new Error('This browser could not encode WebP.');
+  if (!blob) throw new Error('This browser could not encode the crop.');
   return blob;
 }
 
 export function ImageCropper({ leaderId, onUploaded }: { leaderId: string; onUploaded?: () => void }) {
   const qc = useQueryClient();
   const imgRef = useRef<HTMLImageElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const dragFrom = useRef<{ x: number; y: number; base: Offset } | null>(null);
 
   const [src, setSrc] = useState<string | null>(null);
@@ -89,6 +93,7 @@ export function ImageCropper({ leaderId, onUploaded }: { leaderId: string; onUpl
       await qc.invalidateQueries({ queryKey: keys.leaders });
       setSrc(null);
       setNatural(null);
+      if (fileRef.current) fileRef.current.value = '';
       onUploaded?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed');
@@ -99,13 +104,23 @@ export function ImageCropper({ leaderId, onUploaded }: { leaderId: string; onUpl
 
   return (
     <div className="space-y-3">
+      {/* The browser's own file input renders as unstyled "Choose File / No
+          file chosen" text, which read as a caption rather than a control and
+          was missed entirely. The input still does the work; the button is what
+          you can see. */}
       <input
+        ref={fileRef}
         type="file"
         accept="image/*"
         aria-label="Choose an image"
-        className="block w-full text-sm"
+        className="sr-only"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) pickFile(f); }}
       />
+      {!src && (
+        <Button variant="outline" className="w-full" onClick={() => fileRef.current?.click()}>
+          <ImagePlus /> Add artwork
+        </Button>
+      )}
 
       {src && (
         <>
@@ -161,7 +176,16 @@ export function ImageCropper({ leaderId, onUploaded }: { leaderId: string; onUpl
             <Button onClick={confirm} disabled={busy || !natural}>
               {busy ? 'Uploading…' : 'Add this crop'}
             </Button>
-            <Button variant="ghost" onClick={() => { setSrc(null); setNatural(null); }} disabled={busy}>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setSrc(null);
+                setNatural(null);
+                // Or re-picking the same file fires no change event at all.
+                if (fileRef.current) fileRef.current.value = '';
+              }}
+            >
               Cancel
             </Button>
           </div>

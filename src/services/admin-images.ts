@@ -10,21 +10,34 @@ type DB = NodePgDatabase<typeof schema>;
 export const MAX_IMAGE_BYTES = 512 * 1024;
 
 /**
- * Whether these bytes really are a WebP.
+ * What these bytes actually are, or null if it is nothing we store.
  *
- * The declared content type is whatever the client felt like sending. The RIFF
- * container's magic is the only statement about the bytes that the bytes
- * themselves make.
+ * The declared content type is whatever the client felt like sending; a
+ * signature is the only statement about the bytes that the bytes themselves
+ * make, so it is the only one trusted here.
+ *
+ * Three formats rather than WebP alone because the crop is re-encoded by a
+ * canvas, and `toBlob` silently returns PNG when the browser cannot encode
+ * WebP — insisting on WebP locked those browsers out of uploading at all.
  */
-export function isWebp(bytes: Buffer): boolean {
-  return bytes.length > 12
+export function detectImageType(bytes: Buffer): 'image/webp' | 'image/png' | 'image/jpeg' | null {
+  if (bytes.length > 12
     && bytes.toString('ascii', 0, 4) === 'RIFF'
-    && bytes.toString('ascii', 8, 12) === 'WEBP';
+    && bytes.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+
+  if (bytes.length > 8
+    && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+
+  if (bytes.length > 3
+    && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+
+  return null;
 }
 
 export async function addLeaderImage(db: DB, leaderId: string, bytes: Buffer, label: string) {
   if (bytes.byteLength > MAX_IMAGE_BYTES) throw new ValidationError('Image too large.');
-  if (!isWebp(bytes)) throw new ValidationError('Image must be a WebP.');
+  const mimeType = detectImageType(bytes);
+  if (!mimeType) throw new ValidationError('Image must be a WebP, PNG or JPEG.');
 
   const existing = await db.select({ sortOrder: leaderImages.sortOrder })
     .from(leaderImages).where(eq(leaderImages.leaderId, leaderId));
@@ -34,7 +47,7 @@ export async function addLeaderImage(db: DB, leaderId: string, bytes: Buffer, la
     cardImageId: null,
     label,
     data: bytes,
-    mimeType: 'image/webp',
+    mimeType,
     width: 240,
     height: 336,
     byteSize: bytes.byteLength,
