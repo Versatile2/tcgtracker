@@ -57,6 +57,11 @@ export async function adminListLeaders(db: DB): Promise<LeaderDTO[]> {
 export async function adminListMetas(db: DB): Promise<MetaDTO[]> {
   return db.select().from(metas).orderBy(
     sql`case ${metas.status} when 'draft' then 0 when 'published' then 1 else 2 end`,
+    // By release date, because the codes are not a timeline — OP14 and OP15
+    // shipped out of code order, and an EB or PRB code outranks OP16 lexically.
+    // A meta with no date yet falls back to its code and sorts below the dated
+    // ones, which is also the rule pickDefaultMetaId follows.
+    sql`${metas.releasedAt} desc nulls last`,
     sql`${metas.code} desc nulls last`,
     asc(metas.name),
   );
