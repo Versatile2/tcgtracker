@@ -28,12 +28,16 @@ export function SelectionBar({
 }) {
   if (count === 0) return null;
 
+  // Sits above the primary nav rather than under it. That nav is
+  // `fixed bottom-0 z-40` and was intercepting every click on these buttons —
+  // the bar rendered, and Publish simply did nothing.
+
   const summary = withoutArt > 0
     ? `${count} selected, ${withoutArt} without artwork`
     : `${count} selected`;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 backdrop-blur">
+    <div className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-50 border-t border-border bg-background/95 p-3 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{summary}</span>
         <div className="ml-auto flex flex-wrap gap-2">

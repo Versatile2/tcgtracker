@@ -168,7 +168,7 @@ export function LeaderPanel({
               ) : (
                 <ul className="flex flex-wrap gap-3">
                   {leader.images.map((img) => (
-                    <li key={img.id} className="w-20 space-y-1">
+                    <li key={img.id} className="w-24 space-y-1">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={leaderImageUrl(img.id) ?? ''}
@@ -187,17 +187,21 @@ export function LeaderPanel({
                           if (next && next !== img.label) patchImage.mutate({ id: img.id, body: { label: next } });
                         }}
                       />
-                      <div className="flex gap-1">
+                      {/* Stacked, not side by side: two buttons will not fit
+                          across a thumbnail this narrow and were overlapping. */}
+                      <div className="flex flex-col gap-1">
                         <Button
                           size="xs"
+                          className="w-full"
                           variant={img.id === leader.defaultImageId ? 'default' : 'outline'}
                           disabled={img.id === leader.defaultImageId || patchImage.isPending}
                           onClick={() => patchImage.mutate({ id: img.id, body: { isDefault: true } })}
                         >
-                          Default
+                          {img.id === leader.defaultImageId ? 'Default' : 'Make default'}
                         </Button>
                         <Button
                           size="xs"
+                          className="w-full"
                           variant="destructive"
                           disabled={removeImage.isPending}
                           onClick={() => removeImage.mutate(img.id)}

@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { hasAdminRole } from '@/lib/api/handler';
 
 /*
  * Leader card art is public game data, and the route serves it with
@@ -22,9 +23,10 @@ export default clerkMiddleware(async (auth, req) => {
   await auth.protect();
 
   if (!isAdmin(req)) return;
-  const { sessionClaims } = await auth();
-  const role = (sessionClaims as { metadata?: { role?: string } } | null)?.metadata?.role;
-  if (role === 'admin') return;
+  // Shared with requireAdmin so the two barriers cannot disagree about who is an
+  // admin — and so neither depends on a Clerk dashboard setting that has no API.
+  const { userId, sessionClaims } = await auth();
+  if (userId && await hasAdminRole(sessionClaims, userId)) return;
 
   // A page nobody linked to may as well not exist; an API that 404s teaches its
   // client that the endpoint moved, which is a lie.

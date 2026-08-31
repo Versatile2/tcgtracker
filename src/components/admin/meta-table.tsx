@@ -55,7 +55,7 @@ export function MetaTable() {
   if (isError) return <p className="text-sm text-destructive">Could not load the metas.</p>;
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-40">
       <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="outline"

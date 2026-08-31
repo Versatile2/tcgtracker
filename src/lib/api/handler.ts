@@ -1,5 +1,5 @@
 import { ZodError } from 'zod';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NotFoundError, ConflictError, ValidationError } from '../errors';
 
 export class UnauthorizedError extends Error {
@@ -35,11 +35,36 @@ export async function requireUserId(): Promise<string> {
 }
 
 /**
- * The signed-in user id, provided they hold the admin role.
+ * Whether this user holds the admin role.
  *
- * The role is read from the session token rather than fetched per request,
- * which needs the Clerk session token to expose public metadata (dashboard:
- * Sessions → Customize session token → {"metadata": "{{user.public_metadata}}"}).
+ * The session token carries public metadata only once the Clerk dashboard's
+ * "Customize session token" is set to {"metadata": "{{user.public_metadata}}"}.
+ * That is instance-level and has no Backend API equivalent, so an instance that
+ * has not had it done locks every admin out with nothing to explain it — which
+ * is exactly what happened on this one.
+ *
+ * So the claim is treated as a cache: read it when it is there, ask Clerk when
+ * it is not. Both answers come from the same authority — `publicMetadata` is
+ * what grants the role — so the fallback is not a weaker check, only a slower
+ * one. A failure to reach Clerk denies rather than admits.
+ */
+export async function hasAdminRole(
+  sessionClaims: unknown,
+  userId: string,
+): Promise<boolean> {
+  const claimed = (sessionClaims as { metadata?: { role?: string } } | null)?.metadata?.role;
+  if (claimed !== undefined) return claimed === 'admin';
+
+  try {
+    const user = await (await clerkClient()).users.getUser(userId);
+    return (user.publicMetadata as { role?: string } | undefined)?.role === 'admin';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The signed-in user id, provided they hold the admin role.
  *
  * This is the second of two barriers — src/proxy.ts is the first. The
  * redundancy is deliberate: a mis-written matcher opens the whole admin area
@@ -49,7 +74,6 @@ export async function requireUserId(): Promise<string> {
 export async function requireAdmin(): Promise<string> {
   const { userId, sessionClaims } = await auth();
   if (!userId) throw new UnauthorizedError();
-  const role = (sessionClaims as { metadata?: { role?: string } } | null)?.metadata?.role;
-  if (role !== 'admin') throw new ForbiddenError();
+  if (!(await hasAdminRole(sessionClaims, userId))) throw new ForbiddenError();
   return userId;
 }
