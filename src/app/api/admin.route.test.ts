@@ -79,6 +79,32 @@ describe('/api/admin/metas', () => {
     expect((await GET()).status).toBe(403);
   });
 
+  it('orders by release date descending, not by code', async () => {
+    // The codes are not a timeline: OP-14 and OP-15 shipped out of code order
+    // more than once, and an EB/PRB code sorts above OP16 lexically.
+    await db.insert(metas).values([
+      { name: 'Older set', code: 'OP16', releasedAt: '2025-01-01', status: 'published' },
+      { name: 'Newest set', code: 'OP01', releasedAt: '2026-06-12', status: 'published' },
+      { name: 'Middle set', code: 'OP09', releasedAt: '2025-11-07', status: 'published' },
+    ]);
+    asAdmin();
+    const { GET } = await import('./admin/metas/route');
+    const body = await (await GET()).json();
+    expect(body.map((m: { name: string }) => m.name)).toEqual(['Newest set', 'Middle set', 'Older set']);
+  });
+
+  it('falls back to code for metas with no date, and puts them last', async () => {
+    await db.insert(metas).values([
+      { name: 'Undated low', code: 'OP01', releasedAt: null, status: 'published' },
+      { name: 'Undated high', code: 'OP09', releasedAt: null, status: 'published' },
+      { name: 'Dated', code: 'OP02', releasedAt: '2023-03-10', status: 'published' },
+    ]);
+    asAdmin();
+    const { GET } = await import('./admin/metas/route');
+    const body = await (await GET()).json();
+    expect(body.map((m: { name: string }) => m.name)).toEqual(['Dated', 'Undated high', 'Undated low']);
+  });
+
   it('returns every meta whatever its status', async () => {
     await db.insert(metas).values([
       { name: 'OP17', code: 'OP17', status: 'draft' },
