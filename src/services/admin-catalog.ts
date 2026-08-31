@@ -21,6 +21,10 @@ type DB = NodePgDatabase<typeof schema>;
 export async function adminListLeaders(db: DB): Promise<LeaderDTO[]> {
   const rows = await db.select().from(leaders).orderBy(
     sql`case ${leaders.status} when 'draft' then 0 when 'published' then 1 else 2 end`,
+    // Newest set first, which is where the work is after a release. Lexical, so
+    // an ST- or PRB-coded card outranks OP16 — the codes are not a timeline and
+    // pretending otherwise would need a table nobody maintains.
+    sql`${leaders.setCode} desc nulls last`,
     asc(leaders.name),
   );
   if (!rows.length) return [];
